@@ -1,0 +1,115 @@
+@if (loading()) {
+  <div class="skeleton h-40 w-full"></div>
+} @else if (notFound() || !driver()) {
+  <app-empty-state title="Livreur introuvable">
+    <a routerLink="/drivers" class="btn btn-secondary btn-sm mt-2">{{ i18n.t('action.back') }}</a>
+  </app-empty-state>
+} @else {
+  @let d = driver()!;
+  <app-breadcrumbs [crumbs]="[{ label: i18n.t('nav.drivers'), link: '/drivers' }, { label: d.prenom + ' ' + d.nom }]" />
+
+  <div class="flex items-start justify-between gap-4 flex-wrap mb-5">
+    <div class="flex items-center gap-3">
+      <app-avatar [name]="d.prenom + ' ' + d.nom" [size]="48" />
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-xl font-semibold">{{ d.prenom }} {{ d.nom }}</h1>
+          <app-status-badge domain="account" [status]="d.statut" />
+          <app-status-badge domain="driverOp" [status]="d.statut_operationnel" />
+        </div>
+        <p class="text-sm mt-0.5" style="color: var(--text-muted)">{{ d.matricule }} · {{ d.telephone }}</p>
+      </div>
+    </div>
+    @if (auth.hasPermission('driver.sanction')) {
+      <div class="flex gap-2">
+        @if (d.statut === 'ACTIF') {
+          <button type="button" class="btn btn-danger-ghost btn-sm" (click)="openSuspend()">{{ i18n.t('action.suspend') }}</button>
+        } @else if (d.statut === 'SUSPENDU') {
+          <button type="button" class="btn btn-secondary btn-sm" (click)="reactivate()">{{ i18n.t('action.reactivate') }}</button>
+        }
+      </div>
+    }
+  </div>
+
+  @if (permisDaysLeft() !== null && permisDaysLeft()! <= 30) {
+    <app-alert-banner [kind]="permisDaysLeft()! <= 0 ? 'danger' : 'warning'" class="block mb-4">
+      Permis de conduire {{ permisDaysLeft()! <= 0 ? 'expiré' : 'expire dans ' + permisDaysLeft() + ' jours' }} ({{ formatDate(d.permis_expire_le) }}).
+    </app-alert-banner>
+  }
+  @if (assuranceDaysLeft() !== null && assuranceDaysLeft()! <= 30) {
+    <app-alert-banner [kind]="assuranceDaysLeft()! <= 0 ? 'danger' : 'warning'" class="block mb-4">
+      Assurance {{ assuranceDaysLeft()! <= 0 ? 'expirée' : 'expire dans ' + assuranceDaysLeft() + ' jours' }} ({{ formatDate(d.assurance_expire_le) }}).
+    </app-alert-banner>
+  }
+
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+    <div class="card p-4">
+      <p class="text-xs font-semibold mb-3" style="color: var(--text-muted)">IDENTITÉ</p>
+      <dl class="flex flex-col gap-2 text-sm">
+        <div class="flex justify-between"><dt style="color: var(--text-muted)">CNI</dt><dd>{{ d.numero_cni }}</dd></div>
+        <div class="flex justify-between"><dt style="color: var(--text-muted)">Permis</dt><dd>{{ d.numero_permis }}</dd></div>
+        <div class="flex justify-between"><dt style="color: var(--text-muted)">Zone</dt><dd>{{ d.zone_predilection === 'zone_dla_couv' ? 'Douala' : 'Yaoundé' }}</dd></div>
+        <div class="flex justify-between"><dt style="color: var(--text-muted)">Versement</dt><dd>{{ d.numero_versement }}</dd></div>
+      </dl>
+    </div>
+
+    <div class="card p-4">
+      <p class="text-xs font-semibold mb-3" style="color: var(--text-muted)">VÉHICULE</p>
+      @if (d.vehicule; as v) {
+        <dl class="flex flex-col gap-2 text-sm">
+          <div class="flex justify-between"><dt style="color: var(--text-muted)">Type</dt><dd>{{ v.type }}</dd></div>
+          <div class="flex justify-between"><dt style="color: var(--text-muted)">Immatriculation</dt><dd>{{ v.immatriculation }}</dd></div>
+          <div class="flex justify-between"><dt style="color: var(--text-muted)">Modèle</dt><dd>{{ v.marque }} {{ v.modele }}</dd></div>
+        </dl>
+      }
+    </div>
+
+    <div class="card p-4">
+      <p class="text-xs font-semibold mb-3" style="color: var(--text-muted)">PERFORMANCE</p>
+      <dl class="flex flex-col gap-2 text-sm">
+        <div class="flex justify-between"><dt style="color: var(--text-muted)">Note moyenne</dt><dd>{{ d.note_moyenne.toFixed(2) }} / 5</dd></div>
+        <div class="flex justify-between"><dt style="color: var(--text-muted)">Taux d’acceptation (7j)</dt><dd>{{ d.taux_acceptation_7j }} %</dd></div>
+        <div class="flex justify-between"><dt style="color: var(--text-muted)">Score qualité</dt><dd [style.color]="d.score_qualite < 70 ? 'var(--status-critical)' : 'var(--text-primary)'">{{ d.score_qualite }}</dd></div>
+        <div class="flex justify-between"><dt style="color: var(--text-muted)">Courses totales</dt><dd>{{ d.courses_total }}</dd></div>
+      </dl>
+    </div>
+
+    @if (wallet(); as w) {
+      <div class="card p-4 xl:col-span-2">
+        <p class="text-xs font-semibold mb-3" style="color: var(--text-muted)">PORTEFEUILLE</p>
+        <div class="grid grid-cols-3 gap-4 mb-3">
+          <div><p class="text-[11px]" style="color: var(--text-muted)">Solde disponible</p><p class="text-lg font-semibold tabular-nums">{{ formatXaf(w.solde_disponible) }}</p></div>
+          <div><p class="text-[11px]" style="color: var(--text-muted)">Encours COD</p><p class="text-lg font-semibold tabular-nums" [style.color]="w.encours_cod >= w.plafond_cod ? 'var(--status-critical)' : 'var(--text-primary)'">{{ formatXaf(w.encours_cod) }}</p></div>
+          <div><p class="text-[11px]" style="color: var(--text-muted)">Plafond COD</p><p class="text-lg font-semibold tabular-nums">{{ formatXaf(w.plafond_cod) }}</p></div>
+        </div>
+        <p class="text-[11px]" style="color: var(--text-muted)">Détail complet dans Finance → Portefeuilles.</p>
+      </div>
+    }
+
+    <div class="card p-4">
+      <p class="text-xs font-semibold mb-3" style="color: var(--text-muted)">SANCTIONS</p>
+      <div class="flex flex-col gap-2">
+        @for (s of sanctions(); track s.id) {
+          <div class="text-xs rounded-(--radius-sm) px-2.5 py-2" style="background: var(--surface-2)">
+            <p class="font-medium">{{ s.type }} — {{ s.statut }}</p>
+            <p style="color: var(--text-muted)" class="mt-0.5">{{ s.motif }}</p>
+          </div>
+        } @empty {
+          <p class="text-xs" style="color: var(--text-muted)">Aucune sanction enregistrée.</p>
+        }
+      </div>
+    </div>
+  </div>
+
+  <app-modal [open]="showSuspendModal()" title="Suspendre le livreur" size="sm" (closed)="showSuspendModal.set(false)">
+    <form [formGroup]="suspendForm">
+      <app-field label="Motif" [control]="suspendForm.controls.motif" [required]="true">
+        <textarea class="textarea" rows="3" formControlName="motif"></textarea>
+      </app-field>
+    </form>
+    <div modal-footer>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="showSuspendModal.set(false)">{{ i18n.t('action.cancel') }}</button>
+      <button type="button" class="btn btn-danger btn-sm" [disabled]="suspending()" (click)="confirmSuspend()">{{ i18n.t('action.suspend') }}</button>
+    </div>
+  </app-modal>
+}

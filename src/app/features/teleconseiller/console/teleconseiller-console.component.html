@@ -1,0 +1,262 @@
+<app-breadcrumbs [crumbs]="[{ label: i18n.t('nav.teleconseiller') }]" />
+
+<div class="flex items-center justify-between gap-3 mb-5 flex-wrap">
+  <div>
+    <h1 class="text-xl font-semibold">Console téléconseiller</h1>
+    <p class="text-sm mt-0.5" style="color: var(--text-muted)">Objectif : commande créée en moins de 90 secondes (UC-TEL-01).</p>
+  </div>
+  <a routerLink="/orders" class="btn btn-secondary btn-sm">Rechercher une commande existante</a>
+</div>
+
+<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
+
+<div class="mt-5">
+  @if (activeTab() === 'new-order') {
+    @if (createdOrder(); as order) {
+      <div class="card p-8 flex flex-col items-center text-center gap-3 max-w-lg mx-auto">
+        <div class="h-12 w-12 rounded-full flex items-center justify-center" style="background: var(--status-good-bg)">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--status-good)" stroke-width="2.2"><path d="m20 6-11 11-5-5" /></svg>
+        </div>
+        <p class="text-sm font-semibold">Commande {{ order.numero }} créée</p>
+        <p class="text-xs" style="color: var(--text-muted)">Montant {{ formatXaf(order.prix_total) }} · Créée en {{ elapsedSeconds() }} secondes</p>
+        <div class="flex gap-2 mt-2">
+          <button type="button" class="btn btn-secondary btn-sm" (click)="goToOrder(order.id)">Voir la commande</button>
+          <button type="button" class="btn btn-primary btn-sm" (click)="resetWizard()">Nouvelle commande</button>
+        </div>
+      </div>
+    } @else {
+      <!-- Indicateur de temps -->
+      <div class="flex items-center gap-2 mb-4 text-xs font-medium" [style.color]="elapsedSeconds() > 90 ? 'var(--status-critical)' : 'var(--text-muted)'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" /></svg>
+        Temps écoulé : {{ elapsedSeconds() }} s @if (elapsedSeconds() <= 90) { <span>/ 90 s cible</span> }
+      </div>
+
+      <div class="flex items-center gap-2 mb-5">
+        @for (s of ['CLIENT','TRAJET','PAIEMENT']; track s; let i = $index) {
+          <div class="flex items-center gap-2">
+            <span class="h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-semibold" [style.background]="step() === s ? 'var(--brand)' : 'var(--surface-2)'" [style.color]="step() === s ? 'white' : 'var(--text-muted)'">{{ i + 1 }}</span>
+            <span class="text-xs" [style.color]="step() === s ? 'var(--text-primary)' : 'var(--text-muted)'">{{ s === 'CLIENT' ? 'Client' : s === 'TRAJET' ? 'Trajet & colis' : 'Paiement' }}</span>
+          </div>
+          @if (i < 2) { <span class="w-6 h-px" style="background: var(--border-strong)"></span> }
+        }
+      </div>
+
+      @if (step() === 'CLIENT') {
+        <div class="card p-5 max-w-2xl">
+          @if (!creatingNewClient()) {
+            <label class="field-label">{{ i18n.t('action.search') }} un client (numéro, nom)</label>
+            <input type="search" class="input" [value]="clientQuery()" (input)="onClientQueryChange($any($event.target).value)" placeholder="+237 6… ou nom du client" autofocus />
+            <div class="mt-3 flex flex-col gap-1.5 max-h-64 overflow-y-auto thin-scroll">
+              @if (searchingClient()) {
+                <div class="skeleton h-10 w-full"></div>
+              } @else {
+                @for (c of clientResults(); track c.client_id) {
+                  <button type="button" class="text-left rounded-(--radius-sm) px-3 py-2 flex items-center justify-between hover:bg-(--surface-2)" style="border: 1px solid var(--border)" (click)="selectClient(c)">
+                    <span>
+                      <span class="block text-sm font-medium">{{ c.nom }}</span>
+                      <span class="block text-xs" style="color: var(--text-muted)">{{ c.telephone }} · {{ c.nb_commandes }} commande(s)</span>
+                    </span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full" style="background: var(--surface-2); color: var(--text-muted)">{{ c.type_client }}</span>
+                  </button>
+                }
+                @if (clientQuery() && clientResults().length === 0) {
+                  <p class="text-xs py-3 text-center" style="color: var(--text-muted)">Aucun client trouvé pour « {{ clientQuery() }} ».</p>
+                }
+              }
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm mt-3" (click)="startNewClient()">+ Créer un nouveau client</button>
+          } @else {
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-sm font-medium">Nouveau client</p>
+              <button type="button" class="text-xs link" (click)="creatingNewClient.set(false)">{{ i18n.t('action.back') }}</button>
+            </div>
+            <form [formGroup]="newClientForm" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <app-field label="Prénom" [control]="newClientForm.controls.prenom" [required]="true">
+                <input class="input" formControlName="prenom" />
+              </app-field>
+              <app-field label="Nom" [control]="newClientForm.controls.nom" [required]="true">
+                <input class="input" formControlName="nom" />
+              </app-field>
+              <app-field label="Téléphone" [control]="newClientForm.controls.telephone" [required]="true" class="sm:col-span-2">
+                <input class="input" formControlName="telephone" />
+              </app-field>
+            </form>
+            <button type="button" class="btn btn-primary btn-sm mt-4" (click)="confirmNewClient()">{{ i18n.t('action.next') }}</button>
+          }
+        </div>
+      }
+
+      @if (step() === 'TRAJET') {
+        <form [formGroup]="tripForm" class="card p-5 max-w-3xl flex flex-col gap-5">
+          <div class="flex items-center justify-between">
+            <p class="text-sm font-medium">{{ selectedClient() ? selectedClient()!.nom : (newClientForm.value.prenom + ' ' + newClientForm.value.nom) }}</p>
+            <button type="button" class="text-xs link" (click)="goToStep('CLIENT')">Changer de client</button>
+          </div>
+
+          <app-field label="Ville" [control]="tripForm.controls.ville" [required]="true">
+            <select class="select" formControlName="ville">
+              <option value="Douala">Douala</option>
+              <option value="Yaoundé">Yaoundé</option>
+            </select>
+          </app-field>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="flex flex-col gap-3 rounded-(--radius-md) p-3" style="background: var(--surface-2)">
+              <p class="text-xs font-semibold" style="color: var(--text-muted)">RAMASSAGE</p>
+              <app-field label="Quartier" [control]="tripForm.controls.depart_quartier" [required]="true">
+                <input class="input" formControlName="depart_quartier" placeholder="Ex. Akwa" />
+              </app-field>
+              <app-field label="Repère" [control]="tripForm.controls.depart_repere" [required]="true" hint="Carrefour, commerce voisin… (CT-01)">
+                <input class="input" formControlName="depart_repere" placeholder="Face à la pharmacie du carrefour" />
+              </app-field>
+            </div>
+            <div class="flex flex-col gap-3 rounded-(--radius-md) p-3" style="background: var(--surface-2)">
+              <p class="text-xs font-semibold" style="color: var(--text-muted)">LIVRAISON</p>
+              <app-field label="Quartier" [control]="tripForm.controls.arrivee_quartier" [required]="true">
+                <input class="input" formControlName="arrivee_quartier" />
+              </app-field>
+              <app-field label="Repère" [control]="tripForm.controls.arrivee_repere" [required]="true">
+                <input class="input" formControlName="arrivee_repere" />
+              </app-field>
+              <app-field label="Nom du destinataire" [control]="tripForm.controls.destinataire_nom" [required]="true">
+                <input class="input" formControlName="destinataire_nom" />
+              </app-field>
+              <app-field label="Téléphone du destinataire" [control]="tripForm.controls.destinataire_telephone" [required]="true">
+                <input class="input" formControlName="destinataire_telephone" />
+              </app-field>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <app-field label="Type de colis" [control]="tripForm.controls.colis_type" [required]="true">
+              <select class="select" formControlName="colis_type">
+                @for (t of parcelTypes; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
+              </select>
+            </app-field>
+            <app-field label="Poids (kg)" [control]="tripForm.controls.poids_kg" [required]="true">
+              <input type="number" step="0.1" min="0.1" class="input" formControlName="poids_kg" />
+            </app-field>
+            <app-field label="Urgence" [control]="tripForm.controls.urgence" [required]="true">
+              <select class="select" formControlName="urgence">
+                <option value="STANDARD">Standard</option>
+                <option value="EXPRESS">Express (≤ 2h)</option>
+                <option value="PLANIFIE">Planifiée</option>
+              </select>
+            </app-field>
+            <app-field label="Distance estimée (km)" [control]="tripForm.controls.distance_km" [required]="true" hint="Manuelle — pas de géocodage en mock">
+              <input type="number" step="0.5" min="0.5" class="input" formControlName="distance_km" />
+            </app-field>
+          </div>
+
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" class="checkbox" formControlName="fragile" /> Colis fragile
+          </label>
+
+          <div class="flex justify-end">
+            <button type="button" class="btn btn-primary" [disabled]="loadingQuote()" (click)="requestQuote()">
+              Obtenir un devis <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+            </button>
+          </div>
+        </form>
+      }
+
+      @if (step() === 'PAIEMENT') {
+        <div class="card p-5 max-w-xl flex flex-col gap-4">
+          @if (quote(); as q) {
+            <div>
+              <p class="text-2xl font-semibold tabular-nums">{{ formatXaf(q.prix_final) }}</p>
+              <div class="mt-2 flex flex-col gap-1">
+                @for (line of q.decomposition; track line.libelle) {
+                  <div class="flex justify-between text-xs" style="color: var(--text-secondary)">
+                    <span>{{ line.libelle }}</span><span class="tabular-nums">{{ formatXaf(line.montant) }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+          <form [formGroup]="paymentForm">
+            <app-field label="Mode de paiement" [control]="paymentForm.controls.mode_paiement" [required]="true">
+              <select class="select" formControlName="mode_paiement">
+                <option value="MTN_MOMO">MTN Mobile Money</option>
+                <option value="ORANGE_MONEY">Orange Money</option>
+                <option value="CARTE">Carte bancaire</option>
+                <option value="COD">Paiement à la livraison (espèces)</option>
+                @if (selectedClient()?.type_client === 'ENTREPRISE') { <option value="COMPTE_DIFFERE">Compte différé (partenaire)</option> }
+              </select>
+            </app-field>
+          </form>
+          <div class="flex justify-between">
+            <button type="button" class="btn btn-secondary btn-sm" (click)="goToStep('TRAJET')">{{ i18n.t('action.back') }}</button>
+            <button type="button" class="btn btn-primary" [disabled]="submittingOrder()" (click)="submitOrder()">{{ i18n.t('action.confirm') }}</button>
+          </div>
+        </div>
+      }
+    }
+  }
+
+  @if (activeTab() === 'callbacks') {
+    <div class="flex justify-end mb-3">
+      <button type="button" class="btn btn-primary btn-sm" (click)="openCallbackForm()">+ Planifier un rappel</button>
+    </div>
+    <div class="card divide-y" style="border-color: var(--border)">
+      @if (loadingCallbacks()) {
+        <div class="p-4 flex flex-col gap-2">@for (i of [1,2,3]; track i) { <div class="skeleton h-10 w-full"></div> }</div>
+      } @else {
+        @for (cb of callbacks(); track cb.id) {
+          <div class="p-4 flex items-center justify-between gap-3" style="border-color: var(--border)">
+            <div>
+              <p class="text-sm font-medium flex items-center gap-2">
+                {{ cb.client_nom }}
+                @if (isOverdue(cb)) { <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style="background: var(--status-critical-bg); color: var(--status-critical)">En retard</span> }
+                @if (cb.statut === 'FAIT') { <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style="background: var(--status-good-bg); color: var(--status-good)">Fait</span> }
+              </p>
+              <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ cb.motif }} · {{ cb.client_telephone }} · échéance {{ formatDateTime(cb.echeance) }}</p>
+            </div>
+            @if (cb.statut === 'PLANIFIE') {
+              <button type="button" class="btn btn-secondary btn-sm" (click)="completeCallback(cb)">Marquer fait</button>
+            }
+          </div>
+        } @empty {
+          <app-empty-state title="Aucun rappel planifié" />
+        }
+      }
+    </div>
+  }
+
+  @if (activeTab() === 'activity') {
+    @if (loadingActivity()) {
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">@for (i of [1,2,3,4,5,6]; track i) { <div class="skeleton h-20"></div> }</div>
+    } @else if (activity(); as a) {
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div class="card p-4"><p class="text-xs" style="color: var(--text-muted)">Appels traités</p><p class="text-xl font-semibold mt-1">{{ a.appels_traites }}</p></div>
+        <div class="card p-4"><p class="text-xs" style="color: var(--text-muted)">Commandes créées</p><p class="text-xl font-semibold mt-1">{{ a.commandes_creees }}</p></div>
+        <div class="card p-4"><p class="text-xs" style="color: var(--text-muted)">Taux de conversion</p><p class="text-xl font-semibold mt-1">{{ a.taux_conversion }} %</p></div>
+        <div class="card p-4"><p class="text-xs" style="color: var(--text-muted)">Temps moyen de traitement</p><p class="text-xl font-semibold mt-1">{{ a.temps_moyen_traitement_s }} s</p></div>
+        <div class="card p-4"><p class="text-xs" style="color: var(--text-muted)">Rappels en attente</p><p class="text-xl font-semibold mt-1">{{ a.rappels_en_attente }}</p></div>
+        <div class="card p-4"><p class="text-xs" style="color: var(--text-muted)">Réclamations traitées</p><p class="text-xl font-semibold mt-1">{{ a.reclamations_traitees }}</p></div>
+      </div>
+      <p class="text-[11px] mt-3" style="color: var(--text-muted)">Actualisé {{ formatRelative(a.refreshed_le) }} — rafraîchi au minimum toutes les 15 minutes (UC-TEL-07).</p>
+    }
+  }
+</div>
+
+<app-modal [open]="showCallbackForm()" title="Planifier un rappel" size="sm" (closed)="showCallbackForm.set(false)">
+  <form [formGroup]="callbackForm" class="flex flex-col gap-4">
+    <app-field label="Client" [control]="callbackForm.controls.client_nom" [required]="true">
+      <input class="input" formControlName="client_nom" />
+    </app-field>
+    <app-field label="Téléphone" [control]="callbackForm.controls.client_telephone" [required]="true">
+      <input class="input" formControlName="client_telephone" />
+    </app-field>
+    <app-field label="Motif" [control]="callbackForm.controls.motif" [required]="true">
+      <input class="input" formControlName="motif" placeholder="Ex. : confirmer une adresse" />
+    </app-field>
+    <app-field label="Échéance" [control]="callbackForm.controls.echeance" [required]="true">
+      <input type="datetime-local" class="input" formControlName="echeance" />
+    </app-field>
+  </form>
+  <div modal-footer>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="showCallbackForm.set(false)">{{ i18n.t('action.cancel') }}</button>
+    <button type="button" class="btn btn-primary btn-sm" [disabled]="savingCallback()" (click)="saveCallback()">{{ i18n.t('action.confirm') }}</button>
+  </div>
+</app-modal>

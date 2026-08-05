@@ -1,0 +1,137 @@
+<app-breadcrumbs [crumbs]="[{ label: i18n.t('nav.drivers') }]" />
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">{{ i18n.t('nav.drivers') }}</h1>
+  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Annuaire, validation des dossiers KYC et suivi qualité.</p>
+</div>
+
+<app-tabs [tabs]="tabs()" [active]="activeTab()" (activeChange)="selectTab($event)" />
+
+<div class="mt-5">
+  @if (activeTab() === 'all') {
+    <div class="card p-4 mb-4">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div class="md:col-span-2">
+          <app-search-input placeholder="Nom, matricule, immatriculation…" (searchChange)="onSearch($event)" />
+        </div>
+        <select class="select" [value]="statut()" (change)="statut.set($any($event.target).value); applyFilters()">
+          <option value="TOUS">Tous les statuts</option>
+          <option value="ACTIF">{{ i18n.t('status.account.ACTIF') }}</option>
+          <option value="DOSSIER_SOUMIS">{{ i18n.t('status.account.DOSSIER_SOUMIS') }}</option>
+          <option value="SUSPENDU">{{ i18n.t('status.account.SUSPENDU') }}</option>
+          <option value="SUSPENDU_DOCUMENT">{{ i18n.t('status.account.SUSPENDU_DOCUMENT') }}</option>
+        </select>
+        <select class="select" [value]="ville()" (change)="ville.set($any($event.target).value); applyFilters()">
+          <option value="TOUS">Toutes les villes</option>
+          <option value="Douala">Douala</option>
+          <option value="Yaoundé">Yaoundé</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card overflow-hidden">
+      <app-data-table [columns]="columns" [rows]="rows()" [loading]="loading()" [rowClickable]="true" (rowClick)="openDriver($event)" emptyTitle="Aucun livreur">
+        <ng-template appCell="statut" let-row><app-status-badge domain="account" [status]="row.statut" /></ng-template>
+        <ng-template appCell="statut_operationnel" let-row><app-status-badge domain="driverOp" [status]="row.statut_operationnel" /></ng-template>
+      </app-data-table>
+    </div>
+  }
+
+  @if (activeTab() === 'kyc') {
+    @if (loadingKyc()) {
+      <div class="grid gap-3">@for (i of [1,2,3]; track i) { <div class="skeleton h-16 w-full"></div> }</div>
+    } @else {
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        @for (d of kycDossiers(); track d.id) {
+          <button type="button" class="card p-4 text-left hover:shadow-(--shadow-md) transition-shadow" (click)="reviewDossier(d)">
+            <p class="text-sm font-medium">{{ d.prenom }} {{ d.nom }}</p>
+            <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ d.telephone }}</p>
+            <div class="flex items-center justify-between mt-3">
+              <span class="text-[11px]" style="color: var(--text-muted)">Soumis le {{ formatDateTime(d.soumis_le) }}</span>
+              <span class="text-[11px] font-medium px-2 py-0.5 rounded-full" style="background: var(--status-warning-bg); color: var(--status-warning)">
+                {{ d.pieces.length }} pièces
+              </span>
+            </div>
+          </button>
+        } @empty {
+          <app-empty-state title="Aucun dossier en attente" hint="Tous les dossiers livreurs ont été traités." />
+        }
+      </div>
+    }
+  }
+
+  @if (activeTab() === 'quality') {
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+      <div class="card overflow-hidden">
+        <p class="text-xs font-semibold px-4 pt-4 pb-2" style="color: var(--text-muted)">CLASSEMENT QUALITÉ (score le plus bas en premier)</p>
+        <div class="divide-y" style="border-color: var(--border)">
+          @for (d of qualityRanking(); track d.id) {
+            <div class="px-4 py-3 flex items-center justify-between gap-3" style="border-color: var(--border)">
+              <div>
+                <p class="text-sm font-medium">{{ d.prenom }} {{ d.nom }}</p>
+                <p class="text-xs mt-0.5" style="color: var(--text-muted)">Note {{ d.note_moyenne.toFixed(2) }}/5 · Acceptation {{ d.taux_acceptation_7j }}%</p>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="text-sm font-semibold tabular-nums" [style.color]="d.score_qualite < 70 ? 'var(--status-critical)' : 'var(--text-primary)'">{{ d.score_qualite }}</span>
+                @if (auth.hasPermission('driver.sanction')) {
+                  <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openSanctionModal(d)">Sanctionner</button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="card overflow-hidden">
+        <p class="text-xs font-semibold px-4 pt-4 pb-2" style="color: var(--text-muted)">SANCTIONS — PROCÉDURE CONTRADICTOIRE</p>
+        <div class="divide-y" style="border-color: var(--border)">
+          @for (s of sanctions(); track s.id) {
+            <div class="px-4 py-3" style="border-color: var(--border)">
+              <div class="flex items-center justify-between">
+                <p class="text-sm font-medium">{{ driverName(s.livreur_id) }} — {{ s.type }}</p>
+                <app-status-badge domain="withdrawal" [status]="s.statut === 'CONFIRMEE' ? 'VERSE' : s.statut === 'ANNULEE' ? 'REJETE' : 'EN_ATTENTE'" />
+              </div>
+              <p class="text-xs mt-1" style="color: var(--text-secondary)">{{ s.motif }}</p>
+              @if (s.statut === 'PROPOSEE') {
+                <app-alert-banner kind="warning" class="block mt-2">Aucune sanction automatique irréversible : validation humaine requise.</app-alert-banner>
+                <div class="flex gap-2 mt-2">
+                  <button type="button" class="btn btn-primary btn-sm !py-1" (click)="confirmSanction(s)">Confirmer</button>
+                  <button type="button" class="btn btn-ghost btn-sm !py-1" (click)="cancelSanction(s)">Annuler</button>
+                </div>
+              }
+            </div>
+          } @empty {
+            <p class="text-xs text-center py-6" style="color: var(--text-muted)">Aucune sanction en cours.</p>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>
+
+<app-modal [open]="sanctionTarget() !== null" title="Proposer une sanction" size="sm" (closed)="sanctionTarget.set(null)">
+  @if (sanctionTarget(); as d) {
+    <p class="text-sm mb-3" style="color: var(--text-secondary)">{{ d.prenom }} {{ d.nom }} — score qualité {{ d.score_qualite }}</p>
+    <form [formGroup]="sanctionForm" class="flex flex-col gap-4">
+      <app-field label="Type de sanction" [control]="sanctionForm.controls.type" [required]="true">
+        <select class="select" formControlName="type">
+          <option value="AVERTISSEMENT">Avertissement</option>
+          <option value="SUSPENSION_TEMPORAIRE">Suspension temporaire</option>
+          <option value="DESACTIVATION">Désactivation</option>
+        </select>
+      </app-field>
+      @if (sanctionForm.value.type === 'SUSPENSION_TEMPORAIRE') {
+        <app-field label="Durée (jours)" [control]="sanctionForm.controls.duree_jours">
+          <input type="number" min="1" class="input" formControlName="duree_jours" />
+        </app-field>
+      }
+      <app-field label="Motif" [control]="sanctionForm.controls.motif" [required]="true">
+        <textarea class="textarea" rows="3" formControlName="motif"></textarea>
+      </app-field>
+    </form>
+  }
+  <div modal-footer>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="sanctionTarget.set(null)">{{ i18n.t('action.cancel') }}</button>
+    <button type="button" class="btn btn-primary btn-sm" [disabled]="savingSanction()" (click)="submitSanction()">Proposer</button>
+  </div>
+</app-modal>

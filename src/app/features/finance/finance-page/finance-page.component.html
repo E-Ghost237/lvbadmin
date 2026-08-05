@@ -1,0 +1,155 @@
+<app-breadcrumbs [crumbs]="[{ label: i18n.t('nav.finance') }]" />
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">{{ i18n.t('nav.finance') }}</h1>
+  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Réconciliation, retraits livreurs et portefeuilles.</p>
+</div>
+
+<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
+
+<div class="mt-5">
+  @if (activeTab() === 'reconciliation') {
+    <div class="flex gap-1.5 mb-4">
+      @for (d of domains; track d) {
+        <button type="button" class="px-3 py-1 rounded-full text-xs font-medium" [style.background]="domain() === d ? 'var(--brand)' : 'var(--surface-2)'" [style.color]="domain() === d ? 'white' : 'var(--text-secondary)'" (click)="selectDomain(d)">{{ domainLabels[d] }}</button>
+      }
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      @if (loadingPeriods()) {
+        <div class="skeleton h-32 w-full lg:col-span-3"></div>
+      } @else {
+        @for (p of periods(); track p.id) {
+          <button type="button" class="card p-4 text-left hover:shadow-(--shadow-md) transition-shadow" [style.outline]="selectedPeriod()?.id === p.id ? '2px solid var(--brand)' : 'none'" (click)="openPeriod(p)">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-medium px-2 py-0.5 rounded-full" [style.background]="p.statut === 'OUVERTE' ? 'var(--status-warning-bg)' : 'var(--status-neutral-bg)'" [style.color]="p.statut === 'OUVERTE' ? 'var(--status-warning)' : 'var(--status-neutral)'">{{ p.statut }}</span>
+              <span class="text-xs tabular-nums" [style.color]="p.ecart_pct > 0.5 ? 'var(--status-critical)' : 'var(--status-good)'">{{ formatPercent(p.ecart_pct) }} écart</span>
+            </div>
+            <p class="text-sm font-medium mt-2">{{ formatDateTime(p.periode_debut) }} → {{ formatDateTime(p.periode_fin) }}</p>
+            <p class="text-xs mt-1" style="color: var(--text-muted)">Attendu {{ formatXaf(p.total_attendu) }} · Constaté {{ formatXaf(p.total_constate) }}</p>
+            @if (p.ecarts.length > 0) { <p class="text-xs mt-1" style="color: var(--text-muted)">{{ p.ecarts.length }} écart(s)</p> }
+          </button>
+        } @empty {
+          <div class="lg:col-span-3"><app-empty-state title="Aucune période" /></div>
+        }
+      }
+    </div>
+
+    @if (selectedPeriod(); as period) {
+      <div class="card p-4 mt-4">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-sm font-semibold">Écarts — {{ domainLabels[period.domaine] }}</p>
+          @if (period.statut === 'OUVERTE' && auth.hasPermission('finance.reconciliation.write')) {
+            <button type="button" class="btn btn-primary btn-sm" [disabled]="pendingGapsCount() > 0 || closingPeriod()" (click)="closePeriod()">
+              Clôturer la période @if (pendingGapsCount() > 0) { ({{ pendingGapsCount() }} en attente) }
+            </button>
+          }
+        </div>
+        <div class="flex flex-col gap-2">
+          @for (gap of period.ecarts; track gap.id) {
+            <div class="rounded-(--radius-sm) p-3" style="border: 1px solid var(--border)">
+              <div class="flex items-center justify-between">
+                <p class="text-xs font-medium">{{ gapLabels[gap.nature] }} — {{ gap.reference }}</p>
+                <span class="text-xs font-semibold tabular-nums" style="color: var(--status-critical)">{{ formatXaf(gap.ecart) }}</span>
+              </div>
+              @if (gap.entite_liee) { <p class="text-[11px] mt-0.5" style="color: var(--text-muted)">{{ gap.entite_liee }}</p> }
+              @if (gap.qualifie) {
+                <p class="text-[11px] mt-1.5" style="color: var(--status-good)">Qualifié : {{ gap.action }} par {{ gap.qualifie_par }}</p>
+              } @else if (period.statut === 'OUVERTE' && auth.hasPermission('finance.reconciliation.write')) {
+                <div class="flex gap-2 mt-2">
+                  <button type="button" class="btn btn-secondary btn-sm !py-1 !px-2 text-[11px]" (click)="qualifyGap(gap, 'REMBOURSEMENT')">Remboursement</button>
+                  <button type="button" class="btn btn-secondary btn-sm !py-1 !px-2 text-[11px]" (click)="qualifyGap(gap, 'REGULARISATION')">Régularisation</button>
+                  <button type="button" class="btn btn-secondary btn-sm !py-1 !px-2 text-[11px]" (click)="qualifyGap(gap, 'ENQUETE')">Ouvrir une enquête</button>
+                </div>
+              }
+            </div>
+          } @empty {
+            <p class="text-xs text-center py-4" style="color: var(--text-muted)">Aucun écart pour cette période.</p>
+          }
+        </div>
+      </div>
+    }
+  }
+
+  @if (activeTab() === 'withdrawals') {
+    <div class="flex gap-1.5 mb-4">
+      @for (s of ['EN_ATTENTE','VALIDE','VERSE','REJETE','TOUS']; track s) {
+        <button type="button" class="px-3 py-1 rounded-full text-xs font-medium" [style.background]="withdrawalFilter() === s ? 'var(--brand)' : 'var(--surface-2)'" [style.color]="withdrawalFilter() === s ? 'white' : 'var(--text-secondary)'" (click)="filterWithdrawals($any(s))">
+          {{ s === 'TOUS' ? i18n.t('common.all') : i18n.t('status.withdrawal.' + s) }}
+        </button>
+      }
+    </div>
+    <div class="card overflow-hidden">
+      <app-data-table [columns]="withdrawalColumns" [rows]="withdrawals()" [loading]="loadingWithdrawals()" emptyTitle="Aucun retrait">
+        <ng-template appCell="statut" let-row><app-status-badge domain="withdrawal" [status]="row.statut" /></ng-template>
+        <ng-template appCell="encours_cod_au_moment" let-row>
+          <span [style.color]="isAtRisk(row) ? 'var(--status-critical)' : 'var(--text-primary)'" class="tabular-nums">{{ formatXaf(row.encours_cod_au_moment) }}</span>
+        </ng-template>
+      </app-data-table>
+    </div>
+    @if (auth.hasPermission('wallet.valider_retrait')) {
+      <div class="mt-4 flex flex-col gap-2">
+        @for (w of withdrawals(); track w.id) {
+          @if (w.statut === 'EN_ATTENTE' || w.statut === 'VALIDE') {
+            <div class="card p-3 flex items-center justify-between gap-3">
+              <div>
+                <p class="text-sm font-medium">{{ w.livreur_nom }} — {{ formatXaf(w.montant) }}</p>
+                @if (isAtRisk(w)) { <p class="text-[11px] mt-0.5" style="color: var(--status-critical)">Encours COD supérieur au solde disponible — versement bloqué (ERR-4222)</p> }
+              </div>
+              <div class="flex gap-2">
+                @if (w.statut === 'EN_ATTENTE') {
+                  <button type="button" class="btn btn-danger-ghost btn-sm !py-1" (click)="openReject(w)">{{ i18n.t('action.reject') }}</button>
+                  <button type="button" class="btn btn-primary btn-sm !py-1" [disabled]="isAtRisk(w)" (click)="approveWithdrawal(w)">{{ i18n.t('action.approve') }}</button>
+                } @else if (w.statut === 'VALIDE') {
+                  <button type="button" class="btn btn-primary btn-sm !py-1" (click)="markPaid(w)">Confirmer le versement</button>
+                }
+              </div>
+            </div>
+          }
+        }
+      </div>
+    }
+  }
+
+  @if (activeTab() === 'wallets') {
+    <app-alert-banner [kind]="coherenceOk() ? 'success' : 'danger'" class="block mb-4">
+      Cohérence des portefeuilles (KPI-052) : {{ coherenceOk() ? 'aucune incohérence détectée' : 'incohérence détectée — investiguer immédiatement' }}.
+    </app-alert-banner>
+    <div class="card overflow-hidden">
+      <app-data-table [columns]="walletColumns" [rows]="wallets()" [loading]="loadingWallets()" [rowClickable]="true" (rowClick)="openWallet($event)" emptyTitle="Aucun portefeuille">
+        <ng-template appCell="encours_cod" let-row>
+          <span [style.color]="row.encours_cod >= row.plafond_cod ? 'var(--status-critical)' : 'var(--text-primary)'" class="tabular-nums">{{ formatXaf(row.encours_cod) }}</span>
+        </ng-template>
+      </app-data-table>
+    </div>
+  }
+</div>
+
+<!-- Détail portefeuille -->
+<app-modal [open]="selectedWallet() !== null" title="Mouvements du portefeuille" size="md" (closed)="selectedWallet.set(null)" [hasFooter]="false">
+  @if (selectedWallet(); as w) {
+    <p class="text-sm font-medium mb-3">{{ w.livreur_nom }} — solde {{ formatXaf(w.solde_disponible) }}</p>
+    <div class="flex flex-col gap-1.5 max-h-96 overflow-y-auto thin-scroll">
+      @for (m of w.mouvements; track m.id) {
+        <div class="flex items-center justify-between text-xs rounded-(--radius-sm) px-3 py-2" style="background: var(--surface-2)">
+          <span>{{ m.motif }} @if (m.commande_numero) { · {{ m.commande_numero }} }</span>
+          <span class="tabular-nums font-medium" [style.color]="m.sens === 'CREDIT' ? 'var(--status-good)' : 'var(--status-critical)'">
+            {{ m.sens === 'CREDIT' ? '+' : '−' }}{{ formatXaf(m.montant) }}
+          </span>
+        </div>
+      } @empty {
+        <p class="text-xs text-center py-4" style="color: var(--text-muted)">Aucun mouvement.</p>
+      }
+    </div>
+  }
+</app-modal>
+
+<!-- Rejeter un retrait -->
+<app-modal [open]="rejectTarget() !== null" title="Rejeter le retrait" size="sm" (closed)="rejectTarget.set(null)">
+  <label class="field-label">{{ i18n.t('common.motif') }}</label>
+  <textarea class="textarea" rows="3" [value]="rejectMotif()" (input)="rejectMotif.set($any($event.target).value)"></textarea>
+  <div modal-footer>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="rejectTarget.set(null)">{{ i18n.t('action.cancel') }}</button>
+    <button type="button" class="btn btn-danger btn-sm" [disabled]="!rejectMotif().trim()" (click)="confirmReject()">{{ i18n.t('action.reject') }}</button>
+  </div>
+</app-modal>
