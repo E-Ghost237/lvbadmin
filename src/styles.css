@@ -1,88 +1,114 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 /* ---------------------------------------------------------------------
- * Design tokens — validated palette (dataviz skill). Light is the
- * default (enterprise back-office, WEB-06/07); dark is a selected mode,
- * not an automatic flip, following the same token roles in both scopes.
+ * Design tokens — LVB brand identity (dominant #004AAD, accent #80CC28).
+ * Sidebar/topbar are a fixed dark-navy chrome regardless of theme (brand
+ * chrome, not content); surface/text tokens flip for the light/dark
+ * content-area toggle. Light is the default (enterprise back-office,
+ * WEB-06/07); dark is a selected mode, not an automatic flip.
  * ------------------------------------------------------------------- */
 :root {
   color-scheme: light;
-  --surface-0: #f9f9f7;
-  --surface-1: #fcfcfb;
-  --surface-2: #ffffff;
-  --text-primary: #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted: #898781;
-  --border: rgba(11, 11, 11, 0.10);
-  --border-strong: #c3c2b7;
-  --grid: #e1e0d9;
+  --font-heading: 'Montserrat', 'Segoe UI', sans-serif;
+  --font-body: 'Inter', 'Segoe UI', sans-serif;
 
-  --brand: #2a78d6;
-  --brand-600: #256abf;
-  --brand-100: #cde2fb;
-  --brand-50: #eef5fd;
+  --surface-0: #ffffff;
+  --surface-1: #ffffff;
+  --surface-2: #f1f4f9;
+  --text-primary: #0f1b2d;
+  --text-secondary: #4b5a70;
+  --text-muted: #8a96a8;
+  --border: rgba(15, 27, 45, 0.09);
+  --border-strong: #d6dde6;
+  --grid: #e8ecf2;
 
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --series-3: #1baf7a;
+  --brand: #004aad;
+  --brand-600: #003a87;
+  --brand-100: #cfe0f7;
+  --brand-50: #eaf2fc;
+
+  --accent: #80cc28;
+  --accent-600: #6bb01c;
+  --accent-ink: #3f7a17;
+  --accent-100: #e1f4c9;
+  --accent-50: #f2fae6;
+
+  /* Fixed brand chrome — same in light and dark app themes. */
+  --sidebar-bg: #071a33;
+  --sidebar-bg-elevated: #0e2647;
+  --sidebar-active-bg: #004aad;
+  --sidebar-text: #a9b9d1;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+
+  --series-1: #004aad;
+  --series-2: #80cc28;
+  --series-3: #eb6834;
   --series-4: #eda100;
   --series-5: #e87ba4;
   --series-6: #4a3aa7;
 
-  --status-good: #0ca30c;
-  --status-good-bg: #e8f7e8;
+  --status-good: #3f7a17;
+  --status-good-bg: #eaf6d9;
   --status-warning: #b3760f;
   --status-warning-bg: #fdf2df;
   --status-serious: #c1552e;
   --status-serious-bg: #fdece3;
   --status-critical: #d03b3b;
   --status-critical-bg: #fbe8e8;
-  --status-neutral: #52514e;
-  --status-neutral-bg: #eeede9;
+  --status-neutral: #52616f;
+  --status-neutral-bg: #eef1f5;
 
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
-  --shadow-sm: 0 1px 2px rgba(11, 11, 11, 0.06);
-  --shadow-md: 0 4px 16px rgba(11, 11, 11, 0.08);
-  --shadow-lg: 0 12px 32px rgba(11, 11, 11, 0.12);
+  --shadow-sm: 0 1px 2px rgba(15, 27, 45, 0.06);
+  --shadow-md: 0 4px 16px rgba(15, 27, 45, 0.08);
+  --shadow-lg: 0 12px 32px rgba(15, 27, 45, 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
     color-scheme: dark;
-    --surface-0: #0d0d0d;
-    --surface-1: #1a1a19;
-    --surface-2: #232322;
-    --text-primary: #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted: #898781;
+    --surface-0: #0b1220;
+    --surface-1: #121b2e;
+    --surface-2: #1a2438;
+    --text-primary: #f2f5fa;
+    --text-secondary: #b7c2d3;
+    --text-muted: #7c8aa0;
     --border: rgba(255, 255, 255, 0.10);
-    --border-strong: #383835;
-    --grid: #2c2c2a;
+    --border-strong: #2b3852;
+    --grid: #22304a;
 
-    --brand: #3987e5;
-    --brand-600: #5598e7;
-    --brand-100: #184f95;
-    --brand-50: #10283f;
+    --brand: #4d8fff;
+    --brand-600: #6fa3ff;
+    --brand-100: #1c3c6e;
+    --brand-50: #13284a;
 
-    --series-1: #3987e5;
-    --series-2: #d95926;
-    --series-3: #199e70;
-    --series-4: #c98500;
-    --series-5: #d55181;
+    --accent: #93d93f;
+    --accent-600: #a6e35c;
+    --accent-ink: #b6e878;
+    --accent-100: #274a12;
+    --accent-50: #1b3410;
+
+    --series-1: #4d8fff;
+    --series-2: #93d93f;
+    --series-3: #e9834f;
+    --series-4: #d9a63a;
+    --series-5: #e08bb0;
     --series-6: #9085e9;
 
-    --status-good: #0ca30c;
-    --status-good-bg: #103410;
+    --status-good: #7dd44a;
+    --status-good-bg: #1b3410;
     --status-warning: #fab219;
     --status-warning-bg: #3a2c0c;
     --status-serious: #ec835a;
     --status-serious-bg: #3a2013;
     --status-critical: #e66767;
     --status-critical-bg: #3a1414;
-    --status-neutral: #c3c2b7;
-    --status-neutral-bg: #232322;
+    --status-neutral: #b7c2d3;
+    --status-neutral-bg: #1a2438;
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
@@ -92,35 +118,40 @@
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --surface-0: #0d0d0d;
-  --surface-1: #1a1a19;
-  --surface-2: #232322;
-  --text-primary: #ffffff;
-  --text-secondary: #c3c2b7;
-  --text-muted: #898781;
+  --surface-0: #0b1220;
+  --surface-1: #121b2e;
+  --surface-2: #1a2438;
+  --text-primary: #f2f5fa;
+  --text-secondary: #b7c2d3;
+  --text-muted: #7c8aa0;
   --border: rgba(255, 255, 255, 0.10);
-  --border-strong: #383835;
-  --grid: #2c2c2a;
-  --brand: #3987e5;
-  --brand-600: #5598e7;
-  --brand-100: #184f95;
-  --brand-50: #10283f;
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
-  --series-4: #c98500;
-  --series-5: #d55181;
+  --border-strong: #2b3852;
+  --grid: #22304a;
+  --brand: #4d8fff;
+  --brand-600: #6fa3ff;
+  --brand-100: #1c3c6e;
+  --brand-50: #13284a;
+  --accent: #93d93f;
+  --accent-600: #a6e35c;
+  --accent-ink: #b6e878;
+  --accent-100: #274a12;
+  --accent-50: #1b3410;
+  --series-1: #4d8fff;
+  --series-2: #93d93f;
+  --series-3: #e9834f;
+  --series-4: #d9a63a;
+  --series-5: #e08bb0;
   --series-6: #9085e9;
-  --status-good: #0ca30c;
-  --status-good-bg: #103410;
+  --status-good: #7dd44a;
+  --status-good-bg: #1b3410;
   --status-warning: #fab219;
   --status-warning-bg: #3a2c0c;
   --status-serious: #ec835a;
   --status-serious-bg: #3a2013;
   --status-critical: #e66767;
   --status-critical-bg: #3a1414;
-  --status-neutral: #c3c2b7;
-  --status-neutral-bg: #232322;
+  --status-neutral: #b7c2d3;
+  --status-neutral-bg: #1a2438;
 }
 
 * { box-sizing: border-box; }
@@ -133,10 +164,16 @@ html, body {
 body {
   background: var(--surface-0);
   color: var(--text-primary);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--font-body), system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   font-size: 14px;
   line-height: 1.45;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading), var(--font-body), sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 ::selection { background: var(--brand-100); }

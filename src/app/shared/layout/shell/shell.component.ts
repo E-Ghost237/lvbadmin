@@ -18,7 +18,7 @@ import { ToastContainerComponent } from '../../ui/toast/toast-container.componen
         <div class="fixed inset-0 z-40 lg:hidden">
           <div class="absolute inset-0 bg-black/40" (click)="mobileMenuOpen.set(false)"></div>
           <div class="absolute inset-y-0 left-0">
-            <app-sidebar (closeMobile)="mobileMenuOpen.set(false)" />
+            <app-sidebar [allowCollapse]="false" (closeMobile)="mobileMenuOpen.set(false)" />
           </div>
         </div>
       }
