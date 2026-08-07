@@ -1,92 +1,34 @@
+<app-breadcrumbs [crumbs]="[{ label: 'Livreurs', link: '/drivers' }, { label: 'Dossier KYC' }]" />
+
 @if (loading()) {
-  <div class="skeleton h-40 w-full"></div>
-} @else if (notFound() || !dossier()) {
-  <app-empty-state title="Dossier introuvable">
-    <a routerLink="/drivers" class="btn btn-secondary btn-sm mt-2">{{ i18n.t('action.back') }}</a>
-  </app-empty-state>
-} @else {
-  @let dos = dossier()!;
-  <app-breadcrumbs [crumbs]="[{ label: i18n.t('nav.drivers'), link: '/drivers' }, { label: 'Dossier ' + dos.prenom + ' ' + dos.nom }]" />
-
-  <div class="flex items-center justify-between gap-3 mb-5 flex-wrap">
+  <div class="skeleton h-60 mt-4"></div>
+} @else if (dossier(); as d) {
+  <div class="flex items-center justify-between mb-5">
     <div>
-      <h1 class="text-xl font-semibold">{{ dos.prenom }} {{ dos.nom }}</h1>
-      <p class="text-sm mt-0.5" style="color: var(--text-muted)">{{ dos.telephone }} · Soumis le {{ formatDateTime(dos.soumis_le) }}</p>
+      <h1 class="text-xl font-semibold">{{ d.prenom }} {{ d.nom }}</h1>
+      <p class="text-sm mt-0.5" style="color: var(--text-muted)">{{ d.matricule || '—' }}</p>
     </div>
-    @if (dos.statut === 'DOSSIER_SOUMIS') {
-      <div class="flex gap-2">
-        <button type="button" class="btn btn-danger-ghost btn-sm" (click)="showGlobalReject.set(true)">Rejeter le dossier</button>
-        <button type="button" class="btn btn-primary btn-sm" [disabled]="!allValidated() || approving()" (click)="approveDossier()">
-          Activer le dossier
-        </button>
-      </div>
-    }
+    <div class="flex items-center gap-2">
+      <app-status-badge domain="account" [status]="d.statut_compte" />
+      <button type="button" class="btn btn-secondary btn-sm" (click)="goToDriver()">Voir la fiche livreur</button>
+    </div>
   </div>
 
-  @if (dos.statut !== 'DOSSIER_SOUMIS') {
-    <app-alert-banner [kind]="dos.statut === 'ACTIF' ? 'success' : 'danger'" class="block mb-4">
-      Dossier {{ dos.statut === 'ACTIF' ? 'validé' : 'rejeté' }}{{ dos.motif_rejet_global ? ' — ' + dos.motif_rejet_global : '' }}.
-    </app-alert-banner>
-  } @else if (!allValidated()) {
-    <app-alert-banner kind="info" class="block mb-4">Toutes les pièces doivent être validées avant l’activation du dossier (UC-ADM-05).</app-alert-banner>
-  }
-
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-    @for (piece of dos.pieces; track piece.type) {
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    @for (doc of d.documents; track doc.type) {
       <div class="card p-4">
-        <div class="h-28 rounded-(--radius-sm) flex items-center justify-center mb-3" style="background: var(--surface-2)">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium">{{ documentLabels[doc.type] }}</p>
+          <app-status-badge domain="account" [status]="doc.statut === 'VALIDE' ? 'ACTIF' : doc.statut === 'REJETE' ? 'SUSPENDU' : 'EN_ATTENTE_VALIDATION'" />
         </div>
-        <p class="text-sm font-medium">{{ piece.label }}</p>
-        <p class="text-[11px] mt-0.5" style="color: var(--text-muted)">Téléversé le {{ formatDateTime(piece.televerse_le) }} · Aperçu indisponible (données de démonstration)</p>
-
-        <div class="mt-3">
-          @switch (piece.statut) {
-            @case ('VALIDEE') {
-              <span class="text-xs font-medium flex items-center gap-1" style="color: var(--status-good)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m20 6-11 11-5-5" /></svg> Validée
-              </span>
-            }
-            @case ('REJETEE') {
-              <span class="text-xs font-medium" style="color: var(--status-critical)">Rejetée — {{ piece.motif_rejet }}</span>
-            }
-            @default {
-              @if (dos.statut === 'DOSSIER_SOUMIS') {
-                <div class="flex gap-2">
-                  <button type="button" class="btn btn-primary btn-sm !py-1 flex-1" (click)="validatePiece(piece)">{{ i18n.t('action.approve') }}</button>
-                  <button type="button" class="btn btn-danger-ghost btn-sm !py-1 flex-1" (click)="openReject(piece)">{{ i18n.t('action.reject') }}</button>
-                </div>
-              } @else {
-                <span class="text-xs" style="color: var(--text-muted)">En attente</span>
-              }
-            }
-          }
-        </div>
+        @if (doc.motif_rejet) { <p class="text-xs mt-1.5" style="color: var(--status-critical)">{{ doc.motif_rejet }}</p> }
+        @if (doc.statut === 'EN_ATTENTE') {
+          <div class="flex gap-2 mt-3">
+            <button type="button" class="btn btn-primary btn-sm" [disabled]="decidingType() === doc.type" (click)="validate(doc.type)">Valider</button>
+            <button type="button" class="btn btn-danger-ghost btn-sm" [disabled]="decidingType() === doc.type" (click)="reject(doc.type)">Rejeter</button>
+          </div>
+        }
       </div>
     }
   </div>
-
-  <app-modal [open]="rejectTarget() !== null" title="Rejeter la pièce" size="sm" (closed)="rejectTarget.set(null)">
-    <form [formGroup]="rejectForm">
-      <app-field label="Motif" [control]="rejectForm.controls.motif" [required]="true" hint="Transmis au candidat de façon actionnable.">
-        <textarea class="textarea" rows="3" formControlName="motif" placeholder="Ex. : document flou, numéro illisible…"></textarea>
-      </app-field>
-    </form>
-    <div modal-footer>
-      <button type="button" class="btn btn-secondary btn-sm" (click)="rejectTarget.set(null)">{{ i18n.t('action.cancel') }}</button>
-      <button type="button" class="btn btn-danger btn-sm" (click)="confirmRejectPiece()">{{ i18n.t('action.reject') }}</button>
-    </div>
-  </app-modal>
-
-  <app-modal [open]="showGlobalReject()" title="Rejeter le dossier" size="sm" (closed)="showGlobalReject.set(false)">
-    <form [formGroup]="globalRejectForm">
-      <app-field label="Motif" [control]="globalRejectForm.controls.motif" [required]="true">
-        <textarea class="textarea" rows="3" formControlName="motif"></textarea>
-      </app-field>
-    </form>
-    <div modal-footer>
-      <button type="button" class="btn btn-secondary btn-sm" (click)="showGlobalReject.set(false)">{{ i18n.t('action.cancel') }}</button>
-      <button type="button" class="btn btn-danger btn-sm" [disabled]="rejecting()" (click)="confirmGlobalReject()">{{ i18n.t('action.reject') }}</button>
-    </div>
-  </app-modal>
 }

@@ -1,220 +1,176 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { AuthService } from '../../../core/auth/auth.service';
-import { I18nService } from '../../../core/i18n/i18n.service';
-import { PricingService } from '../../../core/services/pricing.service';
-import { ZonesService } from '../../../core/services/zones.service';
-import { PricingGrid, PricingSimulationResult, ProblemDetails, Zone, ZoneType } from '../../../core/models';
-import { integerAmount, requiredTrimmed, uniqueAmong } from '../../../core/utils/validators';
-import { formatDateTime, formatXaf } from '../../../core/utils/formatters';
+import { CreateZoneRequest, PricingService, Zone, ZoneType } from '../../../core/services/pricing.service';
+import { GeoPoint, ProblemDetails } from '../../../core/models';
 import {
-  AlertBannerComponent, BreadcrumbsComponent, ConfirmService, EmptyStateComponent, FormFieldComponent, MapMarker,
-  MapPanelComponent, MapZoneShape, ModalComponent, TabDef, TabsComponent, ToggleComponent, ToastService,
+  BreadcrumbsComponent, ConfirmService, ForbiddenStateComponent, FormFieldComponent, PolygonPickerComponent, TabDef,
+  TabsComponent, ToastService,
 } from '../../../shared/ui';
 
-const ZONE_TONE: Record<ZoneType, MapZoneShape['color']> = {
-  COUVERTURE: 'var(--status-good)', INTERDITE: 'var(--status-critical)', MAJORATION: 'var(--status-warning)', DIFFICILE: 'var(--series-6)',
-};
+interface CreatedGrille {
+  id: number;
+  nom: string;
+  ville: string;
+  activated: boolean;
+}
 
 @Component({
   selector: 'app-pricing-page',
-  imports: [
-    ReactiveFormsModule, TabsComponent, ModalComponent, FormFieldComponent, AlertBannerComponent, EmptyStateComponent,
-    BreadcrumbsComponent, MapPanelComponent, ToggleComponent,
-  ],
+  imports: [ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, PolygonPickerComponent, ForbiddenStateComponent],
   templateUrl: './pricing-page.component.html',
 })
 export class PricingPageComponent {
-  private readonly pricingService = inject(PricingService);
-  private readonly zonesService = inject(ZonesService);
-  private readonly confirm = inject(ConfirmService);
+  private readonly pricing = inject(PricingService);
   private readonly toast = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
-  protected readonly auth = inject(AuthService);
-  protected readonly i18n = inject(I18nService);
 
-  protected readonly tabs: TabDef[] = [{ id: 'grids', label: 'Grilles tarifaires' }, { id: 'zones', label: 'Zones' }];
-  protected readonly activeTab = signal('grids');
+  protected readonly tabs: TabDef[] = [{ id: 'grilles', label: 'Grilles tarifaires' }, { id: 'zones', label: 'Zones' }];
+  protected readonly activeTab = signal('grilles');
 
-  // --- Grilles ------------------------------------------------------------
-  protected readonly grids = signal<PricingGrid[]>([]);
-  protected readonly loadingGrids = signal(true);
-  protected readonly gridVilleFilter = signal<'TOUS' | 'Douala' | 'Yaoundé'>('TOUS');
-
-  protected readonly showGridForm = signal(false);
-  protected readonly gridForm = this.fb.nonNullable.group({
-    version_label: ['', [requiredTrimmed(), uniqueAmong(() => this.grids().map((g) => g.version_label))]],
-    ville: ['Douala' as 'Douala' | 'Yaoundé', [Validators.required]],
-    frais_prise_en_charge: [500, [integerAmount(0)]],
-    tarif_par_km: [150, [integerAmount(1)]],
-    tarif_par_minute: [15, [integerAmount(0)]],
-    prix_minimum: [1000, [integerAmount(0)]],
-    arrondi: [25, [integerAmount(1)]],
-    coef_urgence_express: [1.4, [Validators.min(1), Validators.max(3)]],
-    coef_horaire_soir: [1.15, [Validators.min(1), Validators.max(2)]],
-    coef_horaire_nuit: [1.3, [Validators.min(1), Validators.max(2)]],
-    supplement_poids_kg: [100, [integerAmount(0)]],
-    supplement_volume: [500, [integerAmount(0)]],
-    supplement_fragile: [300, [integerAmount(0)]],
-    plafond_remise: [1000, [integerAmount(0)]],
-    demande_dynamique_active: [true],
-    demande_plafond: [1.5, [Validators.min(1), Validators.max(1.5)]],
+  // --- Grilles --------------------------------------------------------
+  protected readonly grilleForm = this.fb.nonNullable.group({
+    nom: ['', [Validators.required, Validators.maxLength(50)]],
+    ville: ['Douala', [Validators.required]],
+    frais_prise_en_charge: [500, [Validators.required, Validators.min(0)]],
+    tarif_km: [150, [Validators.required, Validators.min(0)]],
+    tarif_minute: [15, [Validators.required, Validators.min(0)]],
+    prix_minimum: [1000, [Validators.required, Validators.min(0)]],
+    arrondi: [25, [Validators.required, Validators.min(0)]],
+    plafond_remise: [1000],
   });
-  protected readonly savingGrid = signal(false);
+  protected readonly creatingGrille = signal(false);
+  protected readonly sessionGrilles = signal<CreatedGrille[]>([]);
+  protected readonly activatingId = signal<number | null>(null);
 
-  protected readonly simulateTarget = signal<PricingGrid | null>(null);
-  protected readonly simulateForm = this.fb.nonNullable.group({
-    distance_km: [5, [Validators.required, Validators.min(0.1)]],
-    duree_min: [20, [Validators.required, Validators.min(1)]],
-    urgence: ['STANDARD' as 'STANDARD' | 'EXPRESS' | 'PLANIFIE', [Validators.required]],
-    heure: ['14:00', [Validators.required]],
-    poids_kg: [2, [Validators.required, Validators.min(0.1)]],
-    fragile: [false],
-    ratio_demande: [1, [Validators.min(0)]],
-  });
-  protected readonly simulationResult = signal<PricingSimulationResult | null>(null);
-  protected readonly simulating = signal(false);
+  createGrille(): void {
+    if (this.grilleForm.invalid) {
+      this.grilleForm.markAllAsTouched();
+      return;
+    }
+    const v = this.grilleForm.getRawValue();
+    this.creatingGrille.set(true);
+    this.pricing.createGrille(v).subscribe({
+      next: (res) => {
+        this.creatingGrille.set(false);
+        this.sessionGrilles.update((list) => [{ id: res.id, nom: v.nom, ville: v.ville, activated: false }, ...list]);
+        this.toast.success('Grille créée', `#${res.id}`);
+        this.grilleForm.reset({ nom: '', ville: v.ville, frais_prise_en_charge: 500, tarif_km: 150, tarif_minute: 15, prix_minimum: 1000, arrondi: 25, plafond_remise: 1000 });
+      },
+      error: (err: ProblemDetails) => {
+        this.creatingGrille.set(false);
+        this.toast.error('Échec de la création', err.detail);
+      },
+    });
+  }
 
-  // --- Zones ---------------------------------------------------------------
+  async activateGrille(g: CreatedGrille): Promise<void> {
+    const ok = await this.confirm.ask({ title: 'Activer cette grille ?', message: `La grille active actuelle de ${g.ville} sera archivée.` });
+    if (!ok) return;
+    this.activatingId.set(g.id);
+    this.pricing.activateGrille(g.id, g.ville).subscribe({
+      next: () => {
+        this.activatingId.set(null);
+        this.sessionGrilles.update((list) => list.map((x) => (x.id === g.id ? { ...x, activated: true } : x)));
+        this.toast.success('Grille activée');
+      },
+      error: (err: ProblemDetails) => {
+        this.activatingId.set(null);
+        this.toast.error('Échec de l’activation', err.detail);
+      },
+    });
+  }
+
+  // --- Zones ------------------------------------------------------------
+  protected readonly zoneVille = signal<'Douala' | 'Yaoundé'>('Douala');
   protected readonly zones = signal<Zone[]>([]);
   protected readonly loadingZones = signal(true);
-  protected readonly zoneVilleFilter = signal<'Douala' | 'Yaoundé'>('Douala');
-  protected readonly showZoneForm = signal(false);
+  protected readonly forbiddenZones = signal(false);
+
+  protected readonly zoneFormOpen = signal(false);
   protected readonly zoneForm = this.fb.nonNullable.group({
-    nom: ['', [requiredTrimmed()]],
-    ville: ['Douala' as 'Douala' | 'Yaoundé', [Validators.required]],
+    nom: ['', [Validators.required, Validators.maxLength(100)]],
     type: ['COUVERTURE' as ZoneType, [Validators.required]],
-    lat: [4.05, [Validators.required]],
-    lng: [9.7, [Validators.required]],
-    rayon_km: [3, [Validators.required, Validators.min(0.1)]],
-    supplement_fixe: [0, [integerAmount(0)]],
-    prix_minimum: [null as number | null, [integerAmount(0)]],
+    supplement_fixe: [0],
+    prix_minimum: [0],
   });
+  protected readonly zonePoints = signal<GeoPoint[]>([]);
   protected readonly savingZone = signal(false);
 
   constructor() {
-    this.fetchGrids();
     this.fetchZones();
   }
 
-  selectTab(id: string): void { this.activeTab.set(id); }
-
-  // --- Grilles --------------------------------------------------------------
-  private fetchGrids(): void {
-    this.loadingGrids.set(true);
-    this.pricingService.listGrids(this.gridVilleFilter() === 'TOUS' ? undefined : this.gridVilleFilter()).subscribe((res) => {
-      this.grids.set(res);
-      this.loadingGrids.set(false);
-    });
+  selectTab(id: string): void {
+    this.activeTab.set(id);
   }
 
-  filterGrids(ville: 'TOUS' | 'Douala' | 'Yaoundé'): void {
-    this.gridVilleFilter.set(ville);
-    this.fetchGrids();
+  selectVille(v: 'Douala' | 'Yaoundé'): void {
+    this.zoneVille.set(v);
+    this.fetchZones();
   }
 
-  openGridForm(): void {
-    this.gridForm.reset({
-      version_label: '', ville: 'Douala', frais_prise_en_charge: 500, tarif_par_km: 150, tarif_par_minute: 15,
-      prix_minimum: 1000, arrondi: 25, coef_urgence_express: 1.4, coef_horaire_soir: 1.15, coef_horaire_nuit: 1.3,
-      supplement_poids_kg: 100, supplement_volume: 500, supplement_fragile: 300, plafond_remise: 1000,
-      demande_dynamique_active: true, demande_plafond: 1.5,
-    });
-    this.showGridForm.set(true);
-  }
-
-  saveGridDraft(): void {
-    if (this.gridForm.invalid) { this.gridForm.markAllAsTouched(); return; }
-    this.savingGrid.set(true);
-    this.pricingService.createDraft(this.gridForm.getRawValue()).subscribe({
-      next: () => {
-        this.savingGrid.set(false);
-        this.showGridForm.set(false);
-        this.fetchGrids();
-        this.toast.success('Version créée en brouillon');
-      },
-      error: (err: ProblemDetails) => { this.savingGrid.set(false); this.toast.error('Échec', err.detail); },
-    });
-  }
-
-  async activateGrid(grid: PricingGrid): Promise<void> {
-    const ok = await this.confirm.ask({
-      title: 'Activer cette grille', danger: true, confirmLabel: 'Activer',
-      message: `${grid.version_label} deviendra la grille active pour ${grid.ville}. La grille actuellement active sera archivée. Continuer ?`,
-    });
-    if (!ok) return;
-    this.pricingService.activate(grid.id).subscribe(() => {
-      this.fetchGrids();
-      this.toast.success('Grille activée', `${grid.version_label} est maintenant active pour ${grid.ville}.`);
-    });
-  }
-
-  openSimulate(grid: PricingGrid): void {
-    this.simulateTarget.set(grid);
-    this.simulationResult.set(null);
-    this.simulateForm.reset({ distance_km: 5, duree_min: 20, urgence: 'STANDARD', heure: '14:00', poids_kg: 2, fragile: false, ratio_demande: 1 });
-  }
-
-  runSimulation(): void {
-    const grid = this.simulateTarget();
-    if (!grid || this.simulateForm.invalid) { this.simulateForm.markAllAsTouched(); return; }
-    this.simulating.set(true);
-    this.pricingService.simulate(grid, this.simulateForm.getRawValue()).subscribe((result) => {
-      this.simulating.set(false);
-      this.simulationResult.set(result);
-    });
-  }
-
-  // --- Zones ------------------------------------------------------------------
-  private fetchZones(): void {
+  fetchZones(): void {
     this.loadingZones.set(true);
-    this.zonesService.list().subscribe((res) => {
-      this.zones.set(res);
-      this.loadingZones.set(false);
+    this.forbiddenZones.set(false);
+    this.pricing.listZones(this.zoneVille()).subscribe({
+      next: (zones) => {
+        this.loadingZones.set(false);
+        this.zones.set(zones);
+      },
+      error: (err: ProblemDetails) => {
+        this.loadingZones.set(false);
+        if (err.status === 403) this.forbiddenZones.set(true);
+        else this.toast.error('Chargement impossible', err.detail);
+      },
     });
-  }
-
-  zonesForCity(ville: 'Douala' | 'Yaoundé'): Zone[] {
-    return this.zones().filter((z) => z.ville === ville);
-  }
-
-  zoneShapes(ville: 'Douala' | 'Yaoundé'): MapZoneShape[] {
-    return this.zonesForCity(ville).map((z) => ({ id: z.id, center: z.centre, radiusKm: z.rayon_km, color: ZONE_TONE[z.type], label: z.nom }));
-  }
-
-  toggleZoneActive(zone: Zone): void {
-    this.zonesService.toggleActive(zone.id).subscribe(() => this.fetchZones());
   }
 
   openZoneForm(): void {
-    this.zoneForm.reset({ nom: '', ville: this.zoneVilleFilter(), type: 'COUVERTURE', lat: 4.05, lng: 9.7, rayon_km: 3, supplement_fixe: 0, prix_minimum: null });
-    this.showZoneForm.set(true);
+    this.zoneForm.reset({ nom: '', type: 'COUVERTURE', supplement_fixe: 0, prix_minimum: 0 });
+    this.zonePoints.set([]);
+    this.zoneFormOpen.set(true);
   }
 
-  saveZone(): void {
-    if (this.zoneForm.invalid) { this.zoneForm.markAllAsTouched(); return; }
+  onPolygonPoints(points: GeoPoint[]): void {
+    this.zonePoints.set(points);
+  }
+
+  resetPolygon(): void {
+    this.zonePoints.set([]);
+  }
+
+  createZone(): void {
+    if (this.zoneForm.invalid || this.zonePoints().length < 3) {
+      this.zoneForm.markAllAsTouched();
+      return;
+    }
     const v = this.zoneForm.getRawValue();
+    const req: CreateZoneRequest = {
+      nom: v.nom, ville: this.zoneVille(), type: v.type, points: this.zonePoints(),
+      supplement_fixe: v.supplement_fixe || null, prix_minimum: v.prix_minimum || null,
+    };
     this.savingZone.set(true);
-    this.zonesService.create({
-      nom: v.nom, ville: v.ville, type: v.type, centre: { lat: v.lat, lng: v.lng }, rayon_km: v.rayon_km,
-      supplement_fixe: v.supplement_fixe, prix_minimum: v.prix_minimum ?? undefined, actif: true,
-    }).subscribe({
+    this.pricing.createZone(req).subscribe({
       next: () => {
         this.savingZone.set(false);
-        this.showZoneForm.set(false);
-        this.fetchZones();
+        this.zoneFormOpen.set(false);
         this.toast.success('Zone créée');
+        this.fetchZones();
       },
-      error: (err: ProblemDetails) => { this.savingZone.set(false); this.toast.error('Échec', err.detail); },
+      error: (err: ProblemDetails) => {
+        this.savingZone.set(false);
+        this.toast.error('Échec de la création', err.detail);
+      },
     });
   }
 
-  bboxFor(ville: 'Douala' | 'Yaoundé') {
-    return ville === 'Douala'
-      ? { latMin: 3.95, latMax: 4.15, lngMin: 9.6, lngMax: 9.85 }
-      : { latMin: 3.8, latMax: 3.95, lngMin: 11.44, lngMax: 11.6 };
+  async deleteZone(zone: Zone): Promise<void> {
+    const ok = await this.confirm.ask({ title: `Supprimer la zone ${zone.nom} ?`, message: 'Cette zone sera désactivée.', danger: true });
+    if (!ok) return;
+    this.pricing.deleteZone(zone.id).subscribe({
+      next: () => { this.toast.success('Zone supprimée'); this.fetchZones(); },
+      error: (err: ProblemDetails) => this.toast.error('Échec', err.detail),
+    });
   }
-
-  formatXaf(v: number): string { return formatXaf(v); }
-  formatDateTime(v?: string): string { return formatDateTime(v); }
 }

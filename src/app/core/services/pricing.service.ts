@@ -1,67 +1,67 @@
-import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
-import { PricingGrid, PricingSimulationInput, PricingSimulationResult } from '../models';
-import { MockDbService } from '../mock/mock-db.service';
-import { mockFail, mockOk, uid } from '../mock/mock-utils';
-import { computeQuote } from '../utils/pricing-engine';
-import { AuthService } from '../auth/auth.service';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { Observable, map } from 'rxjs';
+import { API_BASE_URL } from '../http/api.config';
+import { GeoPoint } from '../models';
 
-/** UC-ADM-06 — grilles versionnées et datées ; aucune modification d'une grille active. */
+export interface CreateGrilleRequest {
+  nom: string;
+  ville: string;
+  frais_prise_en_charge: number;
+  tarif_km: number;
+  tarif_minute: number;
+  prix_minimum: number;
+  arrondi: number;
+  plafond_remise?: number | null;
+}
+
+export type ZoneType = 'COUVERTURE' | 'INTERDITE' | 'MAJORATION' | 'DIFFICILE';
+
+export interface Zone {
+  id: number;
+  nom: string;
+  ville: string;
+  type: ZoneType;
+}
+
+export interface CreateZoneRequest {
+  nom: string;
+  ville: string;
+  type: ZoneType;
+  points: GeoPoint[];
+  supplement_fixe?: number | null;
+  prix_minimum?: number | null;
+}
+
+/**
+ * UC-ADM-06/07 — /v1/admin/grilles-tarifaires, /v1/admin/zones (Catalog
+ * module). There is no list/get for pricing grids — only create + activate
+ * — so a grid can only be activated in the same session it was created in
+ * (its id is only known from the create response).
+ */
 @Injectable({ providedIn: 'root' })
 export class PricingService {
-  constructor(private readonly db: MockDbService, private readonly auth: AuthService) {}
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = inject(API_BASE_URL);
 
-  listGrids(ville?: string): Observable<PricingGrid[]> {
-    let items = [...this.db.pricingGrids()].sort((a, b) => b.cree_le.localeCompare(a.cree_le));
-    if (ville) items = items.filter((g) => g.ville === ville);
-    return mockOk(items);
+  createGrille(req: CreateGrilleRequest): Observable<{ id: number }> {
+    return this.http.post<{ id: number }>(`${this.baseUrl}/admin/grilles-tarifaires`, req);
   }
 
-  getGrid(id: string): Observable<PricingGrid> {
-    const grid = this.db.pricingGrids().find((g) => g.id === id);
-    return grid ? mockOk(grid) : mockFail('ERR-4001', 'Grille introuvable.');
+  activateGrille(id: number, ville: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/admin/grilles-tarifaires/${id}/activer`, { ville });
   }
 
-  simulate(grid: PricingGrid, input: PricingSimulationInput): Observable<PricingSimulationResult> {
-    return mockOk(computeQuote(grid, input), 350);
+  listZones(ville?: string): Observable<Zone[]> {
+    const params: Record<string, string> = ville ? { ville } : {};
+    return this.http.get<{ data: Zone[] }>(`${this.baseUrl}/admin/zones`, { params }).pipe(map((r) => r.data));
   }
 
-  createDraft(payload: Omit<PricingGrid, 'id' | 'statut' | 'cree_le'>): Observable<PricingGrid> {
-    const versionExists = this.db.pricingGrids().some((g) => g.version_label.toLowerCase() === payload.version_label.toLowerCase());
-    if (versionExists) return mockFail('ERR-4001', 'Ce libellé de version existe déjà.');
-    const grid: PricingGrid = { ...payload, id: uid('grid', Math.random), statut: 'BROUILLON', cree_le: new Date().toISOString() };
-    this.db.mutate((s) => { s.pricingGrids.unshift(grid); return s; });
-    return mockOk(grid);
+  createZone(req: CreateZoneRequest): Observable<{ id: number }> {
+    return this.http.post<{ id: number }>(`${this.baseUrl}/admin/zones`, req);
   }
 
-  updateDraft(id: string, payload: Partial<PricingGrid>): Observable<PricingGrid> {
-    const grid = this.db.pricingGrids().find((g) => g.id === id);
-    if (!grid) return mockFail('ERR-4001', 'Grille introuvable.');
-    if (grid.statut === 'ACTIVE') return mockFail('ERR-4220', 'Une grille active ne peut pas être modifiée — créez une nouvelle version.');
-    this.db.mutate((s) => {
-      const idx = s.pricingGrids.findIndex((g) => g.id === id);
-      s.pricingGrids[idx] = { ...s.pricingGrids[idx], ...payload, modifie_le: new Date().toISOString() };
-      return s;
-    });
-    return this.getGrid(id);
-  }
-
-  /** Activating archives the previously active grid for the same city — history is preserved (RG-012 non-régression). */
-  activate(id: string): Observable<PricingGrid> {
-    const grid = this.db.pricingGrids().find((g) => g.id === id);
-    if (!grid) return mockFail('ERR-4001', 'Grille introuvable.');
-    const actor = this.auth.currentUser();
-    this.db.mutate((s) => {
-      s.pricingGrids = s.pricingGrids.map((g) => {
-        if (g.id === id) return { ...g, statut: 'ACTIVE', active_le: new Date().toISOString() };
-        if (g.ville === grid.ville && g.statut === 'ACTIVE') return { ...g, statut: 'ARCHIVEE', archivee_le: new Date().toISOString() };
-        return g;
-      });
-      return s;
-    });
-    if (actor) {
-      this.db.logAudit({ auteur_nom: `${actor.prenom} ${actor.nom}`, auteur_role: actor.role, action: 'Modification de tarif', ressource: 'grille_tarifaire', ressource_id: id, ip: '41.202.11.4', appareil: 'Navigateur web', valeur_apres: { statut: 'ACTIVE', version: grid.version_label } });
-    }
-    return this.getGrid(id);
+  deleteZone(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/admin/zones/${id}`);
   }
 }

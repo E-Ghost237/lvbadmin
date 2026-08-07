@@ -2,8 +2,6 @@ import { Component, computed, inject, input, output, signal } from '@angular/cor
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
-import { NotificationsService } from '../../../core/services/notifications.service';
-import { ROLE_LABELS } from '../../../core/auth/rbac';
 import { NAV_ITEMS } from '../nav-data';
 
 const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
@@ -29,7 +27,7 @@ const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
       </div>
 
       <nav class="flex-1 overflow-y-auto thin-scroll px-3 py-4 flex flex-col gap-0.5" aria-label="Navigation principale">
-        @for (item of visibleItems(); track item.path) {
+        @for (item of navItems; track item.path) {
           <a
             [routerLink]="item.path" routerLinkActive="active-nav-link" [routerLinkActiveOptions]="{ exact: false }"
             class="nav-link flex items-center gap-3 rounded-(--radius-sm) py-2 text-sm font-medium transition-colors"
@@ -38,19 +36,11 @@ const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
             [attr.aria-label]="collapsed() ? i18n.t(item.labelKey) : null"
             (click)="closeMobile.emit()"
           >
-            <span class="relative shrink-0">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path [attr.d]="item.icon" />
-              </svg>
-              @if (collapsed() && item.path === '/dashboard' && criticalAlerts() > 0) {
-                <span class="absolute -top-1 -right-1.5 h-2 w-2 rounded-full" style="background: var(--status-critical)"></span>
-              }
-            </span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0" aria-hidden="true">
+              <path [attr.d]="item.icon" />
+            </svg>
             @if (!collapsed()) {
               <span class="truncate">{{ i18n.t(item.labelKey) }}</span>
-              @if (item.path === '/dashboard' && criticalAlerts() > 0) {
-                <span class="ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums" style="background: var(--status-critical); color: white">{{ criticalAlerts() }}</span>
-              }
             }
           </a>
         }
@@ -60,15 +50,15 @@ const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
         <a
           routerLink="/account" class="flex items-center gap-2.5 rounded-(--radius-sm) py-2 transition-colors account-link"
           [class.px-2]="!collapsed()" [class.justify-center]="collapsed()"
-          [attr.title]="collapsed() ? userName() : null" [attr.aria-label]="collapsed() ? userName() : null"
+          [attr.title]="collapsed() ? userEmail() : null" [attr.aria-label]="collapsed() ? userEmail() : null"
         >
           <div class="h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style="background: var(--accent); color: var(--sidebar-bg)">
             {{ userInitials() }}
           </div>
           @if (!collapsed()) {
             <div class="min-w-0 flex-1">
-              <p class="text-xs font-medium truncate" style="color: var(--sidebar-text-active)">{{ userName() }}</p>
-              <p class="text-[11px] truncate" style="color: var(--sidebar-text)">{{ userRoleLabel() }}</p>
+              <p class="text-xs font-medium truncate" style="color: var(--sidebar-text-active)">{{ userEmail() }}</p>
+              <p class="text-[11px] truncate" style="color: var(--sidebar-text)">Mon compte</p>
             </div>
           }
         </a>
@@ -102,27 +92,15 @@ const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
 export class SidebarComponent {
   protected readonly i18n = inject(I18nService);
   private readonly auth = inject(AuthService);
-  private readonly notifications = inject(NotificationsService);
 
   readonly closeMobile = output<void>();
   readonly allowCollapse = input(true);
 
+  protected readonly navItems = NAV_ITEMS;
   protected readonly collapsed = signal(this.readCollapsed());
 
-  protected readonly visibleItems = computed(() => NAV_ITEMS.filter((item) => this.auth.hasAnyPermission(item.permissions)));
-  protected readonly criticalAlerts = computed(() => this.notifications.criticalUnacknowledgedCount());
-  protected readonly userName = computed(() => {
-    const u = this.auth.currentUser();
-    return u ? `${u.prenom} ${u.nom}` : '';
-  });
-  protected readonly userInitials = computed(() => {
-    const u = this.auth.currentUser();
-    return u ? `${u.prenom?.[0] ?? ''}${u.nom[0] ?? ''}`.toUpperCase() || '?' : '?';
-  });
-  protected readonly userRoleLabel = computed(() => {
-    const u = this.auth.currentUser();
-    return u ? ROLE_LABELS[u.role] : '';
-  });
+  protected readonly userEmail = computed(() => this.auth.identity()?.email ?? '');
+  protected readonly userInitials = computed(() => (this.userEmail().slice(0, 2) || '?').toUpperCase());
 
   toggleCollapsed(): void {
     const next = !this.collapsed();

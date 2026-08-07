@@ -1,235 +1,160 @@
-<app-breadcrumbs [crumbs]="[{ label: i18n.t('nav.users') }]" />
+<app-breadcrumbs [crumbs]="[{ label: 'Utilisateurs & rôles' }]" />
 
-<div class="flex items-center justify-between gap-3 mb-5 flex-wrap">
-  <div>
-    <h1 class="text-xl font-semibold">{{ i18n.t('nav.users') }}</h1>
-    <p class="text-sm mt-0.5" style="color: var(--text-muted)">Gestion des comptes clients, du personnel interne et des permissions.</p>
-  </div>
-  @if (activeTab() === 'staff' && auth.hasPermission('user.write')) {
-    <button type="button" class="btn btn-primary btn-sm" (click)="openCreateStaff()">+ Compte interne</button>
-  }
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">Utilisateurs & rôles</h1>
+  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Gestion des comptes clients, du personnel interne et des permissions.</p>
 </div>
 
-<app-tabs [tabs]="tabs()" [active]="activeTab()" (activeChange)="selectTab($event)" />
+<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
 <div class="mt-5">
   @if (activeTab() === 'clients') {
-    <div class="card p-4 mb-4">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div class="md:col-span-2"><app-search-input placeholder="Nom, téléphone, raison sociale…" (searchChange)="onClientSearch($event)" /></div>
-        <select class="select" [value]="clientStatut()" (change)="clientStatut.set($any($event.target).value); applyClientFilters()">
-          <option value="TOUS">Tous les statuts</option>
-          <option value="ACTIF">{{ i18n.t('status.account.ACTIF') }}</option>
-          <option value="SUSPENDU">{{ i18n.t('status.account.SUSPENDU') }}</option>
-        </select>
-        <select class="select" [value]="clientType()" (change)="clientType.set($any($event.target).value); applyClientFilters()">
-          <option value="TOUS">Tous les types</option>
-          <option value="PARTICULIER">Particulier</option>
-          <option value="ENTREPRISE">Entreprise</option>
-        </select>
+    @if (forbiddenClients()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission users.view." />
+    } @else {
+      <div class="mb-3 max-w-sm"><app-search-input placeholder="Nom, téléphone…" (searchChange)="onClientSearch($event)" /></div>
+      <div class="card">
+        <app-data-table [columns]="columns" [rows]="clientRows()" [loading]="loadingClients() && clientRows().length === 0" [trackBy]="trackByUuid">
+          <ng-template appCell="statut" let-row><app-status-badge domain="account" [status]="row.statut" /></ng-template>
+          <ng-template appCell="cree_le" let-row>
+            <div class="flex items-center justify-between gap-2">
+              <span>{{ row.cree_le ? (row.cree_le | slice: 0:10) : '—' }}</span>
+              <div class="flex gap-1.5">
+                @if (row.type_client === 'ENTREPRISE' && !row.partenaire_verifie) {
+                  <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openPartnerValidation(row)">Valider partenaire</button>
+                }
+                @if (row.statut === 'SUSPENDU' || row.statut === 'SUSPENDU_DOCUMENT') {
+                  <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="reactivate(row, fetchClients.bind(this))">Réactiver</button>
+                } @else {
+                  <button type="button" class="btn btn-danger-ghost btn-sm !py-1" (click)="suspend(row, fetchClients.bind(this))">Suspendre</button>
+                }
+              </div>
+            </div>
+          </ng-template>
+        </app-data-table>
       </div>
-    </div>
-    <div class="card overflow-hidden">
-      <app-data-table [columns]="clientColumns" [rows]="clients()" [loading]="loadingClients()" [rowClickable]="true" (rowClick)="openClient($event)" emptyTitle="Aucun client">
-        <ng-template appCell="statut" let-row><app-status-badge domain="account" [status]="row.statut" /></ng-template>
-      </app-data-table>
-    </div>
+      @if (clientCursor()) { <button type="button" class="btn btn-secondary btn-sm mt-3" (click)="fetchClients(clientCursor()!)">Charger plus</button> }
+    }
   }
 
-  @if (activeTab() === 'staff') {
-    <div class="card p-4 mb-4">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div class="md:col-span-2"><app-search-input placeholder="Nom, email…" (searchChange)="onStaffSearch($event)" /></div>
-        <select class="select" [value]="staffRole()" (change)="staffRole.set($any($event.target).value); applyStaffFilters()">
-          <option value="TOUS">Tous les rôles</option>
-          @for (r of allRoles; track r) { <option [value]="r">{{ roleLabels[r] }}</option> }
-        </select>
+  @if (activeTab() === 'internal') {
+    @if (forbiddenInternal()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission users.view." />
+    } @else {
+      <p class="text-xs mb-3" style="color: var(--text-muted)">Les comptes internes sont provisionnés hors interface (aucun point d’accès de création n’existe côté API) ; cette page gère leur cycle de vie et leurs rôles.</p>
+      <div class="card">
+        <app-data-table [columns]="columns" [rows]="internalRows()" [loading]="loadingInternal() && internalRows().length === 0" [trackBy]="trackByUuid">
+          <ng-template appCell="statut" let-row><app-status-badge domain="account" [status]="row.statut" /></ng-template>
+          <ng-template appCell="cree_le" let-row>
+            <div class="flex items-center justify-between gap-2">
+              <span>{{ row.cree_le ? (row.cree_le | slice: 0:10) : '—' }}</span>
+              <div class="flex gap-1.5">
+                <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openAssignRoles(row)">Rôles</button>
+                @if (row.statut === 'SUSPENDU' || row.statut === 'SUSPENDU_DOCUMENT') {
+                  <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="reactivate(row, fetchInternal.bind(this))">Réactiver</button>
+                } @else {
+                  <button type="button" class="btn btn-danger-ghost btn-sm !py-1" (click)="suspend(row, fetchInternal.bind(this))">Suspendre</button>
+                }
+              </div>
+            </div>
+          </ng-template>
+        </app-data-table>
       </div>
-    </div>
-    <div class="card overflow-hidden">
-      <app-data-table [columns]="staffColumns" [rows]="staff()" [loading]="loadingStaff()" [rowClickable]="true" (rowClick)="openStaff($event)" emptyTitle="Aucun compte interne">
-        <ng-template appCell="statut" let-row><app-status-badge domain="account" [status]="row.statut" /></ng-template>
-      </app-data-table>
-    </div>
+      @if (internalCursor()) { <button type="button" class="btn btn-secondary btn-sm mt-3" (click)="fetchInternal(internalCursor()!)">Charger plus</button> }
+    }
   }
 
   @if (activeTab() === 'roles') {
-    <app-alert-banner kind="info" class="block mb-4">
-      Principe du moindre privilège : l’Administrateur conserve toujours l’ensemble des permissions. Les autres rôles sont éditables ci-dessous.
-    </app-alert-banner>
-    <div class="card overflow-x-auto thin-scroll">
-      <table class="w-full text-sm border-collapse">
-        <thead>
-          <tr style="border-bottom: 1px solid var(--border)">
-            <th class="text-left px-4 py-2.5 text-xs uppercase" style="color: var(--text-muted)">Permission</th>
-            <th class="px-3 py-2.5 text-xs uppercase" style="color: var(--text-muted)">Administrateur</th>
-            @for (role of editableRoles; track role) {
-              <th class="px-3 py-2.5 text-xs uppercase" style="color: var(--text-muted)">{{ roleLabels[role] }}</th>
-            }
-          </tr>
-        </thead>
-        <tbody>
-          @for (group of permissionGroups; track group.prefix) {
-            @if (groupPermissions(group.prefix).length > 0) {
-              <tr style="background: var(--surface-2)">
-                <td colspan="5" class="px-4 py-1.5 text-xs font-semibold">{{ group.label }}</td>
-              </tr>
-              @for (perm of groupPermissions(group.prefix); track perm) {
-                <tr style="border-bottom: 1px solid var(--border)">
-                  <td class="px-4 py-2 text-xs font-mono">{{ perm }}</td>
-                  <td class="px-3 py-2 text-center"><input type="checkbox" class="checkbox" checked disabled /></td>
-                  @for (role of editableRoles; track role) {
-                    <td class="px-3 py-2 text-center">
-                      <input type="checkbox" class="checkbox" [checked]="hasDraftPermission(role, perm)" (change)="togglePermission(role, perm)" />
-                    </td>
+    @if (forbiddenCatalog()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission roles.manage." />
+    } @else if (loadingCatalog()) {
+      <div class="skeleton h-60"></div>
+    } @else if (catalog(); as c) {
+      <button type="button" class="btn btn-primary btn-sm mb-3" (click)="openNewRole()">+ Nouveau rôle</button>
+      <div class="card overflow-x-auto thin-scroll">
+        <table class="w-full text-sm border-collapse">
+          <thead>
+            <tr style="border-bottom: 1px solid var(--border)">
+              <th class="text-left px-4 py-2.5 text-xs uppercase" style="color: var(--text-muted)">Permission</th>
+              @for (role of c.roles; track role.id) {
+                <th class="text-center px-3 py-2.5 text-xs" style="color: var(--text-muted)">
+                  {{ role.name }}
+                  <div class="text-[10px] font-normal">{{ role.users_count }} compte(s)</div>
+                  @if (role.users_count === 0) {
+                    <button type="button" class="text-[10px] link mt-0.5" (click)="deleteRole(role)">Supprimer</button>
                   }
-                </tr>
+                </th>
               }
+            </tr>
+          </thead>
+          <tbody>
+            @for (perm of c.permissions; track perm) {
+              <tr style="border-bottom: 1px solid var(--border)">
+                <td class="px-4 py-2 font-mono text-xs">{{ perm }}</td>
+                @for (role of c.roles; track role.id) {
+                  <td class="text-center px-3 py-2">
+                    <input type="checkbox" class="checkbox" [checked]="role.permissions.includes(perm)" (change)="toggleRolePermission(role, perm)" />
+                  </td>
+                }
+              </tr>
             }
-          }
-        </tbody>
-      </table>
-    </div>
-    <div class="flex justify-end gap-2 mt-4">
-      @for (role of editableRoles; track role) {
-        <button type="button" class="btn btn-primary btn-sm" [disabled]="savingRoles()" (click)="saveRole(role)">Enregistrer {{ roleLabels[role] }}</button>
-      }
-    </div>
+          </tbody>
+        </table>
+      </div>
+    }
   }
 </div>
 
-<!-- Détail client -->
-<app-modal [open]="selectedClient() !== null" title="Détail du client" size="md" (closed)="selectedClient.set(null)" [hasFooter]="false">
-  @if (selectedClient(); as c) {
-    <div class="flex items-center gap-3 mb-4">
-      <app-avatar [name]="c.raison_sociale || (c.prenom + ' ' + c.nom)" [size]="40" />
-      <div>
-        <p class="text-sm font-semibold">{{ c.raison_sociale || (c.prenom + ' ' + c.nom) }}</p>
-        <p class="text-xs" style="color: var(--text-muted)">{{ c.telephone }} · {{ c.email || 'Pas d’email' }}</p>
-      </div>
-      <app-status-badge domain="account" [status]="c.statut" class="ml-auto" />
-    </div>
+<app-modal [open]="!!partnerTarget()" title="Valider le partenaire" [subtitle]="partnerTarget()?.nom ?? ''" (closed)="partnerTarget.set(null)">
+  <form [formGroup]="partnerForm" class="flex flex-col gap-3">
+    <app-field label="Plafond d’encours autorisé (XAF)" [control]="partnerForm.controls.encours_autorise_xaf" required>
+      <input type="number" min="0" class="input" formControlName="encours_autorise_xaf" />
+    </app-field>
+  </form>
+  <div modal-footer class="flex gap-2">
+    <button type="button" class="btn btn-secondary" (click)="partnerTarget.set(null)">Annuler</button>
+    <button type="button" class="btn btn-primary" [disabled]="validatingPartner()" (click)="confirmPartnerValidation()">Valider</button>
+  </div>
+</app-modal>
 
-    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
-      <div><span style="color: var(--text-muted)">Type</span><p class="font-medium">{{ c.type_client }}</p></div>
-      <div><span style="color: var(--text-muted)">Commandes</span><p class="font-medium">{{ c.nb_commandes }}</p></div>
-      <div><span style="color: var(--text-muted)">Solde d’avoirs</span><p class="font-medium">{{ formatXaf(c.solde_avoirs) }}</p></div>
-      <div><span style="color: var(--text-muted)">Encours autorisé</span><p class="font-medium">{{ formatXaf(c.encours_autorise) }}</p></div>
-    </div>
-
-    @if (c.type_client === 'ENTREPRISE' && !c.partenaire_verifie) {
-      <app-alert-banner kind="warning" class="block mb-4">
-        Compte partenaire en attente de validation. Les fonctions partenaires restent inaccessibles.
-        @if (auth.hasPermission('partner.validate')) {
-          <div class="mt-2"><button type="button" class="btn btn-primary btn-sm" (click)="openValidatePartner()">Valider le compte partenaire</button></div>
-        }
-      </app-alert-banner>
-    }
-
-    <p class="text-xs font-semibold mb-2" style="color: var(--text-muted)">HISTORIQUE DES ACTIONS</p>
-    <div class="flex flex-col gap-1.5 mb-4 max-h-40 overflow-y-auto thin-scroll">
-      @for (h of clientHistory(); track h.id) {
-        <div class="text-xs rounded-(--radius-sm) px-2.5 py-1.5" style="background: var(--surface-2)">
-          <span class="font-medium">{{ h.action }}</span> — {{ h.motif }} <span style="color: var(--text-muted)">({{ formatDateTime(h.cree_le) }} par {{ h.auteur }})</span>
-        </div>
-      } @empty {
-        <p class="text-xs" style="color: var(--text-muted)">Aucune action enregistrée.</p>
+<app-modal [open]="!!assignTarget()" title="Affecter des rôles" [subtitle]="assignTarget()?.nom ?? ''" (closed)="assignTarget.set(null)">
+  @if (loadingCatalog()) {
+    <div class="skeleton h-20"></div>
+  } @else if (catalog(); as c) {
+    <div class="flex flex-col gap-2">
+      @for (role of c.roles; track role.id) {
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" class="checkbox" [checked]="assignSelection().has(role.name)" (change)="toggleAssignRole(role.name)" />
+          {{ role.name }}
+        </label>
       }
     </div>
+  }
+  <div modal-footer class="flex gap-2">
+    <button type="button" class="btn btn-secondary" (click)="assignTarget.set(null)">Annuler</button>
+    <button type="button" class="btn btn-primary" [disabled]="assigning() || assignSelection().size === 0" (click)="confirmAssignRoles()">Affecter</button>
+  </div>
+</app-modal>
 
-    @if (auth.hasPermission('user.suspend')) {
-      <div class="flex gap-2">
-        @if (c.statut === 'ACTIF') {
-          <button type="button" class="btn btn-danger-ghost btn-sm" (click)="openSuspendClient()">{{ i18n.t('action.suspend') }}</button>
-        } @else if (c.statut === 'SUSPENDU') {
-          <button type="button" class="btn btn-secondary btn-sm" (click)="reactivateClient()">{{ i18n.t('action.reactivate') }}</button>
+<app-modal [open]="newRoleOpen()" title="Nouveau rôle" (closed)="newRoleOpen.set(false)">
+  <form [formGroup]="newRoleForm" class="flex flex-col gap-3">
+    <app-field label="Nom (MAJUSCULES_SNAKE_CASE)" [control]="newRoleForm.controls.name" required>
+      <input class="input" formControlName="name" placeholder="EX_SUPPORT_NIVEAU2" />
+    </app-field>
+    @if (catalog(); as c) {
+      <p class="field-label">Permissions</p>
+      <div class="flex flex-col gap-1.5 max-h-60 overflow-y-auto thin-scroll">
+        @for (perm of c.permissions; track perm) {
+          <label class="flex items-center gap-2 text-xs">
+            <input type="checkbox" class="checkbox" [checked]="newRolePermissions().has(perm)" (change)="toggleNewRolePermission(perm)" />
+            <span class="font-mono">{{ perm }}</span>
+          </label>
         }
       </div>
     }
-  }
-</app-modal>
-
-<!-- Détail staff -->
-<app-modal [open]="selectedStaff() !== null" title="Détail du compte interne" size="sm" (closed)="selectedStaff.set(null)" [hasFooter]="false">
-  @if (selectedStaff(); as s) {
-    <div class="flex items-center gap-3 mb-4">
-      <app-avatar [name]="s.prenom + ' ' + s.nom" [size]="40" />
-      <div>
-        <p class="text-sm font-semibold">{{ s.prenom }} {{ s.nom }}</p>
-        <p class="text-xs" style="color: var(--text-muted)">{{ s.email }}</p>
-      </div>
-      <app-status-badge domain="account" [status]="s.statut" class="ml-auto" />
-    </div>
-    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
-      <div><span style="color: var(--text-muted)">Rôle</span><p class="font-medium">{{ roleLabels[s.role] }}</p></div>
-      <div><span style="color: var(--text-muted)">2FA</span><p class="font-medium">{{ s.mfa_actif ? 'Activée' : 'Inactive' }}</p></div>
-    </div>
-    @if (auth.hasPermission('user.suspend') && s.role !== 'ADMINISTRATEUR') {
-      <div class="flex gap-2">
-        @if (s.statut === 'ACTIF') {
-          <button type="button" class="btn btn-danger-ghost btn-sm" (click)="openSuspendStaff()">{{ i18n.t('action.suspend') }}</button>
-        } @else if (s.statut === 'SUSPENDU') {
-          <button type="button" class="btn btn-secondary btn-sm" (click)="reactivateStaff()">{{ i18n.t('action.reactivate') }}</button>
-        }
-      </div>
-    }
-  }
-</app-modal>
-
-<!-- Suspendre client -->
-<app-modal [open]="showSuspendClient()" title="Suspendre le client" size="sm" (closed)="showSuspendClient.set(false)">
-  <form [formGroup]="suspendMotif">
-    <app-field label="Motif" [control]="suspendMotif.controls.motif" [required]="true"><textarea class="textarea" rows="3" formControlName="motif"></textarea></app-field>
   </form>
-  <div modal-footer>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="showSuspendClient.set(false)">{{ i18n.t('action.cancel') }}</button>
-    <button type="button" class="btn btn-danger btn-sm" (click)="confirmSuspendClient()">{{ i18n.t('action.suspend') }}</button>
-  </div>
-</app-modal>
-
-<!-- Suspendre staff -->
-<app-modal [open]="showSuspendStaff()" title="Suspendre le compte" size="sm" (closed)="showSuspendStaff.set(false)">
-  <form [formGroup]="suspendMotif">
-    <app-field label="Motif" [control]="suspendMotif.controls.motif" [required]="true"><textarea class="textarea" rows="3" formControlName="motif"></textarea></app-field>
-  </form>
-  <div modal-footer>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="showSuspendStaff.set(false)">{{ i18n.t('action.cancel') }}</button>
-    <button type="button" class="btn btn-danger btn-sm" (click)="confirmSuspendStaff()">{{ i18n.t('action.suspend') }}</button>
-  </div>
-</app-modal>
-
-<!-- Valider partenaire -->
-<app-modal [open]="showValidatePartner()" title="Valider le compte partenaire" size="sm" (closed)="showValidatePartner.set(false)">
-  <form [formGroup]="partnerForm">
-    <app-field label="Encours autorisé (XAF)" [control]="partnerForm.controls.encours_autorise" [required]="true" hint="Plafond de paiement différé pour ce partenaire.">
-      <input type="number" step="1000" min="0" class="input" formControlName="encours_autorise" />
-    </app-field>
-  </form>
-  <div modal-footer>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="showValidatePartner.set(false)">{{ i18n.t('action.cancel') }}</button>
-    <button type="button" class="btn btn-primary btn-sm" (click)="confirmValidatePartner()">{{ i18n.t('action.approve') }}</button>
-  </div>
-</app-modal>
-
-<!-- Créer un compte interne -->
-<app-modal [open]="showCreateStaff()" title="Créer un compte interne" size="sm" (closed)="showCreateStaff.set(false)">
-  <form [formGroup]="createStaffForm" class="flex flex-col gap-4">
-    <div class="grid grid-cols-2 gap-3">
-      <app-field label="Prénom" [control]="createStaffForm.controls.prenom" [required]="true"><input class="input" formControlName="prenom" /></app-field>
-      <app-field label="Nom" [control]="createStaffForm.controls.nom" [required]="true"><input class="input" formControlName="nom" /></app-field>
-    </div>
-    <app-field label="Email professionnel" [control]="createStaffForm.controls.email" [required]="true"><input type="email" class="input" formControlName="email" /></app-field>
-    <app-field label="Rôle" [control]="createStaffForm.controls.role" [required]="true">
-      <select class="select" formControlName="role">
-        <option value="SUPERVISEUR">Superviseur Opérations</option>
-        <option value="FINANCE">Responsable Financier</option>
-        <option value="TELECONSEILLER">Téléconseiller</option>
-        <option value="ADMINISTRATEUR">Administrateur</option>
-      </select>
-    </app-field>
-  </form>
-  <div modal-footer>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="showCreateStaff.set(false)">{{ i18n.t('action.cancel') }}</button>
-    <button type="button" class="btn btn-primary btn-sm" [disabled]="creatingStaff()" (click)="confirmCreateStaff()">{{ i18n.t('action.save') }}</button>
+  <div modal-footer class="flex gap-2">
+    <button type="button" class="btn btn-secondary" (click)="newRoleOpen.set(false)">Annuler</button>
+    <button type="button" class="btn btn-primary" [disabled]="savingRole()" (click)="createRole()">Créer</button>
   </div>
 </app-modal>

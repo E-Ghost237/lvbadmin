@@ -1,109 +1,84 @@
-<app-breadcrumbs [crumbs]="[{ label: i18n.t('nav.reports') }]" />
+<app-breadcrumbs [crumbs]="[{ label: 'Rapports & KPI' }]" />
 
 <div class="mb-5">
-  <h1 class="text-xl font-semibold">{{ i18n.t('nav.reports') }}</h1>
+  <h1 class="text-xl font-semibold">Rapports & KPI</h1>
   <p class="text-sm mt-0.5" style="color: var(--text-muted)">Un KPI qui n’est pas instrumenté dans le code n’existe pas (§14.1).</p>
 </div>
 
 <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
 <div class="mt-5">
-  @if (['pilotage','finance','qualite','technique','direction'].includes(activeTab())) {
-    @if (loadingCards()) {
-      <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">@for (i of [1,2,3,4,5]; track i) { <div class="skeleton h-24"></div> }</div>
-    } @else {
-      <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
-        @for (c of cards(); track c.id) {
-          <app-stat-tile [label]="c.label" [value]="c.value" [unit]="c.unit" [target]="c.target" [alertBelow]="c.alertBelow" [alertAbove]="c.alertAbove" [badge]="c.id" />
+  @if (activeTab() === 'kpi') {
+    @if (forbiddenCatalog()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission analytics.view." />
+    } @else if (loadingCatalog()) {
+      <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+        @for (i of [1,2,3,4,5,6,7,8]; track i) { <div class="skeleton h-24"></div> }
+      </div>
+    } @else if (catalog(); as c) {
+      <div class="flex items-center justify-between mb-3">
+        <p class="text-xs" style="color: var(--text-muted)">{{ c.instrumented_kpis }} KPI instrumentés · {{ c.day }} · {{ c.catalog_version }}</p>
+      </div>
+      <div class="flex flex-wrap gap-1.5 mb-4">
+        <button type="button" class="px-2.5 py-1 rounded-full text-xs font-medium" [style.background]="categoryFilter() === 'TOUTES' ? 'var(--brand)' : 'var(--surface-2)'" [style.color]="categoryFilter() === 'TOUTES' ? 'white' : 'var(--text-secondary)'" (click)="categoryFilter.set('TOUTES')">Toutes</button>
+        @for (cat of categories(); track cat) {
+          <button type="button" class="px-2.5 py-1 rounded-full text-xs font-medium capitalize" [style.background]="categoryFilter() === cat ? 'var(--brand)' : 'var(--surface-2)'" [style.color]="categoryFilter() === cat ? 'white' : 'var(--text-secondary)'" (click)="categoryFilter.set(cat)">{{ cat }}</button>
         }
       </div>
-    }
-
-    @if (activeTab() === 'pilotage') {
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-5">
-        @if (ordersSeries(); as s) {
-          <div class="card p-4"><p class="text-xs font-semibold mb-3" style="color: var(--text-muted)">{{ s.label.toUpperCase() }} (7 JOURS)</p><app-bar-chart [points]="s.points" [ariaLabel]="s.label" /></div>
-        }
-        @if (onTimeSeries(); as s) {
-          <div class="card p-4"><p class="text-xs font-semibold mb-3" style="color: var(--text-muted)">{{ s.label.toUpperCase() }} (7 JOURS)</p><app-bar-chart [points]="s.points" color="var(--series-2)" [ariaLabel]="s.label" /></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+        @for (m of filteredMeasurements(); track m.id) {
+          <div class="card p-4">
+            <div class="flex items-start justify-between gap-2">
+              <p class="text-xs font-semibold" style="color: var(--text-muted)">{{ m.id }}</p>
+              <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" [style.color]="statusTone[m.status]" [style.background]="'color-mix(in srgb, ' + statusTone[m.status] + ' 15%, transparent)'">{{ m.status }}</span>
+            </div>
+            <p class="text-sm font-medium mt-1">{{ m.label }}</p>
+            <p class="text-2xl font-semibold tabular-nums mt-2">{{ m.value === null ? '—' : m.value }} <span class="text-xs font-normal" style="color: var(--text-muted)">{{ m.unit !== 'count' ? m.unit : '' }}</span></p>
+            <div class="text-[11px] mt-2 flex justify-between" style="color: var(--text-muted)">
+              <span>Cible : {{ m.target }}</span>
+              <span>{{ m.frequency }}</span>
+            </div>
+          </div>
         }
       </div>
-    }
-    @if ((activeTab() === 'finance' || activeTab() === 'direction') && caSeries(); as s) {
-      <div class="card p-4 mt-5"><p class="text-xs font-semibold mb-3" style="color: var(--text-muted)">CHIFFRE D’AFFAIRES (30 JOURS)</p><app-bar-chart [points]="s.points" [width]="700" color="var(--series-4)" [ariaLabel]="s.label" /></div>
     }
   }
 
   @if (activeTab() === 'exports') {
-    <div class="card p-4 mb-5 max-w-lg">
-      <p class="text-sm font-medium mb-3">Nouvel export</p>
-      <div class="flex flex-col gap-3">
-        <div>
-          <label class="field-label">Type de données</label>
-          <select class="select" [value]="exportType()" (change)="exportType.set($any($event.target).value)">
-            <option value="commandes">Commandes</option>
-            <option value="paiements">Paiements</option>
-            <option value="livreurs">Livreurs</option>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl">
+      <form [formGroup]="exportForm" (ngSubmit)="requestExport()" class="card p-5 flex flex-col gap-3">
+        <p class="text-sm font-medium">Nouvel export</p>
+        <app-field label="Ressource" [control]="exportForm.controls.ressource" required>
+          <select class="select" formControlName="ressource">
+            <option value="commandes">Commandes</option><option value="paiements">Paiements</option><option value="livreurs">Livreurs</option>
           </select>
+        </app-field>
+        <app-field label="Format" [control]="exportForm.controls.format" required>
+          <select class="select" formControlName="format"><option value="csv">CSV</option><option value="xlsx">XLSX</option></select>
+        </app-field>
+        <button type="submit" class="btn btn-primary self-start" [disabled]="requestingExport()">Demander l’export</button>
+        <p class="text-[11px]" style="color: var(--text-muted)">Génération asynchrone — lien de téléchargement valable jusqu’à 24 h.</p>
+      </form>
+
+      <div class="card p-4">
+        <p class="text-sm font-medium mb-3">Exports de cette session</p>
+        <div class="flex flex-col gap-2">
+          @for (job of jobs(); track job.uuid) {
+            <div class="rounded-(--radius-sm) px-3 py-2.5" style="background: var(--surface-2)">
+              <div class="flex items-center justify-between">
+                <p class="text-xs font-medium">{{ job.resource }} · {{ job.format }}</p>
+                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style="background: var(--surface-1)">{{ job.status }}</span>
+              </div>
+              <p class="text-[11px] mt-0.5" style="color: var(--text-muted)">Demandé le {{ dateTime(job.requested_at) }}</p>
+              @if (job.status === 'PRET' && job.download_url) {
+                <a [href]="job.download_url" class="link text-xs mt-1 inline-block">Télécharger ({{ job.rows }} lignes)</a>
+              }
+            </div>
+          } @empty {
+            <p class="text-xs text-center py-6" style="color: var(--text-muted)">Aucun export demandé.</p>
+          }
         </div>
-        <div>
-          <label class="field-label">Filtres (libre)</label>
-          <input class="input" [value]="exportFilters()" (input)="exportFilters.set($any($event.target).value)" placeholder="Ex. : Douala, 30 derniers jours" />
-        </div>
-        <button type="button" class="btn btn-primary btn-sm self-start" [disabled]="requestingExport()" (click)="requestExport()">Générer l’export</button>
-        <p class="text-[11px]" style="color: var(--text-muted)">Génération asynchrone — l’interface reste utilisable pendant la préparation. Lien de téléchargement valable 24 h (UC-ADM-12).</p>
       </div>
     </div>
-
-    <div class="flex flex-col gap-2">
-      @for (job of exports(); track job.id) {
-        <div class="card p-3.5 flex items-center justify-between gap-3">
-          <div>
-            <p class="text-sm font-medium">{{ job.type }} — {{ job.filtres }}</p>
-            <p class="text-xs mt-0.5" style="color: var(--text-muted)">Demandé le {{ formatDateTime(job.demande_le) }}</p>
-          </div>
-          <div class="text-right">
-            <span class="text-xs font-medium px-2 py-0.5 rounded-full" [style.background]="job.statut === 'PRET' ? 'var(--status-good-bg)' : 'var(--status-warning-bg)'" [style.color]="job.statut === 'PRET' ? 'var(--status-good)' : 'var(--status-warning)'">{{ jobStatusLabel(job) }}</span>
-            @if (job.statut === 'PRET') { <p class="text-[11px] mt-1" style="color: var(--text-muted)">{{ job.lignes }} lignes · expire le {{ formatDateTime(job.expire_le) }}</p> }
-          </div>
-        </div>
-      } @empty {
-        <app-empty-state title="Aucun export demandé" />
-      }
-    </div>
-  }
-
-  @if (activeTab() === 'recette') {
-    @if (loadingChecklist()) {
-      <div class="skeleton h-64 w-full"></div>
-    } @else {
-      <div class="card overflow-hidden">
-        <table class="w-full text-sm">
-          <thead><tr style="border-bottom: 1px solid var(--border)">
-            <th class="text-left px-4 py-2.5 text-xs uppercase" style="color: var(--text-muted)">Critère</th>
-            <th class="text-left px-4 py-2.5 text-xs uppercase" style="color: var(--text-muted)">Seuil</th>
-            <th class="text-left px-4 py-2.5 text-xs uppercase" style="color: var(--text-muted)">Valeur actuelle</th>
-            <th class="text-center px-4 py-2.5 text-xs uppercase" style="color: var(--text-muted)">Atteint</th>
-          </tr></thead>
-          <tbody>
-            @for (row of checklist(); track row.code) {
-              <tr style="border-bottom: 1px solid var(--border)">
-                <td class="px-4 py-2.5"><span class="font-mono text-xs" style="color: var(--text-muted)">{{ row.code }}</span> {{ row.label }}</td>
-                <td class="px-4 py-2.5 tabular-nums">{{ row.seuil }}</td>
-                <td class="px-4 py-2.5 tabular-nums">{{ row.valeur_actuelle }}</td>
-                <td class="px-4 py-2.5 text-center">
-                  @if (row.atteint) {
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--status-good)" stroke-width="2.5" class="inline"><path d="m20 6-11 11-5-5" /></svg>
-                  } @else {
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--status-critical)" stroke-width="2.5" class="inline"><path d="M18 6 6 18M6 6l12 12" /></svg>
-                  }
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-      <p class="text-[11px] mt-3" style="color: var(--text-muted)">§14.6 — la recette finale n’est prononcée que si tous les critères sont atteints sur 20 jours ouvrés consécutifs en production.</p>
-    }
   }
 </div>

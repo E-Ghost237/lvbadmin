@@ -1,115 +1,95 @@
-@if (loading()) {
-  <div class="skeleton h-40 w-full"></div>
-} @else if (notFound() || !driver()) {
-  <app-empty-state title="Livreur introuvable">
-    <a routerLink="/drivers" class="btn btn-secondary btn-sm mt-2">{{ i18n.t('action.back') }}</a>
-  </app-empty-state>
-} @else {
-  @let d = driver()!;
-  <app-breadcrumbs [crumbs]="[{ label: i18n.t('nav.drivers'), link: '/drivers' }, { label: d.prenom + ' ' + d.nom }]" />
+<app-breadcrumbs [crumbs]="[{ label: 'Livreurs', link: '/drivers' }, { label: driver()?.nom || uuid }]" />
 
-  <div class="flex items-start justify-between gap-4 flex-wrap mb-5">
-    <div class="flex items-center gap-3">
-      <app-avatar [name]="d.prenom + ' ' + d.nom" [size]="48" />
-      <div>
-        <div class="flex items-center gap-2">
-          <h1 class="text-xl font-semibold">{{ d.prenom }} {{ d.nom }}</h1>
-          <app-status-badge domain="account" [status]="d.statut" />
-          <app-status-badge domain="driverOp" [status]="d.statut_operationnel" />
-        </div>
-        <p class="text-sm mt-0.5" style="color: var(--text-muted)">{{ d.matricule }} · {{ d.telephone }}</p>
-      </div>
+@if (loading()) {
+  <div class="skeleton h-40 mt-4"></div>
+} @else if (driver(); as d) {
+  <div class="flex items-center justify-between mb-5">
+    <div>
+      <h1 class="text-xl font-semibold">{{ d.prenom }} {{ d.nom }}</h1>
+      <p class="text-sm mt-0.5" style="color: var(--text-muted)">{{ d.telephone }} · {{ d.livreur?.matricule || d.matricule || '—' }}</p>
     </div>
-    @if (auth.hasPermission('driver.sanction')) {
-      <div class="flex gap-2">
-        @if (d.statut === 'ACTIF') {
-          <button type="button" class="btn btn-danger-ghost btn-sm" (click)="openSuspend()">{{ i18n.t('action.suspend') }}</button>
-        } @else if (d.statut === 'SUSPENDU') {
-          <button type="button" class="btn btn-secondary btn-sm" (click)="reactivate()">{{ i18n.t('action.reactivate') }}</button>
-        }
-      </div>
-    }
+    <div class="flex items-center gap-2">
+      <app-status-badge domain="account" [status]="d.statut" />
+      @if (d.statut === 'SUSPENDU' || d.statut === 'SUSPENDU_DOCUMENT') {
+        <button type="button" class="btn btn-secondary btn-sm" (click)="reactivate()">Réactiver</button>
+      } @else {
+        <button type="button" class="btn btn-danger-ghost btn-sm" (click)="suspend()">Suspendre</button>
+      }
+      <button type="button" class="btn btn-secondary btn-sm" (click)="openSanction()">Proposer une sanction</button>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="goToKyc()">Dossier KYC</button>
+    </div>
   </div>
 
-  @if (permisDaysLeft() !== null && permisDaysLeft()! <= 30) {
-    <app-alert-banner [kind]="permisDaysLeft()! <= 0 ? 'danger' : 'warning'" class="block mb-4">
-      Permis de conduire {{ permisDaysLeft()! <= 0 ? 'expiré' : 'expire dans ' + permisDaysLeft() + ' jours' }} ({{ formatDate(d.permis_expire_le) }}).
-    </app-alert-banner>
-  }
-  @if (assuranceDaysLeft() !== null && assuranceDaysLeft()! <= 30) {
-    <app-alert-banner [kind]="assuranceDaysLeft()! <= 0 ? 'danger' : 'warning'" class="block mb-4">
-      Assurance {{ assuranceDaysLeft()! <= 0 ? 'expirée' : 'expire dans ' + assuranceDaysLeft() + ' jours' }} ({{ formatDate(d.assurance_expire_le) }}).
-    </app-alert-banner>
-  }
-
-  <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
-    <div class="card p-4">
-      <p class="text-xs font-semibold mb-3" style="color: var(--text-muted)">IDENTITÉ</p>
-      <dl class="flex flex-col gap-2 text-sm">
-        <div class="flex justify-between"><dt style="color: var(--text-muted)">CNI</dt><dd>{{ d.numero_cni }}</dd></div>
-        <div class="flex justify-between"><dt style="color: var(--text-muted)">Permis</dt><dd>{{ d.numero_permis }}</dd></div>
-        <div class="flex justify-between"><dt style="color: var(--text-muted)">Zone</dt><dd>{{ d.zone_predilection === 'zone_dla_couv' ? 'Douala' : 'Yaoundé' }}</dd></div>
-        <div class="flex justify-between"><dt style="color: var(--text-muted)">Versement</dt><dd>{{ d.numero_versement }}</dd></div>
-      </dl>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div class="card p-5">
+      <p class="text-sm font-semibold mb-3">Identité & véhicule</p>
+      <div class="grid grid-cols-2 gap-3 text-sm">
+        <div><p class="text-xs" style="color: var(--text-muted)">Statut opérationnel</p><p>{{ d.livreur?.statut_operationnel || '—' }}</p></div>
+        <div><p class="text-xs" style="color: var(--text-muted)">Inscrit le</p><p>{{ date(d.cree_le) }}</p></div>
+        <div><p class="text-xs" style="color: var(--text-muted)">Permis expire le</p><p>{{ date(d.livreur?.permis_expire_le ?? null) }}</p></div>
+        <div><p class="text-xs" style="color: var(--text-muted)">Assurance expire le</p><p>{{ date(d.livreur?.assurance_expire_le ?? null) }}</p></div>
+        @if (d.motif_suspension) {
+          <div class="col-span-2"><p class="text-xs" style="color: var(--text-muted)">Motif de suspension</p><p>{{ d.motif_suspension }}</p></div>
+        }
+      </div>
     </div>
 
-    <div class="card p-4">
-      <p class="text-xs font-semibold mb-3" style="color: var(--text-muted)">VÉHICULE</p>
-      @if (d.vehicule; as v) {
-        <dl class="flex flex-col gap-2 text-sm">
-          <div class="flex justify-between"><dt style="color: var(--text-muted)">Type</dt><dd>{{ v.type }}</dd></div>
-          <div class="flex justify-between"><dt style="color: var(--text-muted)">Immatriculation</dt><dd>{{ v.immatriculation }}</dd></div>
-          <div class="flex justify-between"><dt style="color: var(--text-muted)">Modèle</dt><dd>{{ v.marque }} {{ v.modele }}</dd></div>
-        </dl>
+    <div class="card p-5">
+      <p class="text-sm font-semibold mb-3">Score qualité</p>
+      @if (loadingQuality()) {
+        <div class="skeleton h-24"></div>
+      } @else if (qualityError()) {
+        <p class="text-xs" style="color: var(--text-muted)">{{ qualityError() }}</p>
+      } @else if (quality(); as q) {
+        <p class="text-3xl font-semibold tabular-nums" [style.color]="q.score < q.thresholds.deactivation_review_below ? 'var(--status-critical)' : q.score < q.thresholds.temporary_suspension_below ? 'var(--status-serious)' : q.score < q.thresholds.warning_below ? 'var(--status-warning)' : 'var(--status-good)'">
+          {{ q.score | number: '1.0-1' }} <span class="text-sm font-normal" style="color: var(--text-muted)">/ 100</span>
+        </p>
+        @if (q.recommendation) { <p class="text-xs mt-1" style="color: var(--status-serious)">Recommandation : {{ q.recommendation }}</p> }
+        <div class="grid grid-cols-2 gap-2 mt-4 text-xs">
+          <div class="flex justify-between"><span style="color: var(--text-muted)">Note client</span><span>{{ pct(q.components.rating) }}</span></div>
+          <div class="flex justify-between"><span style="color: var(--text-muted)">Acceptation</span><span>{{ pct(q.components.acceptance) }}</span></div>
+          <div class="flex justify-between"><span style="color: var(--text-muted)">Ponctualité</span><span>{{ pct(q.components.on_time) }}</span></div>
+          <div class="flex justify-between"><span style="color: var(--text-muted)">Incidents</span><span>{{ pct(q.components.incidents) }}</span></div>
+        </div>
       }
     </div>
-
-    <div class="card p-4">
-      <p class="text-xs font-semibold mb-3" style="color: var(--text-muted)">PERFORMANCE</p>
-      <dl class="flex flex-col gap-2 text-sm">
-        <div class="flex justify-between"><dt style="color: var(--text-muted)">Note moyenne</dt><dd>{{ d.note_moyenne.toFixed(2) }} / 5</dd></div>
-        <div class="flex justify-between"><dt style="color: var(--text-muted)">Taux d’acceptation (7j)</dt><dd>{{ d.taux_acceptation_7j }} %</dd></div>
-        <div class="flex justify-between"><dt style="color: var(--text-muted)">Score qualité</dt><dd [style.color]="d.score_qualite < 70 ? 'var(--status-critical)' : 'var(--text-primary)'">{{ d.score_qualite }}</dd></div>
-        <div class="flex justify-between"><dt style="color: var(--text-muted)">Courses totales</dt><dd>{{ d.courses_total }}</dd></div>
-      </dl>
-    </div>
-
-    @if (wallet(); as w) {
-      <div class="card p-4 xl:col-span-2">
-        <p class="text-xs font-semibold mb-3" style="color: var(--text-muted)">PORTEFEUILLE</p>
-        <div class="grid grid-cols-3 gap-4 mb-3">
-          <div><p class="text-[11px]" style="color: var(--text-muted)">Solde disponible</p><p class="text-lg font-semibold tabular-nums">{{ formatXaf(w.solde_disponible) }}</p></div>
-          <div><p class="text-[11px]" style="color: var(--text-muted)">Encours COD</p><p class="text-lg font-semibold tabular-nums" [style.color]="w.encours_cod >= w.plafond_cod ? 'var(--status-critical)' : 'var(--text-primary)'">{{ formatXaf(w.encours_cod) }}</p></div>
-          <div><p class="text-[11px]" style="color: var(--text-muted)">Plafond COD</p><p class="text-lg font-semibold tabular-nums">{{ formatXaf(w.plafond_cod) }}</p></div>
-        </div>
-        <p class="text-[11px]" style="color: var(--text-muted)">Détail complet dans Finance → Portefeuilles.</p>
-      </div>
-    }
-
-    <div class="card p-4">
-      <p class="text-xs font-semibold mb-3" style="color: var(--text-muted)">SANCTIONS</p>
-      <div class="flex flex-col gap-2">
-        @for (s of sanctions(); track s.id) {
-          <div class="text-xs rounded-(--radius-sm) px-2.5 py-2" style="background: var(--surface-2)">
-            <p class="font-medium">{{ s.type }} — {{ s.statut }}</p>
-            <p style="color: var(--text-muted)" class="mt-0.5">{{ s.motif }}</p>
-          </div>
-        } @empty {
-          <p class="text-xs" style="color: var(--text-muted)">Aucune sanction enregistrée.</p>
-        }
-      </div>
-    </div>
   </div>
+}
 
-  <app-modal [open]="showSuspendModal()" title="Suspendre le livreur" size="sm" (closed)="showSuspendModal.set(false)">
-    <form [formGroup]="suspendForm">
-      <app-field label="Motif" [control]="suspendForm.controls.motif" [required]="true">
-        <textarea class="textarea" rows="3" formControlName="motif"></textarea>
+<app-modal [open]="sanctionOpen()" title="Sanction" subtitle="Procédure contradictoire : 7 jours avant confirmation." (closed)="sanctionOpen.set(false)">
+  @if (!proposedSanction()) {
+    <form [formGroup]="sanctionForm" class="flex flex-col gap-3">
+      <app-field label="Type" [control]="sanctionForm.controls.type" required>
+        <select class="select" formControlName="type">
+          <option value="AVERTISSEMENT">Avertissement</option>
+          <option value="SUSPENSION_TEMPORAIRE">Suspension temporaire</option>
+          <option value="DESACTIVATION">Désactivation</option>
+        </select>
+      </app-field>
+      <app-field label="Motif" [control]="sanctionForm.controls.motif" required hint="Minimum 10 caractères.">
+        <textarea class="textarea" formControlName="motif" rows="3"></textarea>
       </app-field>
     </form>
-    <div modal-footer>
-      <button type="button" class="btn btn-secondary btn-sm" (click)="showSuspendModal.set(false)">{{ i18n.t('action.cancel') }}</button>
-      <button type="button" class="btn btn-danger btn-sm" [disabled]="suspending()" (click)="confirmSuspend()">{{ i18n.t('action.suspend') }}</button>
-    </div>
-  </app-modal>
-}
+  } @else {
+    <app-alert-banner kind="info">Sanction proposée (délai de contradiction : {{ proposedSanction()!.delai_contradiction_jours }} jours). Confirmez ou annulez ci-dessous.</app-alert-banner>
+    <form [formGroup]="decisionForm" class="flex flex-col gap-3 mt-3">
+      <app-field label="Motif de la décision" [control]="decisionForm.controls.motif_decision" required>
+        <textarea class="textarea" formControlName="motif_decision" rows="3"></textarea>
+      </app-field>
+      @if (sanctionForm.getRawValue().type === 'SUSPENSION_TEMPORAIRE') {
+        <app-field label="Durée (jours)" [control]="decisionForm.controls.duree_jours">
+          <input type="number" min="1" class="input" formControlName="duree_jours" />
+        </app-field>
+      }
+    </form>
+  }
+  <div modal-footer class="flex gap-2">
+    @if (!proposedSanction()) {
+      <button type="button" class="btn btn-secondary" (click)="sanctionOpen.set(false)">Annuler</button>
+      <button type="button" class="btn btn-primary" [disabled]="proposing()" (click)="proposeSanction()">Proposer</button>
+    } @else {
+      <button type="button" class="btn btn-danger-ghost" [disabled]="deciding()" (click)="cancelSanction()">Annuler la sanction</button>
+      <button type="button" class="btn btn-primary" [disabled]="deciding()" (click)="confirmSanction()">Confirmer</button>
+    }
+  </div>
+</app-modal>

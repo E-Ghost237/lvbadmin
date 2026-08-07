@@ -1,180 +1,100 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from '../../../core/auth/auth.service';
-import { I18nService } from '../../../core/i18n/i18n.service';
-import { DriversService } from '../../../core/services/drivers.service';
-import { Driver, DriverKycDossier, DriverSanction, SanctionType } from '../../../core/models';
-import { formatDateTime, formatXaf } from '../../../core/utils/formatters';
+import { DriversService, KycDossierSummary } from '../../../core/services/drivers.service';
+import { AdminUserSummary, ProblemDetails } from '../../../core/models';
+import { formatDate } from '../../../core/utils/formatters';
 import {
-  AlertBannerComponent, BreadcrumbsComponent, ColumnDef, DataTableComponent, EmptyStateComponent, FormFieldComponent,
-  ModalComponent, SearchInputComponent, StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService,
+  BreadcrumbsComponent, ColumnDef, DataTableComponent, ForbiddenStateComponent, SearchInputComponent,
+  StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService,
 } from '../../../shared/ui';
 
 @Component({
   selector: 'app-drivers-list',
   imports: [
-    ReactiveFormsModule, DataTableComponent, TableCellDefDirective, StatusBadgeComponent, SearchInputComponent,
-    TabsComponent, EmptyStateComponent, BreadcrumbsComponent, ModalComponent, FormFieldComponent, AlertBannerComponent,
+    BreadcrumbsComponent, TabsComponent, DataTableComponent, SearchInputComponent, StatusBadgeComponent,
+    ForbiddenStateComponent, TableCellDefDirective,
   ],
   templateUrl: './drivers-list.component.html',
 })
 export class DriversListComponent {
-  private readonly driversService = inject(DriversService);
-  private readonly router = inject(Router);
-  private readonly fb = inject(FormBuilder);
+  private readonly drivers = inject(DriversService);
   private readonly toast = inject(ToastService);
-  protected readonly auth = inject(AuthService);
-  protected readonly i18n = inject(I18nService);
+  private readonly router = inject(Router);
 
-  protected readonly tabs = computed<TabDef[]>(() => {
-    const base: TabDef[] = [{ id: 'all', label: 'Tous les livreurs', count: this.total() }];
-    if (this.auth.hasPermission('driver.validate')) base.push({ id: 'kyc', label: 'Dossiers KYC', count: this.kycDossiers().length });
-    base.push({ id: 'quality', label: 'Qualité & sanctions' });
-    return base;
-  });
+  protected readonly trackByUuid = (row: AdminUserSummary) => row.uuid;
+
+  protected readonly tabs: TabDef[] = [{ id: 'all', label: 'Tous les livreurs' }, { id: 'kyc', label: 'Dossiers KYC' }];
   protected readonly activeTab = signal('all');
 
-  // --- Liste générale ---------------------------------------------------
-  protected readonly rows = signal<Driver[]>([]);
-  protected readonly total = signal(0);
-  protected readonly loading = signal(true);
-  protected readonly page = signal(1);
-  protected readonly pageSize = signal(20);
-  protected readonly statut = signal<'TOUS' | Driver['statut']>('TOUS');
-  protected readonly ville = signal<'TOUS' | 'Douala' | 'Yaoundé'>('TOUS');
-  protected readonly search = signal('');
-
-  protected readonly columns: ColumnDef<Driver>[] = [
-    { key: 'nom', label: 'Livreur', cell: (d) => `${d.prenom} ${d.nom}` },
+  protected readonly columns: ColumnDef<AdminUserSummary>[] = [
+    { key: 'nom', label: 'Livreur', cell: (r) => `${r.prenom ?? ''} ${r.nom}`.trim() },
     { key: 'matricule', label: 'Matricule' },
-    { key: 'statut', label: 'Compte' },
-    { key: 'statut_operationnel', label: 'Disponibilité' },
-    { key: 'note_moyenne', label: 'Note', align: 'right', cell: (d) => `${d.note_moyenne.toFixed(2)} / 5` },
-    { key: 'encours_cod', label: 'Encours COD', align: 'right', cell: (d) => `${formatXaf(d.encours_cod)} / ${formatXaf(d.plafond_cod)}` },
-    { key: 'courses_du_jour', label: 'Courses du jour', align: 'right' },
+    { key: 'telephone', label: 'Téléphone' },
+    { key: 'statut', label: 'Statut' },
+    { key: 'cree_le', label: 'Inscrit le', cell: (r) => formatDate(r.cree_le) },
   ];
 
-  // --- KYC ---------------------------------------------------------------
-  protected readonly kycDossiers = signal<DriverKycDossier[]>([]);
-  protected readonly loadingKyc = signal(false);
+  protected readonly rows = signal<AdminUserSummary[]>([]);
+  protected readonly loading = signal(true);
+  protected readonly forbidden = signal(false);
+  protected readonly search = signal('');
+  protected readonly nextCursor = signal<number | null>(null);
 
-  // --- Qualité & sanctions ------------------------------------------------
-  protected readonly qualityRanking = signal<Driver[]>([]);
-  protected readonly sanctions = signal<DriverSanction[]>([]);
-  protected readonly loadingQuality = signal(false);
-  protected readonly sanctionTarget = signal<Driver | null>(null);
-  protected readonly sanctionForm = this.fb.nonNullable.group({
-    type: ['AVERTISSEMENT' as SanctionType, [Validators.required]],
-    motif: ['', [Validators.required]],
-    duree_jours: [3, []],
-  });
-  protected readonly savingSanction = signal(false);
+  protected readonly kycRows = signal<KycDossierSummary[]>([]);
+  protected readonly loadingKyc = signal(true);
+  protected readonly kycNextCursor = signal<number | null>(null);
 
   constructor() {
-    this.fetchDrivers();
-    this.fetchKyc();
+    this.fetch();
   }
 
   selectTab(id: string): void {
     this.activeTab.set(id);
-    if (id === 'kyc') this.fetchKyc();
-    if (id === 'quality') this.fetchQuality();
+    if (id === 'kyc' && this.kycRows().length === 0) this.fetchKyc();
   }
 
-  private fetchDrivers(): void {
+  fetch(cursor?: number): void {
     this.loading.set(true);
-    this.driversService.list({
-      page: this.page(), page_size: this.pageSize(),
-      statut: this.statut(), ville: this.ville() === 'TOUS' ? undefined : this.ville(), search: this.search() || undefined,
-    }).subscribe((res) => {
-      this.rows.set(res.items);
-      this.total.set(res.total);
-      this.loading.set(false);
+    this.forbidden.set(false);
+    this.drivers.list({ q: this.search() || undefined, cursor }).subscribe({
+      next: (page) => {
+        this.loading.set(false);
+        this.rows.set(cursor ? [...this.rows(), ...page.items] : page.items);
+        this.nextCursor.set(page.next_cursor);
+      },
+      error: (err: ProblemDetails) => {
+        this.loading.set(false);
+        if (err.status === 403) this.forbidden.set(true);
+        else this.toast.error('Chargement impossible', err.detail);
+      },
     });
   }
 
-  applyFilters(): void {
-    this.page.set(1);
-    this.fetchDrivers();
-  }
-
-  onSearch(value: string): void {
-    this.search.set(value);
-    this.applyFilters();
-  }
-
-  onPageChange(page: number): void {
-    this.page.set(page);
-    this.fetchDrivers();
-  }
-
-  openDriver(driver: Driver): void {
-    this.router.navigate(['/drivers', driver.id]);
-  }
-
-  private fetchKyc(): void {
+  fetchKyc(cursor?: number): void {
     this.loadingKyc.set(true);
-    this.driversService.kycQueue().subscribe((res) => {
-      this.kycDossiers.set(res);
-      this.loadingKyc.set(false);
+    this.drivers.kycQueue(undefined, cursor).subscribe({
+      next: (page) => {
+        this.loadingKyc.set(false);
+        this.kycRows.set(cursor ? [...this.kycRows(), ...page.items] : page.items);
+        this.kycNextCursor.set(page.next_cursor);
+      },
+      error: (err: ProblemDetails) => {
+        this.loadingKyc.set(false);
+        if (err.status !== 403) this.toast.error('Chargement impossible', err.detail);
+      },
     });
   }
 
-  reviewDossier(dossier: DriverKycDossier): void {
-    this.router.navigate(['/drivers/kyc', dossier.id]);
+  onSearch(q: string): void {
+    this.search.set(q);
+    this.fetch();
   }
 
-  private fetchQuality(): void {
-    this.loadingQuality.set(true);
-    this.driversService.qualityRanking().subscribe((drivers) => this.qualityRanking.set(drivers));
-    this.driversService.allSanctions().subscribe((sanctions) => {
-      this.sanctions.set(sanctions);
-      this.loadingQuality.set(false);
-    });
+  openDriver(row: AdminUserSummary): void {
+    this.router.navigate(['/drivers', row.uuid]);
   }
 
-  driverName(driverId: string): string {
-    const d = this.qualityRanking().find((x) => x.id === driverId) ?? this.rows().find((x) => x.id === driverId);
-    return d ? `${d.prenom} ${d.nom}` : driverId;
+  openKyc(row: KycDossierSummary): void {
+    this.router.navigate(['/drivers/kyc', row.uuid]);
   }
-
-  openSanctionModal(driver: Driver): void {
-    this.sanctionForm.reset({ type: 'AVERTISSEMENT', motif: '', duree_jours: 3 });
-    this.sanctionTarget.set(driver);
-  }
-
-  submitSanction(): void {
-    if (this.sanctionForm.invalid) {
-      this.sanctionForm.markAllAsTouched();
-      return;
-    }
-    const driver = this.sanctionTarget();
-    if (!driver) return;
-    const { type, motif, duree_jours } = this.sanctionForm.getRawValue();
-    this.savingSanction.set(true);
-    this.driversService.proposeSanction(driver.id, type, motif, type === 'SUSPENSION_TEMPORAIRE' ? duree_jours : undefined).subscribe(() => {
-      this.savingSanction.set(false);
-      this.sanctionTarget.set(null);
-      this.toast.success('Sanction proposée', 'Une validation humaine est requise avant application.');
-      this.fetchQuality();
-    });
-  }
-
-  confirmSanction(sanction: DriverSanction): void {
-    this.driversService.confirmSanction(sanction.id).subscribe(() => {
-      this.toast.success('Sanction confirmée et appliquée');
-      this.fetchQuality();
-      this.fetchDrivers();
-    });
-  }
-
-  cancelSanction(sanction: DriverSanction): void {
-    this.driversService.cancelSanction(sanction.id).subscribe(() => {
-      this.toast.info('Sanction annulée');
-      this.fetchQuality();
-    });
-  }
-
-  formatDateTime(v: string): string { return formatDateTime(v); }
 }

@@ -1,0 +1,271 @@
+<app-breadcrumbs [crumbs]="[{ label: 'Console téléconseiller' }]" />
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">Console téléconseiller</h1>
+  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Objectif : commande créée en moins de 90 secondes (UC-TEL-01).</p>
+</div>
+
+<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
+
+<div class="mt-5">
+  @if (activeTab() === 'wizard') {
+    @if (orderCreated(); as created) {
+      <div class="card p-6 max-w-lg">
+        <p class="text-sm font-semibold" style="color: var(--status-good)">Commande créée</p>
+        <p class="text-xs mt-2" style="color: var(--text-muted)">Référence</p>
+        <p class="text-sm font-mono">{{ created.commande_id }}</p>
+        <div class="grid grid-cols-2 gap-3 mt-3">
+          <div><p class="text-xs" style="color: var(--text-muted)">Statut</p><p class="text-sm font-medium">{{ created.statut }}</p></div>
+          <div><p class="text-xs" style="color: var(--text-muted)">Prix final</p><p class="text-sm font-medium">{{ xaf(created.prix_final) }}</p></div>
+          <div class="col-span-2"><p class="text-xs" style="color: var(--text-muted)">Échéance promise</p><p class="text-sm font-medium">{{ dateTime(created.echeance_promise) }}</p></div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm mt-4" (click)="resetWizard()">Nouvelle commande</button>
+      </div>
+    } @else {
+      <div class="flex items-center gap-2 text-xs mb-4" style="color: var(--text-muted)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+        Temps écoulé : <span class="tabular-nums font-semibold" [style.color]="elapsedSeconds() > 90 ? 'var(--status-critical)' : 'var(--text-primary)'">{{ elapsedSeconds() }} s</span> / 90 s cible
+      </div>
+
+      <div class="flex items-center gap-2 mb-5 text-xs font-medium">
+        <span class="h-6 w-6 rounded-full flex items-center justify-center" [style.background]="wizardStep() >= 1 ? 'var(--brand)' : 'var(--surface-2)'" [style.color]="wizardStep() >= 1 ? 'white' : 'var(--text-muted)'">1</span>
+        <span [style.color]="wizardStep() === 1 ? 'var(--text-primary)' : 'var(--text-muted)'">Client</span>
+        <span style="color: var(--border-strong)">—</span>
+        <span class="h-6 w-6 rounded-full flex items-center justify-center" [style.background]="wizardStep() >= 2 ? 'var(--brand)' : 'var(--surface-2)'" [style.color]="wizardStep() >= 2 ? 'white' : 'var(--text-muted)'">2</span>
+        <span [style.color]="wizardStep() === 2 ? 'var(--text-primary)' : 'var(--text-muted)'">Trajet & colis</span>
+        <span style="color: var(--border-strong)">—</span>
+        <span class="h-6 w-6 rounded-full flex items-center justify-center" [style.background]="wizardStep() >= 3 ? 'var(--brand)' : 'var(--surface-2)'" [style.color]="wizardStep() >= 3 ? 'white' : 'var(--text-muted)'">3</span>
+        <span [style.color]="wizardStep() === 3 ? 'var(--text-primary)' : 'var(--text-muted)'">Livraison & paiement</span>
+      </div>
+
+      @if (wizardStep() === 1) {
+        <form [formGroup]="clientForm" (ngSubmit)="goToStep2()" class="card p-5 max-w-md flex flex-col gap-4">
+          <app-field label="Téléphone du client" [control]="clientForm.controls.telephone_client" required>
+            <input class="input" formControlName="telephone_client" placeholder="+237600000001" />
+          </app-field>
+          <div class="grid grid-cols-2 gap-3">
+            <app-field label="Nom" [control]="clientForm.controls.nom_client" required><input class="input" formControlName="nom_client" /></app-field>
+            <app-field label="Prénom" [control]="clientForm.controls.prenom_client"><input class="input" formControlName="prenom_client" /></app-field>
+          </div>
+          <p class="text-[11px]" style="color: var(--text-muted)">Le client sera retrouvé par téléphone ou créé automatiquement à la création de la commande.</p>
+          <button type="submit" class="btn btn-primary self-start">Continuer</button>
+        </form>
+      }
+
+      @if (wizardStep() === 2) {
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl">
+          <form [formGroup]="trajetForm" class="card p-5 flex flex-col gap-4">
+            <div class="grid grid-cols-2 gap-3">
+              <app-field label="Ville" [control]="trajetForm.controls.ville" required>
+                <select class="select" formControlName="ville"><option value="Douala">Douala</option><option value="Yaoundé">Yaoundé</option></select>
+              </app-field>
+              <app-field label="Urgence" [control]="trajetForm.controls.urgence" required>
+                <select class="select" formControlName="urgence"><option value="STANDARD">Standard</option><option value="EXPRESS">Express</option><option value="PLANIFIE">Planifié</option></select>
+              </app-field>
+            </div>
+            <app-field label="Poids (kg)" [control]="trajetForm.controls.poids_kg" required>
+              <input type="number" step="0.1" min="0.1" class="input" formControlName="poids_kg" />
+            </app-field>
+            <div class="flex items-center gap-4">
+              <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="checkbox" formControlName="fragile" /> Fragile</label>
+              <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="checkbox" formControlName="assurance_souscrite" /> Assurance</label>
+            </div>
+            <app-field label="Valeur déclarée (XAF)" [control]="trajetForm.controls.valeur_declaree_xaf">
+              <input type="number" min="0" class="input" formControlName="valeur_declaree_xaf" />
+            </app-field>
+            @if (quoteError()) { <p class="field-error">{{ quoteError() }}</p> }
+            <div class="flex gap-2">
+              <button type="button" class="btn btn-secondary" (click)="wizardStep.set(1)">Retour</button>
+              <button type="button" class="btn btn-primary" [disabled]="quoting()" (click)="requestQuote()">Obtenir un devis</button>
+            </div>
+          </form>
+
+          <div class="card p-4">
+            <div class="flex rounded-(--radius-sm) overflow-hidden mb-3" style="border: 1px solid var(--border-strong)">
+              <button type="button" class="flex-1 px-3 py-1.5 text-xs font-medium" [style.background]="activePointTarget() === 'pickup' ? 'var(--brand)' : 'transparent'" [style.color]="activePointTarget() === 'pickup' ? 'white' : 'var(--text-secondary)'" (click)="activePointTarget.set('pickup')">
+                Ramassage {{ pickupPoint() ? '✓' : '' }}
+              </button>
+              <button type="button" class="flex-1 px-3 py-1.5 text-xs font-medium" [style.background]="activePointTarget() === 'dropoff' ? 'var(--brand)' : 'transparent'" [style.color]="activePointTarget() === 'dropoff' ? 'white' : 'var(--text-secondary)'" (click)="activePointTarget.set('dropoff')">
+                Livraison {{ dropoffPoint() ? '✓' : '' }}
+              </button>
+            </div>
+            <app-location-picker [value]="activePointTarget() === 'pickup' ? pickupPoint() : dropoffPoint()" (valueChange)="onMapPoint($event)" [height]="280" />
+          </div>
+        </div>
+      }
+
+      @if (wizardStep() === 3 && quote(); as q) {
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl">
+          <form [formGroup]="deliveryForm" (ngSubmit)="submitOrder()" class="card p-5 flex flex-col gap-4">
+            <app-field label="Nom du destinataire" [control]="deliveryForm.controls.destinataire_nom" required><input class="input" formControlName="destinataire_nom" /></app-field>
+            <app-field label="Téléphone du destinataire" [control]="deliveryForm.controls.destinataire_telephone" required><input class="input" formControlName="destinataire_telephone" placeholder="+237600000001" /></app-field>
+            <app-field label="Mode de paiement" [control]="deliveryForm.controls.mode_paiement" required>
+              <select class="select" formControlName="mode_paiement">
+                <option value="MTN_MOMO">MTN Mobile Money</option><option value="ORANGE_MONEY">Orange Money</option>
+                <option value="CARTE">Carte</option><option value="COD">Paiement à la livraison</option>
+              </select>
+            </app-field>
+            <app-field label="Instructions ramassage" [control]="deliveryForm.controls.instructions_ramassage"><textarea class="textarea" formControlName="instructions_ramassage" rows="2"></textarea></app-field>
+            <app-field label="Instructions livraison" [control]="deliveryForm.controls.instructions_livraison"><textarea class="textarea" formControlName="instructions_livraison" rows="2"></textarea></app-field>
+            <div class="flex gap-2">
+              <button type="button" class="btn btn-secondary" (click)="wizardStep.set(2)">Retour</button>
+              <button type="submit" class="btn btn-primary" [disabled]="creating()">Créer la commande</button>
+            </div>
+          </form>
+
+          <div class="card p-5">
+            <p class="text-sm font-semibold mb-3">Devis</p>
+            <div class="flex flex-col gap-2 text-sm">
+              <div class="flex justify-between"><span style="color: var(--text-muted)">Prix final</span><span class="font-semibold tabular-nums">{{ xaf(q.prix_final) }}</span></div>
+              <div class="flex justify-between"><span style="color: var(--text-muted)">Assurance</span><span class="tabular-nums">{{ xaf(q.montant_assurance) }}</span></div>
+              <div class="flex justify-between"><span style="color: var(--text-muted)">Distance</span><span class="tabular-nums">{{ q.distance_km | number: '1.1-1' }} km</span></div>
+              <div class="flex justify-between"><span style="color: var(--text-muted)">Durée estimée</span><span class="tabular-nums">{{ q.duree_estimee_minutes }} min</span></div>
+              <div class="flex justify-between"><span style="color: var(--text-muted)">Devis valable jusqu’à</span><span class="tabular-nums">{{ dateTime(q.expire_le) }}</span></div>
+            </div>
+            <p class="text-xs font-medium mt-4 mb-1.5" style="color: var(--text-muted)">Décomposition</p>
+            <div class="flex flex-col gap-1 text-xs">
+              @for (line of q.decomposition | keyvalue; track line.key) {
+                <div class="flex justify-between"><span>{{ line.key }}</span><span class="tabular-nums">{{ xaf(line.value) }}</span></div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    }
+  }
+
+  @if (activeTab() === 'search') {
+    <div class="max-w-3xl">
+      <app-search-input placeholder="Téléphone, nom, référence de commande…" (searchChange)="onSearch($event)" />
+
+      @if (searchResults(); as res) {
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+          <div class="card p-4">
+            <p class="text-xs font-semibold mb-2" style="color: var(--text-muted)">CLIENTS</p>
+            <div class="flex flex-col gap-1.5">
+              @for (c of res.clients; track c.id) {
+                <button type="button" class="text-left rounded-(--radius-sm) px-2.5 py-2 text-sm hover:bg-(--surface-2)" [style.background]="selectedClient()?.id === c.id ? 'var(--brand-50)' : 'transparent'" (click)="selectClient(c)">
+                  {{ c.prenom }} {{ c.nom }} <span style="color: var(--text-muted)">— {{ c.telephone }}</span>
+                </button>
+              } @empty { <p class="text-xs" style="color: var(--text-muted)">Aucun client.</p> }
+            </div>
+          </div>
+          <div class="card p-4">
+            <p class="text-xs font-semibold mb-2" style="color: var(--text-muted)">COMMANDES</p>
+            <div class="flex flex-col gap-1.5">
+              @for (o of res.commandes; track o.id) {
+                <button type="button" class="text-left rounded-(--radius-sm) px-2.5 py-2 text-sm hover:bg-(--surface-2)" [style.background]="selectedOrder()?.id === o.id ? 'var(--brand-50)' : 'transparent'" (click)="selectOrder(o)">
+                  {{ o.destinataire_nom }} <span style="color: var(--text-muted)">— {{ o.statut }}</span>
+                </button>
+              } @empty { <p class="text-xs" style="color: var(--text-muted)">Aucune commande.</p> }
+            </div>
+          </div>
+        </div>
+      }
+
+      @if (loadingOrder()) { <div class="skeleton h-40 mt-4"></div> }
+      @if (orderDetail(); as d) {
+        <div class="card p-5 mt-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-semibold">{{ d.destinataire_nom }}</p>
+              <p class="text-xs" style="color: var(--text-muted)">{{ d.destinataire_telephone }} · {{ d.statut }}</p>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" class="btn btn-secondary btn-sm" (click)="openReassign()">Réaffecter</button>
+              @if (selectedClient()) { <button type="button" class="btn btn-secondary btn-sm" (click)="openComplaint()">Ouvrir une réclamation</button> }
+            </div>
+          </div>
+          <p class="text-xs font-semibold mt-4 mb-2" style="color: var(--text-muted)">HISTORIQUE</p>
+          <div class="flex flex-col gap-2">
+            @for (h of d.historique; track h.horodatage) {
+              <div class="flex items-center gap-2 text-xs">
+                <span class="h-1.5 w-1.5 rounded-full shrink-0" style="background: var(--brand)"></span>
+                <span class="tabular-nums" style="color: var(--text-muted)">{{ dateTime(h.horodatage) }}</span>
+                <span>{{ h.ancien_statut ? h.ancien_statut + ' → ' : '' }}{{ h.nouveau_statut }}</span>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (activeTab() === 'reminders') {
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl">
+      <form [formGroup]="reminderForm" (ngSubmit)="createReminder()" class="card p-5 flex flex-col gap-4">
+        <p class="text-sm font-medium">Planifier un rappel</p>
+        @if (selectedClient() || selectedOrder()) {
+          <p class="text-xs" style="color: var(--text-muted)">
+            Lié à {{ selectedClient() ? (selectedClient()!.prenom + ' ' + selectedClient()!.nom) : '' }}{{ selectedOrder() ? ' / commande #' + selectedOrder()!.id : '' }}
+            (sélectionné dans l’onglet Rechercher)
+          </p>
+        }
+        <app-field label="Échéance" [control]="reminderForm.controls.echeance" required>
+          <input type="datetime-local" class="input" formControlName="echeance" />
+        </app-field>
+        <app-field label="Notes" [control]="reminderForm.controls.notes"><textarea class="textarea" formControlName="notes" rows="3"></textarea></app-field>
+        <button type="submit" class="btn btn-primary self-start" [disabled]="creatingReminder()">Planifier</button>
+      </form>
+
+      <div class="card p-4">
+        <p class="text-sm font-medium mb-3">File de rappels</p>
+        @if (loadingReminders()) {
+          <div class="flex flex-col gap-2"><div class="skeleton h-12"></div><div class="skeleton h-12"></div></div>
+        } @else {
+          <div class="flex flex-col gap-2">
+            @for (r of reminders(); track r.id) {
+              <div class="rounded-(--radius-sm) px-3 py-2" style="background: var(--surface-2)">
+                <p class="text-xs font-medium tabular-nums">{{ dateTime(r.echeance) }}</p>
+                @if (r.notes) { <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ r.notes }}</p> }
+              </div>
+            } @empty { <p class="text-xs" style="color: var(--text-muted)">Aucun rappel.</p> }
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  @if (activeTab() === 'activity') {
+    @if (loadingActivity()) {
+      <div class="grid grid-cols-3 gap-3 max-w-xl"><div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div></div>
+    } @else if (activity(); as a) {
+      <div class="grid grid-cols-3 gap-3 max-w-xl">
+        <div class="card p-4"><p class="text-xs" style="color: var(--text-muted)">Commandes créées</p><p class="text-2xl font-semibold tabular-nums">{{ a.commandes_creees }}</p></div>
+        <div class="card p-4"><p class="text-xs" style="color: var(--text-muted)">Confirmées</p><p class="text-2xl font-semibold tabular-nums">{{ a.commandes_confirmees }}</p></div>
+        <div class="card p-4"><p class="text-xs" style="color: var(--text-muted)">Taux de conversion</p><p class="text-2xl font-semibold tabular-nums">{{ a.taux_conversion | number: '1.0-1' }}%</p></div>
+      </div>
+    }
+  }
+</div>
+
+<app-modal [open]="reassignOpen()" title="Réaffecter la commande" (closed)="reassignOpen.set(false)">
+  <form [formGroup]="reassignForm" class="flex flex-col gap-3">
+    <app-field label="Motif" [control]="reassignForm.controls.motif" required>
+      <textarea class="textarea" formControlName="motif" rows="3"></textarea>
+    </app-field>
+  </form>
+  <div modal-footer class="flex gap-2">
+    <button type="button" class="btn btn-secondary" (click)="reassignOpen.set(false)">Annuler</button>
+    <button type="button" class="btn btn-primary" [disabled]="reassigning()" (click)="confirmReassign()">Confirmer</button>
+  </div>
+</app-modal>
+
+<app-modal [open]="complaintOpen()" title="Ouvrir une réclamation" (closed)="complaintOpen.set(false)">
+  <form [formGroup]="complaintForm" class="flex flex-col gap-3">
+    <app-field label="Catégorie" [control]="complaintForm.controls.categorie" required>
+      <select class="select" formControlName="categorie">
+        <option value="RETARD">Retard</option><option value="COLIS_ENDOMMAGE">Colis endommagé</option>
+        <option value="COLIS_PERDU">Colis perdu</option><option value="COMPORTEMENT">Comportement</option>
+        <option value="ERREUR_FACTURATION">Erreur de facturation</option>
+      </select>
+    </app-field>
+    <app-field label="Description" [control]="complaintForm.controls.description" required>
+      <textarea class="textarea" formControlName="description" rows="3"></textarea>
+    </app-field>
+  </form>
+  <div modal-footer class="flex gap-2">
+    <button type="button" class="btn btn-secondary" (click)="complaintOpen.set(false)">Annuler</button>
+    <button type="button" class="btn btn-primary" [disabled]="openingComplaint()" (click)="confirmComplaint()">Ouvrir</button>
+  </div>
+</app-modal>

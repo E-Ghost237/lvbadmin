@@ -1,105 +1,110 @@
-<app-breadcrumbs [crumbs]="[{ label: i18n.t('nav.account') }]" />
+<app-breadcrumbs [crumbs]="[{ label: 'Mon compte' }]" />
 
-@if (auth.currentUser(); as user) {
-  <div class="flex items-center gap-3 mb-5">
-    <app-avatar [name]="user.prenom + ' ' + user.nom" [size]="48" />
-    <div>
-      <h1 class="text-xl font-semibold">{{ user.prenom }} {{ user.nom }}</h1>
-      <p class="text-sm mt-0.5" style="color: var(--text-muted)">{{ user.email }} · {{ roleLabels[user.role] }}</p>
-    </div>
+<div class="flex items-center gap-3 mb-5">
+  <div class="h-12 w-12 rounded-full flex items-center justify-center text-sm font-semibold text-white shrink-0" style="background: var(--brand)">
+    {{ (email.slice(0, 2) || '?').toUpperCase() }}
   </div>
+  <div>
+    <h1 class="text-xl font-semibold">Mon compte</h1>
+    <p class="text-sm mt-0.5" style="color: var(--text-muted)">{{ email }}</p>
+  </div>
+</div>
 
-  <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
+<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
-  <div class="mt-5 max-w-2xl">
-    @if (activeTab() === 'profile') {
-      <form [formGroup]="profileForm" class="card p-5 flex flex-col gap-4">
-        <div class="grid grid-cols-2 gap-3">
-          <app-field label="Prénom" [control]="profileForm.controls.prenom" [required]="true"><input class="input" formControlName="prenom" /></app-field>
-          <app-field label="Nom" [control]="profileForm.controls.nom" [required]="true"><input class="input" formControlName="nom" /></app-field>
-        </div>
-        <app-field label="Langue" [control]="profileForm.controls.langue" [required]="true">
-          <select class="select" formControlName="langue"><option value="fr">Français</option><option value="en">English</option></select>
-        </app-field>
-        <button type="button" class="btn btn-primary btn-sm self-start" [disabled]="savingProfile()" (click)="saveProfile()">{{ i18n.t('action.save') }}</button>
-      </form>
-    }
+<div class="mt-5 max-w-2xl">
+  @if (activeTab() === 'profil') {
+    <form [formGroup]="profileForm" class="card p-5 flex flex-col gap-4">
+      <app-alert-banner kind="info">L’API ne renvoie jamais votre profil actuel (aucun point d’accès de lecture) — laissez un champ vide pour ne pas le modifier.</app-alert-banner>
+      <div class="grid grid-cols-2 gap-3">
+        <app-field label="Prénom" [control]="profileForm.controls.prenom"><input class="input" formControlName="prenom" /></app-field>
+        <app-field label="Nom" [control]="profileForm.controls.nom"><input class="input" formControlName="nom" /></app-field>
+      </div>
+      <app-field label="Langue" [control]="profileForm.controls.langue">
+        <select class="select" formControlName="langue"><option value="">Ne pas modifier</option><option value="fr">Français</option><option value="en">English</option></select>
+      </app-field>
+      <button type="button" class="btn btn-primary btn-sm self-start" [disabled]="savingProfile()" (click)="saveProfile()">Enregistrer</button>
+    </form>
+  }
 
-    @if (activeTab() === 'security') {
-      <div class="flex flex-col gap-5">
-        <div class="card p-5">
-          <p class="text-sm font-medium mb-3">Mot de passe</p>
-          <form [formGroup]="passwordForm" class="flex flex-col gap-4">
-            <app-field label="Mot de passe actuel" [control]="passwordForm.controls.current" [required]="true"><input type="password" class="input" formControlName="current" /></app-field>
-            <app-field label="Nouveau mot de passe" [control]="passwordForm.controls.next" [required]="true" hint="Minimum 12 caractères, majuscule, minuscule et chiffre (SEC-01).">
-              <input type="password" class="input" formControlName="next" />
-            </app-field>
-            <app-field label="Confirmer le mot de passe" [control]="passwordForm.controls.confirm" [required]="true"><input type="password" class="input" formControlName="confirm" /></app-field>
-            <button type="button" class="btn btn-primary btn-sm self-start" [disabled]="changingPassword()" (click)="changePassword()">{{ i18n.t('action.save') }}</button>
-          </form>
-        </div>
+  @if (activeTab() === 'securite') {
+    <div class="flex flex-col gap-5">
+      <div class="card p-5">
+        <p class="text-sm font-medium mb-2">Mot de passe</p>
+        <p class="text-xs mb-3" style="color: var(--text-muted)">Un lien de réinitialisation sera envoyé à {{ email }}.</p>
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="requestingReset()" (click)="requestPasswordReset()">Envoyer le lien de réinitialisation</button>
+      </div>
 
-        <div class="card p-5">
-          <div class="flex items-center justify-between mb-3">
-            <p class="text-sm font-medium">{{ i18n.t('auth.sessions.title') }}</p>
-            @if (user.mfa_actif) {
-              <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--status-good-bg); color: var(--status-good)">2FA activée</span>
+      <div class="card p-5">
+        <p class="text-sm font-medium mb-3">Sessions actives</p>
+        @if (loadingSessions()) {
+          <div class="skeleton h-16 w-full"></div>
+        } @else {
+          <div class="flex flex-col gap-2">
+            @for (s of sessions(); track s.id) {
+              <div class="flex items-center justify-between rounded-(--radius-sm) px-3 py-2.5" style="background: var(--surface-2)">
+                <div>
+                  <p class="text-xs font-medium">{{ s.appareilNom || 'Appareil' }} @if (s.estSessionCourante) { <span style="color: var(--status-good)">(session courante)</span> }</p>
+                  <p class="text-[11px] mt-0.5" style="color: var(--text-muted)">{{ s.ip }} · dernière activité {{ sessionActivity(s) }}</p>
+                </div>
+                @if (!s.estSessionCourante) {
+                  <button type="button" class="btn btn-danger-ghost btn-sm !py-1" (click)="revokeSession(s)">Révoquer</button>
+                }
+              </div>
+            } @empty {
+              <p class="text-xs text-center py-6" style="color: var(--text-muted)">Aucune session active.</p>
             }
           </div>
-          @if (loadingSessions()) {
-            <div class="skeleton h-16 w-full"></div>
-          } @else {
-            <div class="flex flex-col gap-2">
-              @for (s of sessions(); track s.id) {
-                <div class="flex items-center justify-between rounded-(--radius-sm) px-3 py-2.5" style="background: var(--surface-2)">
-                  <div>
-                    <p class="text-xs font-medium">{{ s.appareil }} — {{ s.modele }} @if (s.courante) { <span style="color: var(--status-good)">({{ i18n.t('auth.sessions.current') }})</span> }</p>
-                    <p class="text-[11px] mt-0.5" style="color: var(--text-muted)">{{ s.localisation_approx }} · dernière activité {{ formatRelative(s.derniere_activite_le) }}</p>
-                  </div>
-                  <button type="button" class="btn btn-danger-ghost btn-sm !py-1" (click)="revokeSession(s)">{{ i18n.t('auth.sessions.revoke') }}</button>
-                </div>
-              }
-            </div>
-          }
-        </div>
+        }
       </div>
-    }
+    </div>
+  }
 
-    @if (activeTab() === 'notifications') {
-      <div class="card p-5">
-        <p class="text-sm font-medium mb-3">Préférences par catégorie (NOTIF-02)</p>
+  @if (activeTab() === 'notifications') {
+    <div class="card p-5">
+      <p class="text-sm font-medium mb-3">Préférences par catégorie</p>
+      @if (loadingPrefs()) {
+        <div class="skeleton h-16"></div>
+      } @else if (prefs(); as p) {
         <div class="flex flex-col gap-3">
-          @for (pref of notificationPrefs(); track pref.key) {
+          @for (key of p | keyvalue; track key.key) {
             <div class="flex items-center justify-between gap-3">
-              <div>
-                <p class="text-sm">{{ pref.label }}</p>
-                <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ pref.hint }}</p>
-              </div>
-              <app-toggle [checked]="prefState()[pref.key]" [disabled]="pref.locked" (checkedChange)="togglePref(pref.key, $event)" [label]="pref.label" />
+              <p class="text-sm">{{ key.key }}</p>
+              <app-toggle [checked]="key.value" (checkedChange)="togglePref($any(key.key), $event)" [label]="$any(key.key)" />
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  @if (activeTab() === 'confidentialite') {
+    <div class="flex flex-col gap-4">
+      <div class="card p-5">
+        <p class="text-sm font-medium mb-3">Consentements</p>
+        <div class="flex flex-col gap-3">
+          @for (c of consents; track c.type) {
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-sm">{{ c.label }}</p>
+              <app-toggle [checked]="consentState()[c.type] ?? false" (checkedChange)="toggleConsent(c.type, $event)" [label]="c.label" />
             </div>
           }
         </div>
       </div>
-    }
-
-    @if (activeTab() === 'privacy') {
-      <div class="flex flex-col gap-4">
-        <app-alert-banner kind="info">Conforme à la loi n° 2010/012 (cybersécurité) et à la supervision ANTIC — vos données sont conservées selon la politique de rétention du §12.6.</app-alert-banner>
-        <div class="card p-5 flex items-center justify-between gap-3">
-          <div>
-            <p class="text-sm font-medium">Exporter mes données</p>
-            <p class="text-xs mt-0.5" style="color: var(--text-muted)">Recevez une copie de vos données personnelles dans un format lisible.</p>
-          </div>
-          <button type="button" class="btn btn-secondary btn-sm" (click)="requestDataExport()">{{ i18n.t('action.export') }}</button>
+      <div class="card p-5 flex items-center justify-between gap-3">
+        <div>
+          <p class="text-sm font-medium">Exporter mes données</p>
+          <p class="text-xs mt-0.5" style="color: var(--text-muted)">Profil, consentements et adresses (SEC-52).</p>
         </div>
-        <div class="card p-5 flex items-center justify-between gap-3">
-          <div>
-            <p class="text-sm font-medium">Supprimer mon compte</p>
-            <p class="text-xs mt-0.5" style="color: var(--text-muted)">Anonymisation sous 30 jours, hors données à conservation légale.</p>
-          </div>
-          <button type="button" class="btn btn-danger-ghost btn-sm" (click)="requestAccountDeletion()">{{ i18n.t('action.delete') }}</button>
-        </div>
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="exporting()" (click)="exportData()">Exporter</button>
       </div>
-    }
-  </div>
-}
+      <div class="card p-5 flex items-center justify-between gap-3">
+        <div>
+          <p class="text-sm font-medium">Supprimer mon compte</p>
+          <p class="text-xs mt-0.5" style="color: var(--text-muted)">Anonymisation sous 30 jours, hors commande en cours ou solde non nul.</p>
+        </div>
+        <button type="button" class="btn btn-danger-ghost btn-sm" [disabled]="requestingDeletion()" (click)="requestDeletion()">Supprimer</button>
+      </div>
+    </div>
+  }
+</div>

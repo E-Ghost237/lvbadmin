@@ -1,128 +1,154 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
-import { AuthService } from '../../../core/auth/auth.service';
-import { I18nService } from '../../../core/i18n/i18n.service';
-import { DriversService } from '../../../core/services/drivers.service';
-import { NotificationsService } from '../../../core/services/notifications.service';
-import { OrdersService } from '../../../core/services/orders.service';
-import { ReportsService } from '../../../core/services/reports.service';
-import { AlertKind, OperationsSnapshot, SupervisionAlert } from '../../../core/models';
-import { formatRelative } from '../../../core/utils/formatters';
+import { SupervisionAlert, SupervisionAlertType, SupervisionDashboard, SupervisionService } from '../../../core/services/supervision.service';
+import { GeoPoint, ProblemDetails } from '../../../core/models';
+import { formatRelative, formatXaf } from '../../../core/utils/formatters';
 import {
-  AlertBannerComponent, BreadcrumbsComponent, EmptyStateComponent, FormFieldComponent, MapMarker,
-  MapPanelComponent, MapZoneShape, ModalComponent, StatTileComponent, ToastService,
+  BreadcrumbsComponent, ForbiddenStateComponent, FormFieldComponent, MapMarker,
+  MapPanelComponent, ModalComponent, StatTileComponent, ToastService,
 } from '../../../shared/ui';
 
-const ALERT_LABELS: Record<AlertKind, string> = {
-  SANS_AFFECTATION: 'Sans affectation', RETARD_SLA: 'Retard SLA', INCIDENT_CRITIQUE: 'Incident critique',
-  PAIEMENT_EN_ATTENTE: 'Paiement en attente', PLAFOND_COD: 'Plafond COD', ECART_PROXIMITE: 'Écart de proximité',
+const ALERT_TYPE_LABELS: Record<SupervisionAlertType, string> = {
+  COMMANDE_NON_AFFECTEE: 'Sans affectation',
+  SLA_DEPASSE: 'Retard SLA',
+  ECART_PROXIMITE: 'Écart de proximité',
+  PLAFOND_COD_PROCHE: 'Plafond COD proche',
+  PAIEMENT_EN_ATTENTE: 'Paiement en attente',
+  INCIDENT_CRITIQUE: 'Incident critique',
 };
 
-const DOUALA_BBOX = { latMin: 3.95, latMax: 4.15, lngMin: 9.6, lngMax: 9.85 };
-const YAOUNDE_BBOX = { latMin: 3.8, latMax: 3.95, lngMin: 11.44, lngMax: 11.6 };
+const OPERATIONAL_TONE: Record<string, MapMarker['tone']> = {
+  DISPONIBLE: 'good', EN_MISSION: 'info', PAUSE: 'warning', HORS_LIGNE: 'neutral',
+};
 
 @Component({
   selector: 'app-dashboard-page',
   imports: [
-    ReactiveFormsModule, RouterLink, StatTileComponent, MapPanelComponent, EmptyStateComponent,
-    ModalComponent, FormFieldComponent, AlertBannerComponent, BreadcrumbsComponent,
+    ReactiveFormsModule, BreadcrumbsComponent, StatTileComponent, MapPanelComponent,
+    ForbiddenStateComponent, ModalComponent, FormFieldComponent,
   ],
   templateUrl: './dashboard-page.component.html',
 })
 export class DashboardPageComponent {
-  private readonly reports = inject(ReportsService);
-  private readonly driversService = inject(DriversService);
-  private readonly ordersService = inject(OrdersService);
-  protected readonly notifications = inject(NotificationsService);
-  protected readonly auth = inject(AuthService);
-  protected readonly i18n = inject(I18nService);
+  private readonly supervision = inject(SupervisionService);
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
 
-  protected readonly city = signal<'Douala' | 'Yaoundé'>('Douala');
-  protected readonly bbox = computed(() => (this.city() === 'Douala' ? DOUALA_BBOX : YAOUNDE_BBOX));
-  protected readonly snapshot = signal<OperationsSnapshot | null>(null);
-  protected readonly loadingSnapshot = signal(true);
+  protected readonly loading = signal(true);
+  protected readonly forbidden = signal(false);
+  protected readonly dashboard = signal<SupervisionDashboard | null>(null);
+  protected readonly typeFilter = signal<SupervisionAlertType | 'TOUTES'>('TOUTES');
+  protected readonly ackTarget = signal<SupervisionAlert | null>(null);
+  protected readonly acking = signal(false);
 
-  protected readonly typeFilter = signal<AlertKind | 'TOUS'>('TOUS');
-  protected readonly alertLabels = ALERT_LABELS;
-  protected readonly alertKinds: AlertKind[] = ['SANS_AFFECTATION', 'RETARD_SLA', 'INCIDENT_CRITIQUE', 'PAIEMENT_EN_ATTENTE', 'PLAFOND_COD', 'ECART_PROXIMITE'];
-
-  protected readonly filteredAlerts = computed(() => {
-    const filter = this.typeFilter();
-    return this.notifications.alerts().filter((a) => filter === 'TOUS' || a.type === filter);
+  protected readonly ackForm = this.fb.nonNullable.group({
+    motif: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(2000)]],
   });
 
-  protected readonly alertCountsByType = computed(() => {
-    const counts = new Map<AlertKind, number>();
-    for (const a of this.notifications.alerts()) {
-      if (!a.acquittee) counts.set(a.type, (counts.get(a.type) ?? 0) + 1);
-    }
+  protected readonly alertTypes = Object.keys(ALERT_TYPE_LABELS) as SupervisionAlertType[];
+  protected readonly alertTypeLabel = ALERT_TYPE_LABELS;
+
+  protected readonly filteredAlerts = computed(() => {
+    const d = this.dashboard();
+    if (!d) return [];
+    const filter = this.typeFilter();
+    return filter === 'TOUTES' ? d.alerts : d.alerts.filter((a) => a.type === filter);
+  });
+
+  protected readonly alertCountByType = computed(() => {
+    const d = this.dashboard();
+    const counts: Partial<Record<SupervisionAlertType, number>> = {};
+    if (!d) return counts;
+    for (const a of d.alerts) counts[a.type] = (counts[a.type] ?? 0) + 1;
     return counts;
   });
 
-  protected readonly acknowledgeTarget = signal<SupervisionAlert | null>(null);
-  protected readonly acknowledgeForm = this.fb.nonNullable.group({ motif: ['', [Validators.required]] });
-  protected readonly acknowledging = signal(false);
+  protected readonly activeDriversCount = computed(() => {
+    const d = this.dashboard();
+    return d ? d.drivers.filter((drv) => drv.operational_status !== 'HORS_LIGNE').length : 0;
+  });
 
-  private allDrivers = signal<import('../../../core/models').Driver[]>([]);
-  private allActiveOrders = signal<import('../../../core/models').Order[]>([]);
+  protected readonly driverMarkers = computed<MapMarker[]>(() => {
+    const d = this.dashboard();
+    if (!d) return [];
+    return d.drivers
+      .filter((drv): drv is typeof drv & { lat: number; lng: number } => drv.lat !== null && drv.lng !== null)
+      .map((drv) => ({
+        id: drv.user_uuid,
+        point: { lat: drv.lat, lng: drv.lng },
+        tone: OPERATIONAL_TONE[drv.operational_status] ?? 'neutral',
+        label: `${drv.matricule} — ${drv.operational_status}`,
+      }));
+  });
 
-  protected readonly driverMarkers = computed<MapMarker[]>(() => this.allDrivers()
-    .filter((d) => d.statut === 'ACTIF' && d.position && d.zone_predilection === (this.city() === 'Douala' ? 'zone_dla_couv' : 'zone_yde_couv'))
-    .map((d) => ({
-      id: d.id, point: d.position!, label: `${d.prenom} ${d.nom} — ${d.statut_operationnel}`,
-      tone: d.statut_operationnel === 'DISPONIBLE' ? 'good' : d.statut_operationnel === 'EN_MISSION' ? 'info' : d.statut_operationnel === 'PAUSE' ? 'warning' : 'neutral',
-    })));
-
-  protected readonly zoneShapes = computed<MapZoneShape[]>(() => {
-    const b = this.bbox();
-    return [{ id: 'zone', center: { lat: (b.latMin + b.latMax) / 2, lng: (b.lngMin + b.lngMax) / 2 }, radiusKm: 8, color: 'var(--brand)', label: 'Zone de couverture' }];
+  protected readonly bbox = computed(() => {
+    const points: GeoPoint[] = this.driverMarkers().map((m) => m.point);
+    if (points.length === 0) return { latMin: 3.6, latMax: 4.3, lngMin: 9.5, lngMax: 11.7 };
+    const lats = points.map((p) => p.lat);
+    const lngs = points.map((p) => p.lng);
+    const pad = 0.03;
+    return {
+      latMin: Math.min(...lats) - pad, latMax: Math.max(...lats) + pad,
+      lngMin: Math.min(...lngs) - pad, lngMax: Math.max(...lngs) + pad,
+    };
   });
 
   constructor() {
-    this.refreshSnapshot();
-    this.driversService.list({ page_size: 500 }).subscribe((res) => this.allDrivers.set(res.items));
-    this.ordersService.list({ statut: 'ACTIVES', page_size: 500 }).subscribe((res) => this.allActiveOrders.set(res.items));
+    this.fetch();
   }
 
-  refreshSnapshot(): void {
-    this.loadingSnapshot.set(true);
-    this.reports.operationsSnapshot().subscribe((snap) => {
-      this.snapshot.set(snap);
-      this.loadingSnapshot.set(false);
+  fetch(): void {
+    this.loading.set(true);
+    this.forbidden.set(false);
+    this.supervision.dashboard().subscribe({
+      next: (d) => {
+        this.dashboard.set(d);
+        this.loading.set(false);
+      },
+      error: (err: ProblemDetails) => {
+        this.loading.set(false);
+        if (err.status === 403) this.forbidden.set(true);
+        else this.toast.error('Chargement impossible', err.detail);
+      },
     });
   }
 
-  relative(iso: string): string {
-    return formatRelative(iso, this.i18n.locale());
-  }
-
-  toggleFilter(type: AlertKind | 'TOUS'): void {
+  selectType(type: SupervisionAlertType | 'TOUTES'): void {
     this.typeFilter.set(type);
   }
 
-  openAcknowledge(alert: SupervisionAlert): void {
-    this.acknowledgeForm.reset();
-    this.acknowledgeTarget.set(alert);
+  openAck(alert: SupervisionAlert): void {
+    this.ackForm.reset();
+    this.ackTarget.set(alert);
   }
 
-  submitAcknowledge(): void {
-    if (this.acknowledgeForm.invalid) {
-      this.acknowledgeForm.markAllAsTouched();
+  confirmAck(): void {
+    if (this.ackForm.invalid) {
+      this.ackForm.markAllAsTouched();
       return;
     }
-    const target = this.acknowledgeTarget();
-    if (!target) return;
-    this.acknowledging.set(true);
-    this.notifications.acknowledgeAlert(target.id, this.acknowledgeForm.getRawValue().motif).subscribe({
+    const alert = this.ackTarget();
+    if (!alert) return;
+    this.acking.set(true);
+    this.supervision.acknowledgeAlert(alert.id, this.ackForm.getRawValue().motif).subscribe({
       next: () => {
-        this.acknowledging.set(false);
-        this.acknowledgeTarget.set(null);
+        this.acking.set(false);
+        this.ackTarget.set(null);
         this.toast.success('Alerte acquittée');
+        this.fetch();
       },
-      error: () => this.acknowledging.set(false),
+      error: (err: ProblemDetails) => {
+        this.acking.set(false);
+        this.toast.error('Échec de l’acquittement', err.detail);
+      },
     });
+  }
+
+  relative(iso: string | null): string {
+    return formatRelative(iso);
+  }
+
+  xaf(amount: number): string {
+    return formatXaf(amount);
   }
 }

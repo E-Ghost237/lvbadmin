@@ -1,6 +1,10 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, input, signal } from '@angular/core';
-import { KpiPoint } from '../../../core/models';
+
+export interface ChartPoint {
+  label: string;
+  value: number;
+}
 
 /** Small vertical bar chart — single hue, 4px rounded data-ends, 2px surface gap, hover tooltip. */
 @Component({
@@ -35,7 +39,7 @@ import { KpiPoint } from '../../../core/models';
   `,
 })
 export class BarChartComponent {
-  readonly points = input.required<KpiPoint[]>();
+  readonly points = input.required<ChartPoint[]>();
   readonly width = input(320);
   readonly height = input(120);
   readonly color = input('var(--brand)');

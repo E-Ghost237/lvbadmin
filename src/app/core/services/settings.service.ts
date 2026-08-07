@@ -1,41 +1,31 @@
-import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { SystemParameter } from '../models';
-import { MockDbService } from '../mock/mock-db.service';
-import { mockFail, mockOk } from '../mock/mock-utils';
-import { AuthService } from '../auth/auth.service';
+import { API_BASE_URL } from '../http/api.config';
 
-/** UC-ADM-13 — paramètres opérationnels modifiables sans redéploiement, effectifs en < 60 s, journalisés. */
+export type ParametreType = 'string' | 'integer' | 'decimal' | 'boolean' | 'json';
+
+export interface Parametre {
+  cle: string;
+  valeur: string;
+}
+
+/**
+ * UC-ADM-13 — /v1/admin/parametres/{cle} (Catalog module). Purely a
+ * generic key-value store server-side; no list-all endpoint and no
+ * fixed key registry exist anywhere in the backend, so this is a
+ * genuine get/set-by-key tool rather than a curated settings page.
+ */
 @Injectable({ providedIn: 'root' })
 export class SettingsService {
-  constructor(private readonly db: MockDbService, private readonly auth: AuthService) {}
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = inject(API_BASE_URL);
 
-  list(): Observable<SystemParameter[]> {
-    return mockOk([...this.db.systemParameters()].sort((a, b) => a.categorie.localeCompare(b.categorie)));
+  get(cle: string): Observable<Parametre> {
+    return this.http.get<Parametre>(`${this.baseUrl}/admin/parametres/${encodeURIComponent(cle)}`);
   }
 
-  update(cle: string, valeur: number | boolean | string): Observable<SystemParameter> {
-    const param = this.db.systemParameters().find((p) => p.cle === cle);
-    if (!param) return mockFail('ERR-4001', 'Paramètre introuvable.');
-    if (param.type === 'NOMBRE') {
-      const num = Number(valeur);
-      if (!Number.isFinite(num)) return mockFail('ERR-4001', 'Valeur numérique invalide.');
-      if (param.min !== undefined && num < param.min) return mockFail('ERR-4001', `La valeur minimale est ${param.min}.`);
-      if (param.max !== undefined && num > param.max) return mockFail('ERR-4001', `La valeur maximale est ${param.max}.`);
-    }
-    const actor = this.auth.currentUser();
-    this.db.mutate((s) => {
-      const idx = s.systemParameters.findIndex((p) => p.cle === cle);
-      s.systemParameters[idx] = { ...s.systemParameters[idx], valeur, modifie_le: new Date().toISOString(), modifie_par: actor ? `${actor.prenom} ${actor.nom}` : 'Système' };
-      return s;
-    });
-    if (actor) {
-      this.db.logAudit({
-        auteur_nom: `${actor.prenom} ${actor.nom}`, auteur_role: actor.role, action: 'Modification de paramètre système',
-        ressource: 'parametre', ressource_id: cle, ip: '41.202.11.4', appareil: 'Navigateur web',
-        valeur_avant: { valeur: param.valeur }, valeur_apres: { valeur },
-      });
-    }
-    return mockOk(this.db.systemParameters().find((p) => p.cle === cle)!, 200);
+  set(cle: string, valeur: string, type: ParametreType, description?: string): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/admin/parametres/${encodeURIComponent(cle)}`, { valeur, type, description: description ?? null });
   }
 }

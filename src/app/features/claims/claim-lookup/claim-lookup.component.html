@@ -1,0 +1,118 @@
+<app-breadcrumbs [crumbs]="[{ label: 'Réclamations & litiges' }]" />
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">Réclamations & litiges</h1>
+  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Aucun point d’accès ne liste les litiges en attente — ouvrez un dossier par l’identifiant de la réclamation (UUID), obtenu depuis la console téléconseiller ou une escalade.</p>
+</div>
+
+<div class="card p-4 max-w-xl flex items-end gap-3">
+  <div class="flex-1">
+    <label class="field-label">UUID de la réclamation</label>
+    <input class="input" [value]="uuid()" (input)="onUuidInput($any($event.target).value)" (keydown.enter)="lookup()" placeholder="ex. 3f2e1a4b-..." />
+  </div>
+  <button type="button" class="btn btn-primary" [disabled]="loading() || !uuid().trim()" (click)="lookup()">Ouvrir</button>
+</div>
+
+@if (loading()) {
+  <div class="skeleton h-60 mt-4 max-w-3xl"></div>
+} @else if (notFound()) {
+  <div class="mt-4 max-w-xl"><app-alert-banner kind="danger">Dossier introuvable pour cet identifiant.</app-alert-banner></div>
+} @else if (dossier(); as d) {
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-5">
+    <div class="lg:col-span-2 flex flex-col gap-4">
+      <div class="card p-5">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-semibold">Réclamation #{{ d.complaint.id }}</p>
+          <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--surface-2)">{{ d.complaint.status }}</span>
+        </div>
+        <p class="text-xs mt-1" style="color: var(--text-muted)">{{ d.complaint.category }} · ouverte le {{ dateTime(d.complaint.opened_at) }}</p>
+        <p class="text-sm mt-3">{{ d.complaint.description }}</p>
+      </div>
+
+      <div class="card p-5">
+        <p class="text-sm font-semibold mb-3">Commande</p>
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div><p class="text-xs" style="color: var(--text-muted)">Destinataire</p><p>{{ d.order.recipient_name }}</p></div>
+          <div><p class="text-xs" style="color: var(--text-muted)">Téléphone</p><p>{{ d.order.recipient_phone }}</p></div>
+          <div><p class="text-xs" style="color: var(--text-muted)">Statut</p><p>{{ d.order.status }}</p></div>
+          <div><p class="text-xs" style="color: var(--text-muted)">Prix</p><p>{{ xaf(d.order.price_xaf) }}</p></div>
+          <div><p class="text-xs" style="color: var(--text-muted)">Promise</p><p>{{ dateTime(d.order.promised_at) }}</p></div>
+          <div><p class="text-xs" style="color: var(--text-muted)">Livrée</p><p>{{ d.order.delivered_at ? dateTime(d.order.delivered_at) : '—' }}</p></div>
+        </div>
+        <p class="text-xs font-semibold mt-4 mb-2" style="color: var(--text-muted)">HISTORIQUE</p>
+        <div class="flex flex-col gap-1.5">
+          @for (h of d.order_history; track h.at) {
+            <div class="flex items-center gap-2 text-xs">
+              <span class="h-1.5 w-1.5 rounded-full shrink-0" style="background: var(--brand)"></span>
+              <span class="tabular-nums" style="color: var(--text-muted)">{{ dateTime(h.at) }}</span>
+              <span>{{ h.from ? h.from + ' → ' : '' }}{{ h.to }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      @if (d.driver; as driver) {
+        <div class="card p-5">
+          <p class="text-sm font-semibold mb-3">Livreur</p>
+          <pre class="text-xs overflow-x-auto thin-scroll" style="color: var(--text-secondary)">{{ driver.profile | json }}</pre>
+          @if (driver.sanctions.length > 0) {
+            <p class="text-xs font-semibold mt-3 mb-2" style="color: var(--text-muted)">SANCTIONS</p>
+            <div class="flex flex-col gap-1.5">
+              @for (s of driver.sanctions; track s.uuid) {
+                <div class="text-xs">{{ s.type }} — {{ s.status }} — {{ s.reason }}</div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <div class="card p-5">
+        <p class="text-sm font-semibold mb-3">Échanges</p>
+        @if (d.exchanges.complaint_statement) { <p class="text-sm mb-3">{{ d.exchanges.complaint_statement }}</p> }
+        @if (d.exchanges.attachments.length > 0) {
+          <p class="text-xs font-semibold mb-2" style="color: var(--text-muted)">PIÈCES JOINTES</p>
+          <div class="flex flex-col gap-1">
+            @for (a of d.exchanges.attachments; track a.sha256) {
+              <a [href]="a.temporary_url" target="_blank" rel="noopener" class="link text-xs">{{ a.name }}</a>
+            }
+          </div>
+        }
+        @if (d.exchanges.masked_calls.length > 0) {
+          <p class="text-xs font-semibold mt-3 mb-2" style="color: var(--text-muted)">APPELS</p>
+          @for (c of d.exchanges.masked_calls; track c.call_id) {
+            <p class="text-xs">{{ c.mode }} · {{ dateTime(c.initiated_at) }}</p>
+          }
+        }
+        @if (!d.exchanges.complaint_statement && d.exchanges.attachments.length === 0 && d.exchanges.masked_calls.length === 0) {
+          <p class="text-xs" style="color: var(--text-muted)">Aucun échange enregistré.</p>
+        }
+      </div>
+    </div>
+
+    <div class="card p-5 h-fit">
+      @if (d.arbitration) {
+        <p class="text-sm font-semibold mb-2">Décision déjà rendue</p>
+        <pre class="text-xs overflow-x-auto thin-scroll" style="color: var(--text-secondary)">{{ d.arbitration | json }}</pre>
+      } @else {
+        <p class="text-sm font-semibold mb-3">Rendre une décision</p>
+        <form [formGroup]="decisionForm" class="flex flex-col gap-3">
+          <app-field label="Décision" [control]="decisionForm.controls.decision" required>
+            <select class="select" formControlName="decision">
+              <option value="CLIENT_RESPONSABLE">Client responsable</option>
+              <option value="LIVREUR_RESPONSABLE">Livreur responsable</option>
+              <option value="PARTAGEE">Responsabilité partagée</option>
+              <option value="AUCUNE_FAUTE">Aucune faute</option>
+            </select>
+          </app-field>
+          <app-field label="Motif" [control]="decisionForm.controls.motif_decision" required hint="Minimum 10 caractères.">
+            <textarea class="textarea" formControlName="motif_decision" rows="4"></textarea>
+          </app-field>
+          <app-field label="Geste commercial (XAF)" [control]="decisionForm.controls.geste_commercial_xaf">
+            <input type="number" min="0" class="input" formControlName="geste_commercial_xaf" />
+          </app-field>
+          <button type="button" class="btn btn-primary" [disabled]="deciding()" (click)="decide()">Enregistrer la décision</button>
+        </form>
+      }
+    </div>
+  </div>
+}

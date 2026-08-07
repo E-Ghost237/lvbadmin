@@ -1,5 +1,5 @@
 import { Component, computed, input } from '@angular/core';
-import { KpiPoint } from '../../../core/models';
+import { ChartPoint } from './bar-chart.component';
 
 /** Single-series trend line — thin 2px stroke, rounded end anchored to the last value, no axis clutter. */
 @Component({
@@ -21,7 +21,7 @@ import { KpiPoint } from '../../../core/models';
   `,
 })
 export class SparklineComponent {
-  readonly points = input.required<KpiPoint[]>();
+  readonly points = input.required<ChartPoint[]>();
   readonly width = input(160);
   readonly height = input(40);
   readonly color = input('var(--brand)');

@@ -1,143 +1,166 @@
+import { KeyValuePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/auth/auth.service';
-import { I18nService } from '../../../core/i18n/i18n.service';
-import { MockDbService } from '../../../core/mock/mock-db.service';
-import { NotificationsService } from '../../../core/services/notifications.service';
-import { ProblemDetails, Session } from '../../../core/models';
-import { matchControls, passwordPolicy, requiredTrimmed } from '../../../core/utils/validators';
-import { formatDateTime, formatRelative } from '../../../core/utils/formatters';
-import { ROLE_LABELS } from '../../../core/auth/rbac';
+import { AccountService, ConsentType } from '../../../core/services/account.service';
+import { DeviceSessionSummary, ProblemDetails } from '../../../core/models';
+import { formatDateTime } from '../../../core/utils/formatters';
 import {
-  AlertBannerComponent, AvatarComponent, BreadcrumbsComponent, ConfirmService, FormFieldComponent, TabDef, TabsComponent,
-  ToastService, ToggleComponent,
+  AlertBannerComponent, BreadcrumbsComponent, ConfirmService, FormFieldComponent, TabDef, TabsComponent,
+  ToggleComponent, ToastService,
 } from '../../../shared/ui';
-
-interface NotificationPref {
-  key: string;
-  label: string;
-  hint: string;
-  locked: boolean;
-}
 
 @Component({
   selector: 'app-account-page',
-  imports: [ReactiveFormsModule, TabsComponent, FormFieldComponent, AlertBannerComponent, AvatarComponent, BreadcrumbsComponent, ToggleComponent],
+  imports: [KeyValuePipe, ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, ToggleComponent, AlertBannerComponent],
   templateUrl: './account-page.component.html',
 })
 export class AccountPageComponent {
-  private readonly fb = inject(FormBuilder);
+  private readonly auth = inject(AuthService);
+  private readonly account = inject(AccountService);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
-  private readonly db = inject(MockDbService);
-  private readonly router = inject(Router);
-  protected readonly auth = inject(AuthService);
-  protected readonly notifications = inject(NotificationsService);
-  protected readonly i18n = inject(I18nService);
-  protected readonly roleLabels = ROLE_LABELS;
+  private readonly fb = inject(FormBuilder);
 
+  protected readonly email = this.auth.identity()?.email ?? '';
   protected readonly tabs: TabDef[] = [
-    { id: 'profile', label: 'Profil' }, { id: 'security', label: 'Sécurité' },
-    { id: 'notifications', label: 'Notifications' }, { id: 'privacy', label: 'Confidentialité' },
+    { id: 'profil', label: 'Profil' }, { id: 'securite', label: 'Sécurité' },
+    { id: 'notifications', label: 'Notifications' }, { id: 'confidentialite', label: 'Confidentialité' },
   ];
-  protected readonly activeTab = signal('profile');
+  protected readonly activeTab = signal('profil');
 
-  // --- Profil ---------------------------------------------------------------
+  // --- Profil -----------------------------------------------------------
   protected readonly profileForm = this.fb.nonNullable.group({
-    prenom: [this.auth.currentUser()?.prenom ?? '', [requiredTrimmed()]],
-    nom: [this.auth.currentUser()?.nom ?? '', [requiredTrimmed()]],
-    langue: [this.auth.currentUser()?.langue ?? 'fr', [Validators.required]],
+    prenom: [''],
+    nom: [''],
+    langue: [''],
   });
   protected readonly savingProfile = signal(false);
 
-  // --- Sécurité ---------------------------------------------------------------
-  protected readonly passwordForm = this.fb.nonNullable.group({
-    current: ['', [Validators.required]],
-    next: ['', [Validators.required, passwordPolicy()]],
-    confirm: ['', [Validators.required]],
-  }, { validators: [matchControls('next', 'confirm')] });
-  protected readonly changingPassword = signal(false);
-
-  protected readonly sessions = signal<Session[]>([]);
-  protected readonly loadingSessions = signal(true);
-
-  // --- Confidentialité --------------------------------------------------------
-  protected readonly notificationPrefs = signal<NotificationPref[]>([
-    { key: 'critical', label: 'Alertes critiques', hint: 'Retard SLA, incidents critiques — jamais désactivables.', locked: true },
-    { key: 'daily', label: 'Résumé quotidien', hint: 'KPI du jour envoyés chaque matin.', locked: false },
-    { key: 'product', label: 'Nouveautés produit', hint: 'Annonces de nouvelles fonctionnalités.', locked: false },
-  ]);
-  protected readonly prefState = signal<Record<string, boolean>>({ critical: true, daily: true, product: false });
-
-  constructor() {
-    this.loadSessions();
-  }
-
-  selectTab(id: string): void { this.activeTab.set(id); }
-
   saveProfile(): void {
-    if (this.profileForm.invalid) { this.profileForm.markAllAsTouched(); return; }
+    const v = this.profileForm.getRawValue();
+    const patch: { nom?: string; prenom?: string; langue?: 'fr' | 'en' } = {};
+    if (v.nom.trim()) patch.nom = v.nom.trim();
+    if (v.prenom.trim()) patch.prenom = v.prenom.trim();
+    if (v.langue) patch.langue = v.langue as 'fr' | 'en';
+    if (Object.keys(patch).length === 0) return;
     this.savingProfile.set(true);
-    this.auth.updateOwnProfile(this.profileForm.getRawValue()).subscribe(() => {
-      this.savingProfile.set(false);
-      this.toast.success('Profil mis à jour');
-    });
-  }
-
-  changePassword(): void {
-    if (this.passwordForm.invalid) { this.passwordForm.markAllAsTouched(); return; }
-    const { current, next } = this.passwordForm.getRawValue();
-    this.changingPassword.set(true);
-    this.auth.changePassword(current, next).subscribe({
+    this.auth.updateProfile(patch).subscribe({
       next: () => {
-        this.changingPassword.set(false);
-        this.passwordForm.reset({ current: '', next: '', confirm: '' });
-        this.toast.success('Mot de passe modifié');
+        this.savingProfile.set(false);
+        this.toast.success('Profil mis à jour');
+        this.profileForm.reset({ prenom: '', nom: '', langue: '' });
       },
-      error: (err: ProblemDetails) => { this.changingPassword.set(false); this.toast.error('Échec', err.detail); },
+      error: (err: ProblemDetails) => {
+        this.savingProfile.set(false);
+        this.toast.error('Échec', err.detail);
+      },
     });
   }
 
-  private loadSessions(): void {
+  // --- Sécurité -----------------------------------------------------------
+  protected readonly sessions = signal<DeviceSessionSummary[]>([]);
+  protected readonly loadingSessions = signal(true);
+  protected readonly requestingReset = signal(false);
+
+  selectTab(id: string): void {
+    this.activeTab.set(id);
+    if (id === 'securite' && this.sessions().length === 0) this.fetchSessions();
+    if (id === 'notifications' && this.prefs() === null) this.fetchPrefs();
+  }
+
+  fetchSessions(): void {
     this.loadingSessions.set(true);
-    this.auth.sessions().subscribe((res) => {
-      this.sessions.set(res);
-      this.loadingSessions.set(false);
+    this.auth.sessions().subscribe({
+      next: (s) => { this.loadingSessions.set(false); this.sessions.set(s); },
+      error: (err: ProblemDetails) => { this.loadingSessions.set(false); this.toast.error('Chargement impossible', err.detail); },
     });
   }
 
-  async revokeSession(session: Session): Promise<void> {
-    if (session.courante) {
-      const ok = await this.confirm.ask({ title: 'Révoquer cette session', danger: true, message: 'Vous serez déconnecté immédiatement. Continuer ?' });
-      if (!ok) return;
-    }
-    this.auth.revokeSession(session.id).subscribe(() => {
-      if (session.courante) {
-        this.auth.logout();
-        this.router.navigate(['/login']);
-        return;
-      }
-      this.loadSessions();
-      this.toast.success('Session révoquée');
+  revokeSession(session: DeviceSessionSummary): void {
+    this.auth.revokeSession(session.id).subscribe({
+      next: () => { this.toast.success('Session révoquée'); this.fetchSessions(); },
+      error: (err: ProblemDetails) => this.toast.error('Échec', err.detail),
     });
   }
 
-  togglePref(key: string, value: boolean): void {
-    this.prefState.update((s) => ({ ...s, [key]: value }));
-    this.toast.info('Préférence enregistrée');
+  requestPasswordReset(): void {
+    this.requestingReset.set(true);
+    this.auth.requestPasswordReset(this.email).subscribe({
+      next: () => { this.requestingReset.set(false); this.toast.success('Lien envoyé', 'Consultez votre messagerie professionnelle.'); },
+      error: (err: ProblemDetails) => { this.requestingReset.set(false); this.toast.error('Échec', err.detail); },
+    });
   }
 
-  async requestDataExport(): Promise<void> {
-    const ok = await this.confirm.ask({ title: 'Exporter mes données', message: 'Un export de vos données personnelles sera préparé et envoyé par email (UC-AUT-08). Continuer ?' });
-    if (ok) this.toast.success('Demande enregistrée', 'Vous recevrez un lien de téléchargement sous peu.');
+  // --- Notifications ------------------------------------------------------
+  protected readonly prefs = signal<Record<string, boolean> | null>(null);
+  protected readonly loadingPrefs = signal(true);
+
+  fetchPrefs(): void {
+    this.loadingPrefs.set(true);
+    this.account.notificationPreferences().subscribe({
+      next: (p) => { this.loadingPrefs.set(false); this.prefs.set(p); },
+      error: (err: ProblemDetails) => { this.loadingPrefs.set(false); this.toast.error('Chargement impossible', err.detail); },
+    });
   }
 
-  async requestAccountDeletion(): Promise<void> {
-    const ok = await this.confirm.ask({ title: 'Demander la suppression du compte', danger: true, confirmLabel: 'Envoyer la demande', message: 'Votre compte sera anonymisé sous 30 jours, hors données à conservation légale (UC-AUT-08). Continuer ?' });
-    if (ok) this.toast.info('Demande transmise', 'Traitement sous 30 jours.');
+  togglePref(category: string, enabled: boolean): void {
+    this.account.updateNotificationPreference(category, enabled).subscribe({
+      next: () => {
+        this.prefs.update((p) => (p ? { ...p, [category]: enabled } : p));
+        this.toast.success('Préférence mise à jour');
+      },
+      error: (err: ProblemDetails) => this.toast.error('Échec', err.detail),
+    });
   }
 
-  formatDateTime(v: string): string { return formatDateTime(v); }
-  formatRelative(v: string): string { return formatRelative(v, this.i18n.locale()); }
+  // --- Confidentialité --------------------------------------------------
+  protected readonly consents: { type: ConsentType; label: string }[] = [
+    { type: 'MARKETING', label: 'Communications marketing' },
+    { type: 'PARTAGE_POSITION', label: 'Partage de position' },
+  ];
+  protected readonly consentState = signal<Partial<Record<ConsentType, boolean>>>({});
+  protected readonly exporting = signal(false);
+  protected readonly requestingDeletion = signal(false);
+
+  toggleConsent(type: ConsentType, accepte: boolean): void {
+    this.account.updateConsent(type, accepte).subscribe({
+      next: () => {
+        this.consentState.update((s) => ({ ...s, [type]: accepte }));
+        this.toast.success('Consentement enregistré');
+      },
+      error: (err: ProblemDetails) => this.toast.error('Échec', err.detail),
+    });
+  }
+
+  exportData(): void {
+    this.exporting.set(true);
+    this.account.exportData().subscribe({
+      next: (data) => {
+        this.exporting.set(false);
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'mes-donnees.json';
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: (err: ProblemDetails) => { this.exporting.set(false); this.toast.error('Échec', err.detail); },
+    });
+  }
+
+  async requestDeletion(): Promise<void> {
+    const ok = await this.confirm.ask({ title: 'Supprimer mon compte ?', message: 'Anonymisation sous 30 jours, sauf commande en cours ou solde non nul.', danger: true });
+    if (!ok) return;
+    this.requestingDeletion.set(true);
+    this.account.requestDeletion().subscribe({
+      next: (res) => { this.requestingDeletion.set(false); this.toast.success(res.message); },
+      error: (err: ProblemDetails) => { this.requestingDeletion.set(false); this.toast.error('Échec', err.detail); },
+    });
+  }
+
+  sessionActivity(session: DeviceSessionSummary): string {
+    return formatDateTime(`${session.derniereActiviteLe.date.replace(' ', 'T')}Z`);
+  }
 }

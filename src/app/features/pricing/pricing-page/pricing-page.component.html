@@ -1,222 +1,110 @@
-<app-breadcrumbs [crumbs]="[{ label: i18n.t('nav.pricing') }]" />
+<app-breadcrumbs [crumbs]="[{ label: 'Tarification & zones' }]" />
 
-<div class="flex items-center justify-between gap-3 mb-5 flex-wrap">
-  <div>
-    <h1 class="text-xl font-semibold">{{ i18n.t('nav.pricing') }}</h1>
-    <p class="text-sm mt-0.5" style="color: var(--text-muted)">Moteur de tarification déterministe (RG-010→016) et zones opérationnelles.</p>
-  </div>
-  @if (activeTab() === 'grids' && auth.hasPermission('tarif.modifier')) {
-    <button type="button" class="btn btn-primary btn-sm" (click)="openGridForm()">+ Nouvelle version</button>
-  }
-  @if (activeTab() === 'zones' && auth.hasPermission('zone.write')) {
-    <button type="button" class="btn btn-primary btn-sm" (click)="openZoneForm()">+ Nouvelle zone</button>
-  }
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">Tarification & zones</h1>
+  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Moteur de tarification déterministe (RG-010→016) et zones opérationnelles.</p>
 </div>
 
 <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
 <div class="mt-5">
-  @if (activeTab() === 'grids') {
-    <div class="flex gap-1.5 mb-4">
-      @for (v of ['TOUS','Douala','Yaoundé']; track v) {
-        <button type="button" class="px-3 py-1 rounded-full text-xs font-medium" [style.background]="gridVilleFilter() === v ? 'var(--brand)' : 'var(--surface-2)'" [style.color]="gridVilleFilter() === v ? 'white' : 'var(--text-secondary)'" (click)="filterGrids($any(v))">{{ v === 'TOUS' ? i18n.t('common.all') : v }}</button>
-      }
-    </div>
+  @if (activeTab() === 'grilles') {
+    <p class="text-xs mb-3 max-w-2xl" style="color: var(--text-muted)">Il n’existe pas de point d’accès pour lister les grilles existantes — seules celles créées pendant cette session apparaissent ci-dessous pour activation.</p>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl">
+      <form [formGroup]="grilleForm" (ngSubmit)="createGrille()" class="card p-5 flex flex-col gap-3">
+        <p class="text-sm font-medium mb-1">Nouvelle grille</p>
+        <div class="grid grid-cols-2 gap-3">
+          <app-field label="Nom" [control]="grilleForm.controls.nom" required><input class="input" formControlName="nom" placeholder="DOUALA_2026_R1" /></app-field>
+          <app-field label="Ville" [control]="grilleForm.controls.ville" required>
+            <select class="select" formControlName="ville"><option value="Douala">Douala</option><option value="Yaoundé">Yaoundé</option></select>
+          </app-field>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <app-field label="Frais prise en charge" [control]="grilleForm.controls.frais_prise_en_charge" required><input type="number" min="0" class="input" formControlName="frais_prise_en_charge" /></app-field>
+          <app-field label="Tarif / km" [control]="grilleForm.controls.tarif_km" required><input type="number" min="0" class="input" formControlName="tarif_km" /></app-field>
+          <app-field label="Tarif / min" [control]="grilleForm.controls.tarif_minute" required><input type="number" min="0" class="input" formControlName="tarif_minute" /></app-field>
+          <app-field label="Prix minimum" [control]="grilleForm.controls.prix_minimum" required><input type="number" min="0" class="input" formControlName="prix_minimum" /></app-field>
+          <app-field label="Arrondi" [control]="grilleForm.controls.arrondi" required><input type="number" min="0" class="input" formControlName="arrondi" /></app-field>
+          <app-field label="Plafond remise" [control]="grilleForm.controls.plafond_remise"><input type="number" min="0" class="input" formControlName="plafond_remise" /></app-field>
+        </div>
+        <button type="submit" class="btn btn-primary self-start" [disabled]="creatingGrille()">Créer (brouillon)</button>
+      </form>
 
-    @if (loadingGrids()) {
-      <div class="grid gap-3">@for (i of [1,2,3]; track i) { <div class="skeleton h-20 w-full"></div> }</div>
-    } @else {
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        @for (g of grids(); track g.id) {
-          <div class="card p-4">
-            <div class="flex items-center justify-between">
-              <p class="text-sm font-semibold tabular-nums">{{ g.version_label }}</p>
-              <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                [style.background]="g.statut === 'ACTIVE' ? 'var(--status-good-bg)' : g.statut === 'BROUILLON' ? 'var(--status-warning-bg)' : g.statut === 'PLANIFIEE' ? 'var(--brand-50)' : 'var(--status-neutral-bg)'"
-                [style.color]="g.statut === 'ACTIVE' ? 'var(--status-good)' : g.statut === 'BROUILLON' ? 'var(--status-warning)' : g.statut === 'PLANIFIEE' ? 'var(--brand-600)' : 'var(--status-neutral)'">
-                {{ g.statut }}
-              </span>
-            </div>
-            <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ g.ville }}</p>
-            <div class="grid grid-cols-2 gap-2 mt-3 text-xs">
-              <div><span style="color: var(--text-muted)">Prise en charge</span><p class="font-medium">{{ formatXaf(g.frais_prise_en_charge) }}</p></div>
-              <div><span style="color: var(--text-muted)">Tarif / km</span><p class="font-medium">{{ formatXaf(g.tarif_par_km) }}</p></div>
-              <div><span style="color: var(--text-muted)">Tarif / min</span><p class="font-medium">{{ formatXaf(g.tarif_par_minute) }}</p></div>
-              <div><span style="color: var(--text-muted)">Prix minimum</span><p class="font-medium">{{ formatXaf(g.prix_minimum) }}</p></div>
-            </div>
-            <p class="text-[11px] mt-3" style="color: var(--text-muted)">
-              @if (g.statut === 'ACTIVE') { Active depuis le {{ formatDateTime(g.active_le) }} }
-              @else if (g.statut === 'ARCHIVEE') { Archivée le {{ formatDateTime(g.archivee_le) }} }
-              @else { Créée le {{ formatDateTime(g.cree_le) }} }
-            </p>
-            <div class="flex gap-2 mt-3">
-              <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openSimulate(g)">Simuler</button>
-              @if (g.statut === 'BROUILLON' && auth.hasPermission('tarif.modifier')) {
-                <button type="button" class="btn btn-primary btn-sm !py-1" (click)="activateGrid(g)">Activer</button>
+      <div class="card p-4">
+        <p class="text-sm font-medium mb-3">Grilles créées cette session</p>
+        <div class="flex flex-col gap-2">
+          @for (g of sessionGrilles(); track g.id) {
+            <div class="flex items-center justify-between rounded-(--radius-sm) px-3 py-2.5" style="background: var(--surface-2)">
+              <div>
+                <p class="text-sm font-medium">{{ g.nom }}</p>
+                <p class="text-xs" style="color: var(--text-muted)">{{ g.ville }} · #{{ g.id }}</p>
+              </div>
+              @if (g.activated) {
+                <span class="text-xs font-medium" style="color: var(--status-good)">Activée</span>
+              } @else {
+                <button type="button" class="btn btn-secondary btn-sm !py-1" [disabled]="activatingId() === g.id" (click)="activateGrille(g)">Activer</button>
               }
             </div>
+          } @empty {
+            <p class="text-xs text-center py-6" style="color: var(--text-muted)">Aucune grille créée pour l’instant.</p>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (activeTab() === 'zones') {
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex rounded-(--radius-sm) overflow-hidden" style="border: 1px solid var(--border-strong)">
+        <button type="button" class="px-3 py-1.5 text-xs font-medium" [style.background]="zoneVille() === 'Douala' ? 'var(--brand)' : 'transparent'" [style.color]="zoneVille() === 'Douala' ? 'white' : 'var(--text-secondary)'" (click)="selectVille('Douala')">Douala</button>
+        <button type="button" class="px-3 py-1.5 text-xs font-medium" [style.background]="zoneVille() === 'Yaoundé' ? 'var(--brand)' : 'transparent'" [style.color]="zoneVille() === 'Yaoundé' ? 'white' : 'var(--text-secondary)'" (click)="selectVille('Yaoundé')">Yaoundé</button>
+      </div>
+      <button type="button" class="btn btn-primary btn-sm" (click)="openZoneForm()">+ Nouvelle zone</button>
+    </div>
+
+    @if (forbiddenZones()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission catalog.manage." />
+    } @else if (zoneFormOpen()) {
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl">
+        <form [formGroup]="zoneForm" (ngSubmit)="createZone()" class="card p-5 flex flex-col gap-3">
+          <app-field label="Nom" [control]="zoneForm.controls.nom" required><input class="input" formControlName="nom" /></app-field>
+          <app-field label="Type" [control]="zoneForm.controls.type" required>
+            <select class="select" formControlName="type">
+              <option value="COUVERTURE">Couverture</option><option value="INTERDITE">Interdite</option>
+              <option value="MAJORATION">Majoration</option><option value="DIFFICILE">Difficile</option>
+            </select>
+          </app-field>
+          <div class="grid grid-cols-2 gap-3">
+            <app-field label="Supplément fixe (XAF)" [control]="zoneForm.controls.supplement_fixe"><input type="number" min="0" class="input" formControlName="supplement_fixe" /></app-field>
+            <app-field label="Prix minimum (XAF)" [control]="zoneForm.controls.prix_minimum"><input type="number" min="0" class="input" formControlName="prix_minimum" /></app-field>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" class="btn btn-secondary btn-sm" (click)="zoneFormOpen.set(false)">Annuler</button>
+            <button type="button" class="btn btn-secondary btn-sm" (click)="resetPolygon()">Effacer le tracé</button>
+            <button type="submit" class="btn btn-primary btn-sm" [disabled]="savingZone() || zonePoints().length < 3">Créer la zone</button>
+          </div>
+        </form>
+        <div class="card p-4">
+          <p class="text-xs mb-2" style="color: var(--text-muted)">Cliquez sur la carte pour tracer le polygone (3 points minimum).</p>
+          <app-polygon-picker [points]="zonePoints()" (pointsChange)="onPolygonPoints($event)" [height]="320" />
+        </div>
+      </div>
+    } @else if (loadingZones()) {
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"><div class="skeleton h-20"></div><div class="skeleton h-20"></div></div>
+    } @else {
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        @for (z of zones(); track z.id) {
+          <div class="card p-4 flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium">{{ z.nom }}</p>
+              <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ z.type }}</p>
+            </div>
+            <button type="button" class="btn btn-danger-ghost btn-sm !py-1" (click)="deleteZone(z)">Supprimer</button>
           </div>
         } @empty {
-          <app-empty-state title="Aucune grille tarifaire" />
+          <p class="text-xs col-span-full text-center py-8" style="color: var(--text-muted)">Aucune zone pour {{ zoneVille() }}.</p>
         }
       </div>
     }
   }
-
-  @if (activeTab() === 'zones') {
-    <div class="flex gap-1.5 mb-4">
-      @for (v of ['Douala','Yaoundé']; track v) {
-        <button type="button" class="px-3 py-1 rounded-full text-xs font-medium" [style.background]="zoneVilleFilter() === v ? 'var(--brand)' : 'var(--surface-2)'" [style.color]="zoneVilleFilter() === v ? 'white' : 'var(--text-secondary)'" (click)="zoneVilleFilter.set($any(v))">{{ v }}</button>
-      }
-    </div>
-
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
-      <div class="card p-4">
-        <app-map-panel [bbox]="bboxFor(zoneVilleFilter())" [zones]="zoneShapes(zoneVilleFilter())" [height]="340">
-          <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--status-good)"></span> Couverture</div>
-          <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--status-critical)"></span> Interdite</div>
-          <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--status-warning)"></span> Majoration</div>
-          <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--series-6)"></span> Difficile</div>
-        </app-map-panel>
-      </div>
-
-      <div class="card overflow-hidden">
-        <div class="divide-y" style="border-color: var(--border)">
-          @if (loadingZones()) {
-            <div class="p-4"><div class="skeleton h-32 w-full"></div></div>
-          } @else {
-            @for (z of zonesForCity(zoneVilleFilter()); track z.id) {
-              <div class="p-3.5 flex items-center justify-between gap-3" style="border-color: var(--border)">
-                <div>
-                  <p class="text-sm font-medium">{{ z.nom }}</p>
-                  <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ z.type }} · rayon {{ z.rayon_km }} km @if (z.supplement_fixe > 0) { · +{{ formatXaf(z.supplement_fixe) }} }</p>
-                </div>
-                @if (auth.hasPermission('zone.write')) {
-                  <app-toggle [checked]="z.actif" (checkedChange)="toggleZoneActive(z)" [label]="'Zone active : ' + z.nom" />
-                }
-              </div>
-            } @empty {
-              <app-empty-state title="Aucune zone pour cette ville" />
-            }
-          }
-        </div>
-      </div>
-    </div>
-  }
 </div>
-
-<!-- Nouvelle version de grille -->
-<app-modal [open]="showGridForm()" title="Nouvelle version de grille tarifaire" size="lg" (closed)="showGridForm.set(false)">
-  <form [formGroup]="gridForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-    <app-field label="Libellé de version" [control]="gridForm.controls.version_label" [required]="true" hint="Ex. DOUALA_2026_R4">
-      <input class="input" formControlName="version_label" />
-    </app-field>
-    <app-field label="Ville" [control]="gridForm.controls.ville" [required]="true">
-      <select class="select" formControlName="ville"><option value="Douala">Douala</option><option value="Yaoundé">Yaoundé</option></select>
-    </app-field>
-    <app-field label="Frais de prise en charge (XAF)" [control]="gridForm.controls.frais_prise_en_charge" [required]="true">
-      <input type="number" class="input" formControlName="frais_prise_en_charge" />
-    </app-field>
-    <app-field label="Tarif au km (XAF)" [control]="gridForm.controls.tarif_par_km" [required]="true">
-      <input type="number" class="input" formControlName="tarif_par_km" />
-    </app-field>
-    <app-field label="Tarif à la minute (XAF)" [control]="gridForm.controls.tarif_par_minute" [required]="true">
-      <input type="number" class="input" formControlName="tarif_par_minute" />
-    </app-field>
-    <app-field label="Prix minimum (XAF)" [control]="gridForm.controls.prix_minimum" [required]="true">
-      <input type="number" class="input" formControlName="prix_minimum" />
-    </app-field>
-    <app-field label="Arrondi supérieur (XAF)" [control]="gridForm.controls.arrondi" [required]="true">
-      <input type="number" class="input" formControlName="arrondi" />
-    </app-field>
-    <app-field label="Coefficient EXPRESS" [control]="gridForm.controls.coef_urgence_express" [required]="true">
-      <input type="number" step="0.05" class="input" formControlName="coef_urgence_express" />
-    </app-field>
-    <app-field label="Coefficient soir (18h–21h)" [control]="gridForm.controls.coef_horaire_soir" [required]="true">
-      <input type="number" step="0.05" class="input" formControlName="coef_horaire_soir" />
-    </app-field>
-    <app-field label="Coefficient nuit (21h–6h)" [control]="gridForm.controls.coef_horaire_nuit" [required]="true">
-      <input type="number" step="0.05" class="input" formControlName="coef_horaire_nuit" />
-    </app-field>
-    <app-field label="Supplément poids (XAF/kg > 5kg)" [control]="gridForm.controls.supplement_poids_kg" [required]="true">
-      <input type="number" class="input" formControlName="supplement_poids_kg" />
-    </app-field>
-    <app-field label="Supplément fragile (XAF)" [control]="gridForm.controls.supplement_fragile" [required]="true">
-      <input type="number" class="input" formControlName="supplement_fragile" />
-    </app-field>
-    <app-field label="Plafond de remise (XAF)" [control]="gridForm.controls.plafond_remise" [required]="true">
-      <input type="number" class="input" formControlName="plafond_remise" />
-    </app-field>
-    <app-field label="Plafond coefficient de demande" [control]="gridForm.controls.demande_plafond" [required]="true" hint="RG-015 — jamais > 1,5, même en crise.">
-      <input type="number" step="0.05" max="1.5" class="input" formControlName="demande_plafond" />
-    </app-field>
-    <label class="flex items-center gap-2 text-sm mt-6">
-      <input type="checkbox" class="checkbox" formControlName="demande_dynamique_active" /> Tarification dynamique activée
-    </label>
-  </form>
-  <div modal-footer>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="showGridForm.set(false)">{{ i18n.t('action.cancel') }}</button>
-    <button type="button" class="btn btn-primary btn-sm" [disabled]="savingGrid()" (click)="saveGridDraft()">{{ i18n.t('action.save') }} (brouillon)</button>
-  </div>
-</app-modal>
-
-<!-- Simulation -->
-<app-modal [open]="simulateTarget() !== null" title="Simuler un devis" size="md" (closed)="simulateTarget.set(null)">
-  @if (simulateTarget(); as g) {
-    <app-alert-banner kind="info" class="block mb-4">Grille {{ g.version_label }} ({{ g.ville }}) — calcul déterministe RG-010.</app-alert-banner>
-    <form [formGroup]="simulateForm" class="grid grid-cols-2 gap-3">
-      <app-field label="Distance (km)" [control]="simulateForm.controls.distance_km" [required]="true"><input type="number" step="0.1" class="input" formControlName="distance_km" /></app-field>
-      <app-field label="Durée (min)" [control]="simulateForm.controls.duree_min" [required]="true"><input type="number" class="input" formControlName="duree_min" /></app-field>
-      <app-field label="Urgence" [control]="simulateForm.controls.urgence" [required]="true">
-        <select class="select" formControlName="urgence"><option value="STANDARD">Standard</option><option value="EXPRESS">Express</option><option value="PLANIFIE">Planifiée</option></select>
-      </app-field>
-      <app-field label="Heure" [control]="simulateForm.controls.heure" [required]="true"><input type="time" class="input" formControlName="heure" /></app-field>
-      <app-field label="Poids (kg)" [control]="simulateForm.controls.poids_kg" [required]="true"><input type="number" step="0.1" class="input" formControlName="poids_kg" /></app-field>
-      <app-field label="Ratio demande/offre" [control]="simulateForm.controls.ratio_demande" hint="RG-015"><input type="number" step="0.1" class="input" formControlName="ratio_demande" /></app-field>
-      <label class="flex items-center gap-2 text-sm col-span-2"><input type="checkbox" class="checkbox" formControlName="fragile" /> Colis fragile</label>
-    </form>
-    <button type="button" class="btn btn-primary btn-sm mt-4" [disabled]="simulating()" (click)="runSimulation()">Calculer</button>
-
-    @if (simulationResult(); as r) {
-      <div class="mt-4 rounded-(--radius-md) p-4" style="background: var(--surface-2)">
-        <p class="text-2xl font-semibold tabular-nums">{{ formatXaf(r.prix_final) }}</p>
-        <div class="mt-2 flex flex-col gap-1">
-          @for (line of r.decomposition; track line.libelle) {
-            <div class="flex justify-between text-xs" style="color: var(--text-secondary)"><span>{{ line.libelle }}</span><span class="tabular-nums">{{ formatXaf(line.montant) }}</span></div>
-          }
-        </div>
-      </div>
-    }
-  }
-  <div modal-footer>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="simulateTarget.set(null)">{{ i18n.t('action.close') }}</button>
-  </div>
-</app-modal>
-
-<!-- Nouvelle zone -->
-<app-modal [open]="showZoneForm()" title="Nouvelle zone" size="sm" (closed)="showZoneForm.set(false)">
-  <form [formGroup]="zoneForm" class="flex flex-col gap-4">
-    <app-field label="Nom" [control]="zoneForm.controls.nom" [required]="true"><input class="input" formControlName="nom" /></app-field>
-    <div class="grid grid-cols-2 gap-3">
-      <app-field label="Ville" [control]="zoneForm.controls.ville" [required]="true">
-        <select class="select" formControlName="ville"><option value="Douala">Douala</option><option value="Yaoundé">Yaoundé</option></select>
-      </app-field>
-      <app-field label="Type" [control]="zoneForm.controls.type" [required]="true">
-        <select class="select" formControlName="type">
-          <option value="COUVERTURE">Couverture</option><option value="INTERDITE">Interdite</option>
-          <option value="MAJORATION">Majoration</option><option value="DIFFICILE">Difficile</option>
-        </select>
-      </app-field>
-    </div>
-    <div class="grid grid-cols-3 gap-3">
-      <app-field label="Latitude" [control]="zoneForm.controls.lat" [required]="true"><input type="number" step="0.0001" class="input" formControlName="lat" /></app-field>
-      <app-field label="Longitude" [control]="zoneForm.controls.lng" [required]="true"><input type="number" step="0.0001" class="input" formControlName="lng" /></app-field>
-      <app-field label="Rayon (km)" [control]="zoneForm.controls.rayon_km" [required]="true"><input type="number" step="0.1" class="input" formControlName="rayon_km" /></app-field>
-    </div>
-    <app-field label="Supplément fixe (XAF)" [control]="zoneForm.controls.supplement_fixe"><input type="number" class="input" formControlName="supplement_fixe" /></app-field>
-  </form>
-  <div modal-footer>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="showZoneForm.set(false)">{{ i18n.t('action.cancel') }}</button>
-    <button type="button" class="btn btn-primary btn-sm" [disabled]="savingZone()" (click)="saveZone()">{{ i18n.t('action.save') }}</button>
-  </div>
-</app-modal>

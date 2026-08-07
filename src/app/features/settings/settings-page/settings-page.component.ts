@@ -1,73 +1,72 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { I18nService } from '../../../core/i18n/i18n.service';
-import { SettingsService } from '../../../core/services/settings.service';
-import { ProblemDetails, SystemParameter } from '../../../core/models';
-import { formatDateTime } from '../../../core/utils/formatters';
-import { BreadcrumbsComponent, ToastService, ToggleComponent } from '../../../shared/ui';
-
-const CATEGORY_LABELS: Record<SystemParameter['categorie'], string> = {
-  DISPATCH: 'Dispatch', DELAIS: 'Délais', PLAFONDS: 'Plafonds financiers', SLA: 'SLA & qualité de service', TARIFICATION: 'Tarification',
-};
+import { Component, inject, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Parametre, ParametreType, SettingsService } from '../../../core/services/settings.service';
+import { ProblemDetails } from '../../../core/models';
+import { AlertBannerComponent, BreadcrumbsComponent, FormFieldComponent, ToastService } from '../../../shared/ui';
 
 @Component({
   selector: 'app-settings-page',
-  imports: [ToggleComponent, BreadcrumbsComponent],
+  imports: [ReactiveFormsModule, BreadcrumbsComponent, FormFieldComponent, AlertBannerComponent],
   templateUrl: './settings-page.component.html',
 })
 export class SettingsPageComponent {
-  private readonly settingsService = inject(SettingsService);
+  private readonly settings = inject(SettingsService);
   private readonly toast = inject(ToastService);
-  protected readonly i18n = inject(I18nService);
+  private readonly fb = inject(FormBuilder);
 
-  protected readonly categoryLabels = CATEGORY_LABELS;
-  protected readonly categories: SystemParameter['categorie'][] = ['DISPATCH', 'DELAIS', 'PLAFONDS', 'SLA', 'TARIFICATION'];
-  protected readonly parameters = signal<SystemParameter[]>([]);
-  protected readonly loading = signal(true);
-  protected readonly drafts = signal<Record<string, number | boolean | string>>({});
-  protected readonly saving = signal<string | null>(null);
+  protected readonly key = signal('');
+  protected readonly loading = signal(false);
+  protected readonly notFound = signal(false);
+  protected readonly current = signal<Parametre | null>(null);
 
-  constructor() {
-    this.fetch();
+  protected readonly editForm = this.fb.nonNullable.group({
+    valeur: ['', [Validators.required]],
+    type: ['string' as ParametreType, [Validators.required]],
+    description: [''],
+  });
+  protected readonly saving = signal(false);
+
+  onKeyInput(value: string): void {
+    this.key.set(value);
   }
 
-  private fetch(): void {
+  lookup(): void {
+    if (!this.key().trim()) return;
     this.loading.set(true);
-    this.settingsService.list().subscribe((res) => {
-      this.parameters.set(res);
-      const drafts: Record<string, number | boolean | string> = {};
-      for (const p of res) drafts[p.cle] = p.valeur;
-      this.drafts.set(drafts);
-      this.loading.set(false);
-    });
-  }
-
-  paramsFor(cat: SystemParameter['categorie']): SystemParameter[] {
-    return this.parameters().filter((p) => p.categorie === cat);
-  }
-
-  draftValue(cle: string): number | boolean | string {
-    return this.drafts()[cle];
-  }
-
-  updateDraft(cle: string, value: number | boolean | string): void {
-    this.drafts.update((d) => ({ ...d, [cle]: value }));
-  }
-
-  isDirty(param: SystemParameter): boolean {
-    return this.drafts()[param.cle] !== param.valeur;
-  }
-
-  save(param: SystemParameter): void {
-    this.saving.set(param.cle);
-    this.settingsService.update(param.cle, this.drafts()[param.cle]).subscribe({
-      next: () => {
-        this.saving.set(null);
-        this.fetch();
-        this.toast.success('Paramètre mis à jour', 'Effectif immédiatement, sans redéploiement (UC-ADM-13).');
+    this.notFound.set(false);
+    this.current.set(null);
+    this.settings.get(this.key().trim()).subscribe({
+      next: (p) => {
+        this.loading.set(false);
+        this.current.set(p);
+        this.editForm.reset({ valeur: p.valeur, type: 'string', description: '' });
       },
-      error: (err: ProblemDetails) => { this.saving.set(null); this.toast.error('Échec', err.detail); },
+      error: (err: ProblemDetails) => {
+        this.loading.set(false);
+        if (err.status === 404) this.notFound.set(true);
+        else this.toast.error('Chargement impossible', err.detail);
+      },
     });
   }
 
-  formatDateTime(v: string): string { return formatDateTime(v); }
+  save(): void {
+    if (this.editForm.invalid) {
+      this.editForm.markAllAsTouched();
+      return;
+    }
+    const v = this.editForm.getRawValue();
+    this.saving.set(true);
+    this.settings.set(this.key().trim(), v.valeur, v.type, v.description || undefined).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.toast.success('Paramètre enregistré');
+        this.notFound.set(false);
+        this.current.set({ cle: this.key().trim(), valeur: v.valeur });
+      },
+      error: (err: ProblemDetails) => {
+        this.saving.set(false);
+        this.toast.error('Échec de l’enregistrement', err.detail);
+      },
+    });
+  }
 }

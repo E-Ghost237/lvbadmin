@@ -61,21 +61,6 @@
             {{ i18n.t('auth.login.submit') }}
           </button>
         </form>
-
-        <div class="mt-8 rounded-(--radius-md) p-3.5 text-xs" style="background: var(--surface-2); border: 1px solid var(--border)">
-          <p class="font-medium mb-2">Comptes de démonstration (accès conjoint, sans backend)</p>
-          <div class="flex flex-col gap-1">
-            @for (acc of demoAccounts; track acc.email) {
-              <button type="button" class="text-left flex items-center justify-between gap-2 py-1 hover:opacity-70" (click)="fillDemo(acc.email)">
-                <span class="tabular-nums">{{ acc.email }}</span>
-                <span style="color: var(--text-muted)">{{ acc.role }}</span>
-              </button>
-            }
-          </div>
-          <p class="mt-2 pt-2" style="border-top: 1px dashed var(--border-strong); color: var(--text-muted)">
-            Mot de passe : <span class="kbd">{{ demoPassword }}</span> — cliquez un compte pour le préremplir.
-          </p>
-        </div>
       } @else {
         <h1 class="text-xl font-semibold">{{ i18n.t('auth.mfa.title') }}</h1>
         <p class="text-sm mt-1 mb-6" style="color: var(--text-muted)">{{ i18n.t('auth.mfa.subtitle') }}</p>
@@ -85,7 +70,7 @@
         }
 
         <form [formGroup]="mfaForm" (ngSubmit)="submitMfa()" class="flex flex-col gap-4" novalidate>
-          <app-field [label]="i18n.t('auth.mfa.code')" [control]="mfaForm.controls.code" required hint="Code de démonstration : 123456">
+          <app-field [label]="i18n.t('auth.mfa.code')" [control]="mfaForm.controls.code" required>
             <input
               type="text" inputmode="numeric" maxlength="6" class="input text-center text-lg tracking-[0.5em] font-semibold" formControlName="code" autocomplete="one-time-code"
               [class.input-invalid]="mfaForm.controls.code.invalid && mfaForm.controls.code.touched"

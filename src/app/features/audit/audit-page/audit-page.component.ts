@@ -1,64 +1,94 @@
+import { JsonPipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
-import { I18nService } from '../../../core/i18n/i18n.service';
-import { AuditService } from '../../../core/services/audit.service';
-import { AuditLogEntry } from '../../../core/models';
+import { AuditLogEntry, AuditService } from '../../../core/services/audit.service';
+import { ProblemDetails } from '../../../core/models';
 import { formatDateTime } from '../../../core/utils/formatters';
 import {
-  BreadcrumbsComponent, ColumnDef, DataTableComponent, ModalComponent, PaginationComponent, SearchInputComponent,
+  BreadcrumbsComponent, ColumnDef, DataTableComponent, ForbiddenStateComponent, ModalComponent, ToastService,
 } from '../../../shared/ui';
 
 @Component({
   selector: 'app-audit-page',
-  imports: [DataTableComponent, PaginationComponent, SearchInputComponent, BreadcrumbsComponent, ModalComponent],
+  imports: [JsonPipe, BreadcrumbsComponent, DataTableComponent, ForbiddenStateComponent, ModalComponent],
   templateUrl: './audit-page.component.html',
 })
 export class AuditPageComponent {
-  private readonly auditService = inject(AuditService);
-  protected readonly i18n = inject(I18nService);
-
-  protected readonly rows = signal<AuditLogEntry[]>([]);
-  protected readonly total = signal(0);
-  protected readonly loading = signal(true);
-  protected readonly page = signal(1);
-  protected readonly pageSize = signal(25);
-  protected readonly action = signal('TOUS');
-  protected readonly search = signal('');
-  protected readonly actions = computedActions(this.auditService);
-
-  protected readonly selected = signal<AuditLogEntry | null>(null);
+  private readonly audit = inject(AuditService);
+  private readonly toast = inject(ToastService);
 
   protected readonly columns: ColumnDef<AuditLogEntry>[] = [
-    { key: 'cree_le', label: 'Horodatage', cell: (a) => formatDateTime(a.cree_le) },
-    { key: 'auteur_nom', label: 'Auteur' },
+    { key: 'cree_le', label: 'Horodatage', cell: (r) => formatDateTime(r.cree_le) },
     { key: 'action', label: 'Action' },
-    { key: 'ressource', label: 'Ressource' },
-    { key: 'ip', label: 'IP' },
-    { key: 'appareil', label: 'Appareil' },
+    { key: 'ressource_type', label: 'Ressource' },
+    { key: 'acteur_type', label: 'Acteur' },
+    { key: 'ip', label: 'IP', cell: (r) => r.ip ?? '—' },
   ];
+  protected readonly trackById = (row: AuditLogEntry) => row.id;
+
+  protected readonly rows = signal<AuditLogEntry[]>([]);
+  protected readonly loading = signal(true);
+  protected readonly forbidden = signal(false);
+  protected readonly nextCursor = signal<number | null>(null);
+
+  protected readonly actionFilter = signal('');
+  protected readonly resourceTypeFilter = signal('');
+  protected readonly exporting = signal(false);
+
+  protected readonly detail = signal<AuditLogEntry | null>(null);
 
   constructor() {
     this.fetch();
   }
 
-  private fetch(): void {
+  fetch(cursor?: number): void {
     this.loading.set(true);
-    this.auditService.list({ page: this.page(), page_size: this.pageSize(), action: this.action(), search: this.search() || undefined }).subscribe((res) => {
-      this.rows.set(res.items);
-      this.total.set(res.total);
-      this.loading.set(false);
+    this.forbidden.set(false);
+    this.audit.search({
+      action: this.actionFilter() || undefined, ressource_type: this.resourceTypeFilter() || undefined, cursor,
+    }).subscribe({
+      next: (page) => {
+        this.loading.set(false);
+        this.rows.set(cursor ? [...this.rows(), ...page.items] : page.items);
+        this.nextCursor.set(page.next_cursor);
+      },
+      error: (err: ProblemDetails) => {
+        this.loading.set(false);
+        if (err.status === 403) this.forbidden.set(true);
+        else this.toast.error('Chargement impossible', err.detail);
+      },
     });
   }
 
-  applyFilters(): void { this.page.set(1); this.fetch(); }
-  onSearch(v: string): void { this.search.set(v); this.applyFilters(); }
-  onPageChange(p: number): void { this.page.set(p); this.fetch(); }
+  onActionFilter(v: string): void {
+    this.actionFilter.set(v);
+    this.fetch();
+  }
 
-  openDetail(entry: AuditLogEntry): void { this.selected.set(entry); }
+  onResourceTypeFilter(v: string): void {
+    this.resourceTypeFilter.set(v);
+    this.fetch();
+  }
 
-  jsonOf(v: unknown): string { return v ? JSON.stringify(v, null, 2) : '—'; }
-  formatDateTime(v: string): string { return formatDateTime(v); }
-}
+  openDetail(row: AuditLogEntry): void {
+    this.detail.set(row);
+  }
 
-function computedActions(service: AuditService): string[] {
-  return service.distinctActions();
+  exportCsv(): void {
+    this.exporting.set(true);
+    this.audit.exportCsv({ action: this.actionFilter() || undefined, ressource_type: this.resourceTypeFilter() || undefined }).subscribe({
+      next: (blob) => {
+        this.exporting.set(false);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `journal-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: (err: ProblemDetails) => {
+        this.exporting.set(false);
+        this.toast.error('Échec de l’export', err.detail);
+      },
+    });
+  }
 }

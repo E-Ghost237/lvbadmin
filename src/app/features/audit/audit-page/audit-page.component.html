@@ -1,44 +1,43 @@
-<app-breadcrumbs [crumbs]="[{ label: i18n.t('nav.audit') }]" />
+<app-breadcrumbs [crumbs]="[{ label: 'Journal d’audit' }]" />
 
-<div class="mb-5">
-  <h1 class="text-xl font-semibold">{{ i18n.t('nav.audit') }}</h1>
-  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Journal immuable, en écriture seule (SEC-42). Aucune entrée ne peut être modifiée ou supprimée.</p>
-</div>
-
-<div class="card p-4 mb-4">
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-    <div class="md:col-span-2"><app-search-input placeholder="Auteur, ressource, IP…" (searchChange)="onSearch($event)" /></div>
-    <select class="select" [value]="action()" (change)="action.set($any($event.target).value); applyFilters()">
-      <option value="TOUS">Toutes les actions</option>
-      @for (a of actions; track a) { <option [value]="a">{{ a }}</option> }
-    </select>
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <h1 class="text-xl font-semibold">Journal d’audit</h1>
+    <p class="text-sm mt-0.5" style="color: var(--text-muted)">Journal immuable, en écriture seule (SEC-42).</p>
   </div>
+  <button type="button" class="btn btn-secondary btn-sm" [disabled]="exporting()" (click)="exportCsv()">Exporter CSV</button>
 </div>
 
-<div class="card overflow-hidden">
-  <app-data-table [columns]="columns" [rows]="rows()" [loading]="loading()" [rowClickable]="true" (rowClick)="openDetail($event)" emptyTitle="Aucune entrée" />
-  <app-pagination [page]="page()" [pageSize]="pageSize()" [total]="total()" (pageChange)="onPageChange($event)" (pageSizeChange)="pageSize.set($event); onPageChange(1)" />
-</div>
+@if (forbidden()) {
+  <app-forbidden-state detail="Votre compte n’a pas la permission audit.view." />
+} @else {
+  <div class="flex gap-3 mb-3 max-w-xl">
+    <input class="input" placeholder="Filtrer par action…" [value]="actionFilter()" (change)="onActionFilter($any($event.target).value)" />
+    <input class="input" placeholder="Filtrer par type de ressource…" [value]="resourceTypeFilter()" (change)="onResourceTypeFilter($any($event.target).value)" />
+  </div>
 
-<app-modal [open]="selected() !== null" title="Détail de l’action" size="md" (closed)="selected.set(null)" [hasFooter]="false">
-  @if (selected(); as e) {
+  <div class="card">
+    <app-data-table [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [rowClickable]="true" [trackBy]="trackById" (rowClick)="openDetail($event)" />
+  </div>
+  @if (nextCursor()) { <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loading()" (click)="fetch(nextCursor()!)">Charger plus</button> }
+}
+
+<app-modal [open]="!!detail()" title="Détail de l’entrée" [subtitle]="detail()?.action ?? ''" (closed)="detail.set(null)">
+  @if (detail(); as d) {
     <div class="grid grid-cols-2 gap-3 text-sm mb-4">
-      <div><span class="text-xs" style="color: var(--text-muted)">Auteur</span><p class="font-medium">{{ e.auteur_nom }} ({{ e.auteur_role }})</p></div>
-      <div><span class="text-xs" style="color: var(--text-muted)">Horodatage</span><p class="font-medium">{{ formatDateTime(e.cree_le) }}</p></div>
-      <div><span class="text-xs" style="color: var(--text-muted)">Ressource</span><p class="font-medium">{{ e.ressource }} @if (e.ressource_id) { ({{ e.ressource_id }}) }</p></div>
-      <div><span class="text-xs" style="color: var(--text-muted)">Depuis</span><p class="font-medium">{{ e.ip }} · {{ e.appareil }}</p></div>
+      <div><p class="text-xs" style="color: var(--text-muted)">Ressource</p><p>{{ d.ressource_type }} #{{ d.ressource_id }}</p></div>
+      <div><p class="text-xs" style="color: var(--text-muted)">Acteur</p><p>{{ d.acteur_type }} @if (d.acteur_utilisateur_id) { (#{{ d.acteur_utilisateur_id }}) }</p></div>
+      <div><p class="text-xs" style="color: var(--text-muted)">IP</p><p>{{ d.ip ?? '—' }}</p></div>
     </div>
-    @if (e.valeur_avant || e.valeur_apres) {
-      <div class="grid grid-cols-2 gap-3">
-        <div>
-          <p class="text-xs font-semibold mb-1.5" style="color: var(--text-muted)">AVANT</p>
-          <pre class="text-[11px] rounded-(--radius-sm) p-2.5 overflow-x-auto thin-scroll" style="background: var(--surface-2)">{{ jsonOf(e.valeur_avant) }}</pre>
-        </div>
-        <div>
-          <p class="text-xs font-semibold mb-1.5" style="color: var(--text-muted)">APRÈS</p>
-          <pre class="text-[11px] rounded-(--radius-sm) p-2.5 overflow-x-auto thin-scroll" style="background: var(--surface-2)">{{ jsonOf(e.valeur_apres) }}</pre>
-        </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <p class="text-xs font-semibold mb-1.5" style="color: var(--text-muted)">AVANT</p>
+        <pre class="text-xs p-2.5 rounded-(--radius-sm) overflow-x-auto thin-scroll" style="background: var(--surface-2)">{{ d.valeur_avant | json }}</pre>
       </div>
-    }
+      <div>
+        <p class="text-xs font-semibold mb-1.5" style="color: var(--text-muted)">APRÈS</p>
+        <pre class="text-xs p-2.5 rounded-(--radius-sm) overflow-x-auto thin-scroll" style="background: var(--surface-2)">{{ d.valeur_apres | json }}</pre>
+      </div>
+    </div>
   }
 </app-modal>

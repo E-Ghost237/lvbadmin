@@ -1,283 +1,271 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { SlicePipe } from '@angular/common';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { AuthService } from '../../../core/auth/auth.service';
-import { I18nService } from '../../../core/i18n/i18n.service';
-import { RolesService } from '../../../core/services/roles.service';
 import { UsersService } from '../../../core/services/users.service';
+import { RolesService } from '../../../core/services/roles.service';
+import { AdminUserSummary, CursorPage, ProblemDetails, RbacCatalog, RbacRole, UserProfile } from '../../../core/models';
+import { formatDate } from '../../../core/utils/formatters';
 import {
-  ClientUser, PermissionCode, Role, StaffRoleCode, StaffUser, UserActionLogEntry,
-} from '../../../core/models';
-import { e164Phone, integerAmount, requiredTrimmed } from '../../../core/utils/validators';
-import { formatDateTime, formatXaf } from '../../../core/utils/formatters';
-import { ROLE_LABELS } from '../../../core/auth/rbac';
-import {
-  AlertBannerComponent, AvatarComponent, BreadcrumbsComponent, ColumnDef, DataTableComponent,
-  FormFieldComponent, ModalComponent, SearchInputComponent, StatusBadgeComponent, TabDef, TableCellDefDirective,
-  TabsComponent, ToastService,
+  BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, FormFieldComponent,
+  ModalComponent, SearchInputComponent, StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService,
 } from '../../../shared/ui';
-
-const PERMISSION_GROUPS: { prefix: string; label: string }[] = [
-  { prefix: 'order.', label: 'Commandes' }, { prefix: 'driver.', label: 'Livreurs' },
-  { prefix: 'user.', label: 'Utilisateurs' }, { prefix: 'role.', label: 'Rôles' },
-  { prefix: 'partner.', label: 'Partenaires' }, { prefix: 'tarif.', label: 'Tarification' },
-  { prefix: 'zone.', label: 'Zones' }, { prefix: 'finance.', label: 'Finance' },
-  { prefix: 'wallet.', label: 'Portefeuilles' }, { prefix: 'claim.', label: 'Réclamations' },
-  { prefix: 'report.', label: 'Rapports' }, { prefix: 'settings.', label: 'Paramètres' },
-  { prefix: 'audit.', label: 'Audit' }, { prefix: 'teleconseiller.', label: 'Téléconseiller' },
-];
-const EDITABLE_ROLES: StaffRoleCode[] = ['SUPERVISEUR', 'FINANCE', 'TELECONSEILLER'];
 
 @Component({
   selector: 'app-users-page',
   imports: [
-    ReactiveFormsModule, DataTableComponent, TableCellDefDirective, StatusBadgeComponent, SearchInputComponent,
-    TabsComponent, BreadcrumbsComponent, ModalComponent, FormFieldComponent, AlertBannerComponent, AvatarComponent,
+    SlicePipe, ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, DataTableComponent, SearchInputComponent,
+    StatusBadgeComponent, ForbiddenStateComponent, TableCellDefDirective, ModalComponent, FormFieldComponent,
   ],
   templateUrl: './users-page.component.html',
 })
 export class UsersPageComponent {
-  private readonly usersService = inject(UsersService);
+  private readonly users = inject(UsersService);
   private readonly rolesService = inject(RolesService);
-  private readonly fb = inject(FormBuilder);
   private readonly toast = inject(ToastService);
-  protected readonly auth = inject(AuthService);
-  protected readonly i18n = inject(I18nService);
+  private readonly confirm = inject(ConfirmService);
+  private readonly fb = inject(FormBuilder);
 
-  protected readonly roleLabels = ROLE_LABELS;
-  protected readonly allRoles: StaffRoleCode[] = ['ADMINISTRATEUR', 'SUPERVISEUR', 'FINANCE', 'TELECONSEILLER'];
-  protected readonly tabs = computed<TabDef[]>(() => {
-    const t: TabDef[] = [{ id: 'clients', label: 'Clients' }, { id: 'staff', label: 'Personnel interne' }];
-    if (this.auth.hasPermission('role.read')) t.push({ id: 'roles', label: 'Rôles & permissions' });
-    return t;
-  });
+  protected readonly tabs: TabDef[] = [
+    { id: 'clients', label: 'Clients' }, { id: 'internal', label: 'Personnel interne' }, { id: 'roles', label: 'Rôles & permissions' },
+  ];
   protected readonly activeTab = signal('clients');
 
-  // --- Clients -----------------------------------------------------------
-  protected readonly clients = signal<ClientUser[]>([]);
-  protected readonly clientsTotal = signal(0);
+  protected readonly columns: ColumnDef<AdminUserSummary>[] = [
+    { key: 'nom', label: 'Nom', cell: (r) => `${r.prenom ?? ''} ${r.nom}`.trim() },
+    { key: 'telephone', label: 'Téléphone' },
+    { key: 'statut', label: 'Statut' },
+    { key: 'cree_le', label: 'Inscrit le', cell: (r) => formatDate(r.cree_le) },
+  ];
+
+  protected readonly trackByUuid = (row: AdminUserSummary) => row.uuid;
+
+  // --- Clients ------------------------------------------------------------
+  protected readonly clientRows = signal<AdminUserSummary[]>([]);
   protected readonly loadingClients = signal(true);
-  protected readonly clientPage = signal(1);
-  protected readonly clientStatut = signal('TOUS');
-  protected readonly clientType = signal('TOUS');
+  protected readonly forbiddenClients = signal(false);
+  protected readonly clientCursor = signal<number | null>(null);
   protected readonly clientSearch = signal('');
 
-  protected readonly clientColumns: ColumnDef<ClientUser>[] = [
-    { key: 'nom', label: 'Client', cell: (c) => c.raison_sociale || `${c.prenom} ${c.nom}` },
-    { key: 'telephone', label: 'Téléphone' },
-    { key: 'type_client', label: 'Type' },
-    { key: 'statut', label: 'Statut' },
-    { key: 'nb_commandes', label: 'Commandes', align: 'right' },
-    { key: 'partenaire_verifie', label: 'Partenaire', cell: (c) => (c.type_client === 'ENTREPRISE' ? (c.partenaire_verifie ? 'Validé' : 'En attente') : '—') },
-  ];
+  // --- Internal staff -------------------------------------------------
+  protected readonly internalRows = signal<AdminUserSummary[]>([]);
+  protected readonly loadingInternal = signal(true);
+  protected readonly forbiddenInternal = signal(false);
+  protected readonly internalCursor = signal<number | null>(null);
 
-  protected readonly selectedClient = signal<ClientUser | null>(null);
-  protected readonly clientHistory = signal<UserActionLogEntry[]>([]);
-  protected readonly suspendMotif = this.fb.nonNullable.group({ motif: ['', [Validators.required]] });
-  protected readonly showSuspendClient = signal(false);
-  protected readonly partnerForm = this.fb.nonNullable.group({ encours_autorise: [200000, [integerAmount(0)]] });
-  protected readonly showValidatePartner = signal(false);
-
-  // --- Staff ---------------------------------------------------------------
-  protected readonly staff = signal<StaffUser[]>([]);
-  protected readonly staffTotal = signal(0);
-  protected readonly loadingStaff = signal(true);
-  protected readonly staffRole = signal('TOUS');
-  protected readonly staffSearch = signal('');
-
-  protected readonly staffColumns: ColumnDef<StaffUser>[] = [
-    { key: 'nom', label: 'Nom', cell: (s) => `${s.prenom} ${s.nom}` },
-    { key: 'email', label: 'Email' },
-    { key: 'role', label: 'Rôle', cell: (s) => this.roleLabels[s.role] },
-    { key: 'statut', label: 'Statut' },
-    { key: 'mfa_actif', label: '2FA', cell: (s) => (s.mfa_actif ? 'Activée' : 'Inactive') },
-  ];
-
-  protected readonly selectedStaff = signal<StaffUser | null>(null);
-  protected readonly showSuspendStaff = signal(false);
-  protected readonly showCreateStaff = signal(false);
-  protected readonly createStaffForm = this.fb.nonNullable.group({
-    prenom: ['', [requiredTrimmed()]], nom: ['', [requiredTrimmed()]],
-    email: ['', [Validators.required, Validators.email]], role: ['TELECONSEILLER' as StaffRoleCode, [Validators.required]],
+  // --- Partner validation -------------------------------------------------
+  protected readonly partnerTarget = signal<AdminUserSummary | null>(null);
+  protected readonly partnerForm = this.fb.nonNullable.group({
+    encours_autorise_xaf: [500000, [Validators.required, Validators.min(0)]],
   });
-  protected readonly creatingStaff = signal(false);
+  protected readonly validatingPartner = signal(false);
 
-  // --- Roles ---------------------------------------------------------------
-  protected readonly roles = signal<Role[]>([]);
-  protected readonly editableRoles = EDITABLE_ROLES;
-  protected readonly permissionGroups = PERMISSION_GROUPS;
-  protected readonly allPermissions = this.rolesService.allPermissions;
-  protected readonly draftPermissions = signal<Record<StaffRoleCode, Set<PermissionCode>>>({} as Record<StaffRoleCode, Set<PermissionCode>>);
-  protected readonly savingRoles = signal(false);
+  // --- Role assignment --------------------------------------------------
+  protected readonly assignTarget = signal<AdminUserSummary | null>(null);
+  protected readonly assignSelection = signal<Set<string>>(new Set());
+  protected readonly assigning = signal(false);
+
+  // --- Roles & permissions ------------------------------------------------
+  protected readonly catalog = signal<RbacCatalog | null>(null);
+  protected readonly loadingCatalog = signal(true);
+  protected readonly forbiddenCatalog = signal(false);
+  protected readonly newRoleOpen = signal(false);
+  protected readonly newRoleForm = this.fb.nonNullable.group({
+    name: ['', [Validators.required, Validators.pattern(/^[A-Z][A-Z0-9_]{2,49}$/)]],
+  });
+  protected readonly newRolePermissions = signal<Set<string>>(new Set());
+  protected readonly savingRole = signal(false);
 
   constructor() {
     this.fetchClients();
-    this.fetchStaff();
   }
 
   selectTab(id: string): void {
     this.activeTab.set(id);
-    if (id === 'roles' && this.roles().length === 0) this.fetchRoles();
+    if (id === 'internal' && this.internalRows().length === 0) this.fetchInternal();
+    if (id === 'roles' && !this.catalog()) this.fetchCatalog();
   }
 
-  groupPermissions(prefix: string): PermissionCode[] {
-    return this.allPermissions.filter((p) => p.startsWith(prefix));
-  }
-
-  // --- Clients ------------------------------------------------------------
-  private fetchClients(): void {
-    this.loadingClients.set(true);
-    this.usersService.listClients({
-      page: this.clientPage(), page_size: 20, statut: this.clientStatut(), type_client: this.clientType(), search: this.clientSearch() || undefined,
-    }).subscribe((res) => {
-      this.clients.set(res.items);
-      this.clientsTotal.set(res.total);
-      this.loadingClients.set(false);
-    });
-  }
-
-  applyClientFilters(): void { this.clientPage.set(1); this.fetchClients(); }
-  onClientSearch(v: string): void { this.clientSearch.set(v); this.applyClientFilters(); }
-
-  openClient(client: ClientUser): void {
-    this.selectedClient.set(client);
-    this.usersService.actionHistory(client.id).subscribe((h) => this.clientHistory.set(h));
-  }
-
-  openSuspendClient(): void {
-    this.suspendMotif.reset({ motif: '' });
-    this.showSuspendClient.set(true);
-  }
-
-  confirmSuspendClient(): void {
-    if (this.suspendMotif.invalid) { this.suspendMotif.markAllAsTouched(); return; }
-    const c = this.selectedClient();
-    if (!c) return;
-    this.usersService.suspendClient(c.id, this.suspendMotif.getRawValue().motif).subscribe((updated) => {
-      this.selectedClient.set(updated);
-      this.showSuspendClient.set(false);
-      this.fetchClients();
-      this.toast.success('Client suspendu');
-    });
-  }
-
-  reactivateClient(): void {
-    const c = this.selectedClient();
-    if (!c) return;
-    this.usersService.reactivateClient(c.id).subscribe((updated) => {
-      this.selectedClient.set(updated);
-      this.fetchClients();
-      this.toast.success('Client réactivé');
-    });
-  }
-
-  openValidatePartner(): void {
-    this.partnerForm.reset({ encours_autorise: 200000 });
-    this.showValidatePartner.set(true);
-  }
-
-  confirmValidatePartner(): void {
-    if (this.partnerForm.invalid) { this.partnerForm.markAllAsTouched(); return; }
-    const c = this.selectedClient();
-    if (!c) return;
-    this.usersService.validatePartner(c.id, this.partnerForm.getRawValue().encours_autorise ?? 0).subscribe((updated) => {
-      this.selectedClient.set(updated);
-      this.showValidatePartner.set(false);
-      this.fetchClients();
-      this.toast.success('Compte partenaire validé');
-    });
-  }
-
-  // --- Staff --------------------------------------------------------------
-  private fetchStaff(): void {
-    this.loadingStaff.set(true);
-    this.usersService.listStaff({ role: this.staffRole(), search: this.staffSearch() || undefined, page_size: 50 }).subscribe((res) => {
-      this.staff.set(res.items);
-      this.staffTotal.set(res.total);
-      this.loadingStaff.set(false);
-    });
-  }
-
-  applyStaffFilters(): void { this.fetchStaff(); }
-  onStaffSearch(v: string): void { this.staffSearch.set(v); this.applyStaffFilters(); }
-
-  openStaff(user: StaffUser): void { this.selectedStaff.set(user); }
-
-  openSuspendStaff(): void {
-    this.suspendMotif.reset({ motif: '' });
-    this.showSuspendStaff.set(true);
-  }
-
-  confirmSuspendStaff(): void {
-    if (this.suspendMotif.invalid) { this.suspendMotif.markAllAsTouched(); return; }
-    const s = this.selectedStaff();
-    if (!s) return;
-    this.usersService.suspendStaff(s.id, this.suspendMotif.getRawValue().motif).subscribe((updated) => {
-      this.selectedStaff.set(updated);
-      this.showSuspendStaff.set(false);
-      this.fetchStaff();
-      this.toast.success('Compte suspendu');
-    });
-  }
-
-  reactivateStaff(): void {
-    const s = this.selectedStaff();
-    if (!s) return;
-    this.usersService.reactivateStaff(s.id).subscribe((updated) => {
-      this.selectedStaff.set(updated);
-      this.fetchStaff();
-      this.toast.success('Compte réactivé');
-    });
-  }
-
-  openCreateStaff(): void {
-    this.createStaffForm.reset({ prenom: '', nom: '', email: '', role: 'TELECONSEILLER' });
-    this.showCreateStaff.set(true);
-  }
-
-  confirmCreateStaff(): void {
-    if (this.createStaffForm.invalid) { this.createStaffForm.markAllAsTouched(); return; }
-    this.creatingStaff.set(true);
-    this.usersService.createStaff(this.createStaffForm.getRawValue()).subscribe({
-      next: () => {
-        this.creatingStaff.set(false);
-        this.showCreateStaff.set(false);
-        this.fetchStaff();
-        this.toast.success('Compte interne créé');
+  private fetchList(profil: UserProfile, q: string | undefined, cursor: number | undefined, onOk: (page: CursorPage<AdminUserSummary>) => void, onForbidden: () => void, onDone: () => void): void {
+    this.users.list({ profil, q, cursor }).subscribe({
+      next: (page) => { onOk(page); onDone(); },
+      error: (err: ProblemDetails) => {
+        onDone();
+        if (err.status === 403) onForbidden();
+        else this.toast.error('Chargement impossible', err.detail);
       },
-      error: (err) => { this.creatingStaff.set(false); this.toast.error('Création impossible', err.detail); },
     });
   }
 
-  // --- Roles ----------------------------------------------------------------
-  private fetchRoles(): void {
-    this.rolesService.list().subscribe((roles) => {
-      this.roles.set(roles);
-      const draft: Record<StaffRoleCode, Set<PermissionCode>> = {} as Record<StaffRoleCode, Set<PermissionCode>>;
-      for (const r of roles) draft[r.code] = new Set(r.permissions as PermissionCode[]);
-      this.draftPermissions.set(draft);
+  fetchClients(cursor?: number): void {
+    this.loadingClients.set(true);
+    this.forbiddenClients.set(false);
+    this.fetchList('CLIENT', this.clientSearch() || undefined, cursor,
+      (page) => { this.clientRows.set(cursor ? [...this.clientRows(), ...page.items] : page.items); this.clientCursor.set(page.next_cursor); },
+      () => this.forbiddenClients.set(true),
+      () => this.loadingClients.set(false));
+  }
+
+  onClientSearch(q: string): void {
+    this.clientSearch.set(q);
+    this.fetchClients();
+  }
+
+  fetchInternal(cursor?: number): void {
+    this.loadingInternal.set(true);
+    this.forbiddenInternal.set(false);
+    this.fetchList('INTERNE', undefined, cursor,
+      (page) => { this.internalRows.set(cursor ? [...this.internalRows(), ...page.items] : page.items); this.internalCursor.set(page.next_cursor); },
+      () => this.forbiddenInternal.set(true),
+      () => this.loadingInternal.set(false));
+  }
+
+  async suspend(row: AdminUserSummary, refresh: () => void): Promise<void> {
+    const ok = await this.confirm.ask({ title: 'Suspendre ce compte ?', message: `${row.prenom} ${row.nom} ne pourra plus se connecter.`, danger: true });
+    if (!ok) return;
+    const motif = window.prompt('Motif de suspension (obligatoire) :');
+    if (!motif || motif.trim().length < 5) return;
+    this.users.suspend(row.uuid, motif).subscribe({
+      next: () => { this.toast.success('Compte suspendu'); refresh(); },
+      error: (err: ProblemDetails) => this.toast.error('Échec', err.detail),
     });
   }
 
-  hasDraftPermission(role: StaffRoleCode, code: PermissionCode): boolean {
-    return this.draftPermissions()[role]?.has(code) ?? false;
-  }
-
-  togglePermission(role: StaffRoleCode, code: PermissionCode): void {
-    const draft = this.draftPermissions();
-    const set = new Set(draft[role] ?? []);
-    if (set.has(code)) set.delete(code); else set.add(code);
-    this.draftPermissions.set({ ...draft, [role]: set });
-  }
-
-  saveRole(role: StaffRoleCode): void {
-    this.savingRoles.set(true);
-    const permissions = Array.from(this.draftPermissions()[role] ?? []);
-    this.rolesService.updatePermissions(role, permissions).subscribe({
-      next: () => { this.savingRoles.set(false); this.toast.success(`Permissions mises à jour — ${this.roleLabels[role]}`); },
-      error: () => this.savingRoles.set(false),
+  reactivate(row: AdminUserSummary, refresh: () => void): void {
+    this.users.reactivate(row.uuid).subscribe({
+      next: () => { this.toast.success('Compte réactivé'); refresh(); },
+      error: (err: ProblemDetails) => this.toast.error('Échec', err.detail),
     });
   }
 
-  formatDateTime(v: string): string { return formatDateTime(v); }
-  formatXaf(v: number): string { return formatXaf(v); }
+  async remove(row: AdminUserSummary, refresh: () => void): Promise<void> {
+    const ok = await this.confirm.ask({ title: 'Supprimer ce compte ?', message: 'Anonymisation conforme à la politique de rétention.', danger: true });
+    if (!ok) return;
+    const motif = window.prompt('Motif de suppression (obligatoire) :');
+    if (!motif || motif.trim().length < 5) return;
+    this.users.delete(row.uuid, motif).subscribe({
+      next: () => { this.toast.success('Compte supprimé'); refresh(); },
+      error: (err: ProblemDetails) => this.toast.error('Échec', err.detail),
+    });
+  }
+
+  openPartnerValidation(row: AdminUserSummary): void {
+    this.partnerForm.reset({ encours_autorise_xaf: 500000 });
+    this.partnerTarget.set(row);
+  }
+
+  confirmPartnerValidation(): void {
+    const target = this.partnerTarget();
+    if (!target || this.partnerForm.invalid) {
+      this.partnerForm.markAllAsTouched();
+      return;
+    }
+    this.validatingPartner.set(true);
+    this.users.validatePartner(target.uuid, this.partnerForm.getRawValue().encours_autorise_xaf).subscribe({
+      next: () => {
+        this.validatingPartner.set(false);
+        this.partnerTarget.set(null);
+        this.toast.success('Partenaire validé');
+        this.fetchClients();
+      },
+      error: (err: ProblemDetails) => {
+        this.validatingPartner.set(false);
+        this.toast.error('Échec', err.detail);
+      },
+    });
+  }
+
+  openAssignRoles(row: AdminUserSummary): void {
+    this.assignTarget.set(row);
+    this.assignSelection.set(new Set());
+    if (!this.catalog()) this.fetchCatalog();
+  }
+
+  toggleAssignRole(name: string): void {
+    const next = new Set(this.assignSelection());
+    if (next.has(name)) next.delete(name); else next.add(name);
+    this.assignSelection.set(next);
+  }
+
+  confirmAssignRoles(): void {
+    const target = this.assignTarget();
+    if (!target || this.assignSelection().size === 0) return;
+    this.assigning.set(true);
+    this.rolesService.assignUserRoles(target.uuid, Array.from(this.assignSelection())).subscribe({
+      next: () => {
+        this.assigning.set(false);
+        this.assignTarget.set(null);
+        this.toast.success('Rôles affectés');
+      },
+      error: (err: ProblemDetails) => {
+        this.assigning.set(false);
+        this.toast.error('Échec', err.detail);
+      },
+    });
+  }
+
+  fetchCatalog(): void {
+    this.loadingCatalog.set(true);
+    this.forbiddenCatalog.set(false);
+    this.rolesService.catalog().subscribe({
+      next: (c) => { this.loadingCatalog.set(false); this.catalog.set(c); },
+      error: (err: ProblemDetails) => {
+        this.loadingCatalog.set(false);
+        if (err.status === 403) this.forbiddenCatalog.set(true);
+        else this.toast.error('Chargement impossible', err.detail);
+      },
+    });
+  }
+
+  toggleRolePermission(role: RbacRole, permission: string): void {
+    const has = role.permissions.includes(permission);
+    const nextPermissions = has ? role.permissions.filter((p) => p !== permission) : [...role.permissions, permission];
+    this.rolesService.updateRole(role.name, nextPermissions).subscribe({
+      next: () => {
+        this.toast.success(`Rôle ${role.name} mis à jour`);
+        this.fetchCatalog();
+      },
+      error: (err: ProblemDetails) => this.toast.error('Échec', err.detail),
+    });
+  }
+
+  async deleteRole(role: RbacRole): Promise<void> {
+    const ok = await this.confirm.ask({ title: `Supprimer le rôle ${role.name} ?`, message: 'Impossible si des comptes y sont encore affectés.', danger: true });
+    if (!ok) return;
+    this.rolesService.deleteRole(role.name).subscribe({
+      next: () => { this.toast.success('Rôle supprimé'); this.fetchCatalog(); },
+      error: (err: ProblemDetails) => this.toast.error('Échec', err.detail),
+    });
+  }
+
+  openNewRole(): void {
+    this.newRoleForm.reset({ name: '' });
+    this.newRolePermissions.set(new Set());
+    this.newRoleOpen.set(true);
+  }
+
+  toggleNewRolePermission(permission: string): void {
+    const next = new Set(this.newRolePermissions());
+    if (next.has(permission)) next.delete(permission); else next.add(permission);
+    this.newRolePermissions.set(next);
+  }
+
+  createRole(): void {
+    if (this.newRoleForm.invalid || this.newRolePermissions().size === 0) {
+      this.newRoleForm.markAllAsTouched();
+      return;
+    }
+    this.savingRole.set(true);
+    this.rolesService.createRole(this.newRoleForm.getRawValue().name, Array.from(this.newRolePermissions())).subscribe({
+      next: () => {
+        this.savingRole.set(false);
+        this.newRoleOpen.set(false);
+        this.toast.success('Rôle créé');
+        this.fetchCatalog();
+      },
+      error: (err: ProblemDetails) => {
+        this.savingRole.set(false);
+        this.toast.error('Échec', err.detail);
+      },
+    });
+  }
 }

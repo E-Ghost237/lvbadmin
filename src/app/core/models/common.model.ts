@@ -31,11 +31,10 @@ export interface ProblemDetails {
   errors?: { field: string; message: string; code: string }[];
 }
 
-export interface PagedResult<T> {
+/** Cursor pagination — the shape every admin list endpoint actually uses (no total count, no page numbers). */
+export interface CursorPage<T> {
   items: T[];
-  total: number;
-  page: number;
-  page_size: number;
+  next_cursor: number | null;
 }
 
 export interface ListQuery {

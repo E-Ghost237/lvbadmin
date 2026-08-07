@@ -99,23 +99,4 @@ export type ReconciliationGapKind =
 
 export type WithdrawalStatus = 'EN_ATTENTE' | 'VALIDE' | 'REJETE' | 'VERSE';
 
-export type StaffRoleCode = 'ADMINISTRATEUR' | 'SUPERVISEUR' | 'FINANCE' | 'TELECONSEILLER';
-
 export type Locale = 'fr' | 'en';
-
-/** Domain-scoped permission strings: "resource.action" (UC-ADM-03). */
-export type PermissionCode =
-  | 'order.read' | 'order.assign' | 'order.reassign' | 'order.cancel'
-  | 'driver.read' | 'driver.validate' | 'driver.sanction' | 'driver.write'
-  | 'user.read' | 'user.suspend' | 'user.write'
-  | 'role.read' | 'role.write'
-  | 'partner.validate'
-  | 'tarif.read' | 'tarif.modifier'
-  | 'zone.read' | 'zone.write'
-  | 'finance.reconciliation.read' | 'finance.reconciliation.write'
-  | 'wallet.read' | 'wallet.valider_retrait'
-  | 'claim.read' | 'claim.arbitrate' | 'claim.write'
-  | 'report.read' | 'report.export'
-  | 'settings.read' | 'settings.write'
-  | 'audit.read'
-  | 'teleconseiller.order.create' | 'teleconseiller.callback.write';

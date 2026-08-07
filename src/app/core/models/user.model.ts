@@ -1,80 +1,75 @@
-import { AccountStatus, ClientType, StaffRoleCode, VehicleType } from './enums';
-import { AuditFields } from './common.model';
+import { AccountStatus } from './enums';
 
-/** `utilisateurs` (§7.2.1). */
-export interface UtilisateurBase extends AuditFields {
-  id: string;
+/**
+ * The backend never returns "who am I" after login (no `/v1/profile` GET,
+ * no user data in the auth response — only Sanctum tokens). This is the
+ * only identity data the frontend legitimately has: the email the user
+ * typed into the login form. No name/role/permissions are fabricated.
+ */
+export interface AuthIdentity {
+  email: string;
+}
+
+export type UserProfile = 'CLIENT' | 'LIVREUR' | 'INTERNE';
+
+/** `AdminUserSummary` — GET /v1/admin/users. */
+export interface AdminUserSummary {
   uuid: string;
-  telephone?: string;
-  telephone_verifie_le?: string;
-  email?: string;
-  email_verifie_le?: string;
+  telephone: string;
+  email: string | null;
   nom: string;
-  prenom?: string;
-  photo_url?: string;
-  langue: 'fr' | 'en';
+  prenom: string | null;
   statut: AccountStatus;
-  derniere_connexion_le?: string;
-  mfa_actif: boolean;
+  profil: UserProfile;
+  type_client: 'PARTICULIER' | 'ENTREPRISE' | null;
+  partenaire_verifie: boolean | null;
+  matricule: string | null;
+  cree_le: string | null;
 }
 
-export interface StaffUser extends UtilisateurBase {
-  kind: 'staff';
-  role: StaffRoleCode;
+/** `AdminUserDetail` — GET /v1/admin/users/{uuid}. */
+export interface AdminUserDetail extends AdminUserSummary {
+  langue: string | null;
+  motif_suspension: string | null;
+  suspendu_le: string | null;
+  derniere_connexion_le: string | null;
+  supprime_le: string | null;
+  partenaire: {
+    type: 'PARTICULIER' | 'ENTREPRISE';
+    raison_sociale: string | null;
+    numero_contribuable: string | null;
+    verifie: boolean;
+    encours_autorise_xaf: number;
+    valide_le: string | null;
+  } | null;
+  livreur: {
+    matricule: string;
+    statut_operationnel: string | null;
+    permis_expire_le: string | null;
+    assurance_expire_le: string | null;
+  } | null;
+  historique_administratif: Record<string, unknown>[];
+}
+
+/** `DeviceSessionSummary` — GET /v1/profile/sessions (camelCase per contract, PHP DateTimeImmutable shape for dates). */
+export interface DeviceSessionSummary {
+  id: number;
+  appareilNom: string | null;
+  appareilModele: string | null;
+  ip: string | null;
+  derniereActiviteLe: { date: string; timezone_type: number; timezone: string };
+  estSessionCourante: boolean;
+}
+
+/** `RbacCatalog` — GET /v1/admin/rbac. */
+export interface RbacRole {
+  id: number;
+  name: string;
   permissions: string[];
+  users_count: number;
 }
 
-/** `clients` (§7.2.3). */
-export interface ClientUser extends UtilisateurBase {
-  kind: 'client';
-  type_client: ClientType;
-  raison_sociale?: string;
-  numero_contribuable?: string;
-  partenaire_verifie: boolean;
-  encours_autorise: number;
-  solde_avoirs: number;
-  nb_commandes: number;
-  note_moyenne?: number;
-}
-
-export type AnyUser = StaffUser | ClientUser;
-
-export interface Vehicle {
-  id: string;
-  livreur_id: string;
-  type: VehicleType;
-  immatriculation: string;
-  marque?: string;
-  modele?: string;
-  capacite_poids_kg: number;
-  capacite_volume_l: number;
-  actif: boolean;
-}
-
-export interface UserActionLogEntry {
-  id: string;
-  utilisateur_id: string;
-  action: 'SUSPENSION' | 'REACTIVATION' | 'MODIFICATION' | 'CREATION';
-  motif?: string;
-  auteur: string;
-  cree_le: string;
-}
-
-export interface Session {
-  id: string;
-  utilisateur_id: string;
-  appareil: string;
-  modele: string;
-  ip: string;
-  localisation_approx?: string;
-  cree_le: string;
-  derniere_activite_le: string;
-  courante: boolean;
-}
-
-export interface Role {
-  code: StaffRoleCode;
-  nom: string;
-  description: string;
+export interface RbacCatalog {
   permissions: string[];
+  roles: RbacRole[];
 }

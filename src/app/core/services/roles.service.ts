@@ -1,36 +1,34 @@
-import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { PermissionCode, Role, StaffRoleCode } from '../models';
-import { MockDbService } from '../mock/mock-db.service';
-import { mockFail, mockOk } from '../mock/mock-utils';
-import { AuthService } from '../auth/auth.service';
-import { ALL_PERMISSIONS } from '../auth/rbac';
+import { API_BASE_URL, newIdempotencyKey, withIdempotencyKey } from '../http/api.config';
+import { RbacCatalog } from '../models';
 
-/** UC-ADM-03 — rôles paramétrables, permissions granulaires, moindre privilège. */
+/** UC-ADM-03 — /v1/admin/rbac (Identity module, Spatie permission backed). */
 @Injectable({ providedIn: 'root' })
 export class RolesService {
-  constructor(private readonly db: MockDbService, private readonly auth: AuthService) {}
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = inject(API_BASE_URL);
 
-  readonly allPermissions: PermissionCode[] = ALL_PERMISSIONS;
-
-  list(): Observable<Role[]> {
-    return mockOk(this.db.roles());
+  catalog(): Observable<RbacCatalog> {
+    return this.http.get<RbacCatalog>(`${this.baseUrl}/admin/rbac`);
   }
 
-  /** ADMINISTRATEUR always keeps every permission — least-privilege editing applies to the other roles. */
-  updatePermissions(code: StaffRoleCode, permissions: PermissionCode[]): Observable<Role> {
-    if (code === 'ADMINISTRATEUR') return mockFail('ERR-4032', 'Le rôle Administrateur ne peut pas être restreint.');
-    const actor = this.auth.currentUser();
-    this.db.mutate((s) => {
-      const idx = s.roles.findIndex((r) => r.code === code);
-      if (idx >= 0) s.roles[idx] = { ...s.roles[idx], permissions };
-      s.staff = s.staff.map((u) => (u.role === code ? { ...u, permissions } : u));
-      return s;
+  createRole(name: string, permissions: string[]): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.baseUrl}/admin/rbac/roles`, { name, permissions }, {
+      context: withIdempotencyKey(newIdempotencyKey()),
     });
-    if (actor) {
-      this.db.logAudit({ auteur_nom: `${actor.prenom} ${actor.nom}`, auteur_role: actor.role, action: 'Modification de rôle', ressource: 'role', ressource_id: code, ip: '41.202.11.4', appareil: 'Navigateur web', valeur_apres: { permissions } });
-    }
-    const role = this.db.roles().find((r) => r.code === code)!;
-    return mockOk(role);
+  }
+
+  updateRole(role: string, permissions: string[]): Observable<{ message: string }> {
+    return this.http.put<{ message: string }>(`${this.baseUrl}/admin/rbac/roles/${role}`, { permissions });
+  }
+
+  deleteRole(role: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/admin/rbac/roles/${role}`);
+  }
+
+  assignUserRoles(uuid: string, roles: string[]): Observable<{ message: string }> {
+    return this.http.put<{ message: string }>(`${this.baseUrl}/admin/rbac/users/${uuid}/roles`, { roles });
   }
 }
