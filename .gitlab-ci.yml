@@ -1,0 +1,67 @@
+stages:
+  - test
+  - deploy
+
+variables:
+  NODE_VERSION: '22-alpine'
+  NPM_CONFIG_CACHE: '$CI_PROJECT_DIR/.npm'
+  DEPLOY_PATH: '/home/lvbadmin'
+
+# Run for merge requests and for branch pushes, but never both for the same commit.
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+test:
+  image: node:${NODE_VERSION}
+  stage: test
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - .npm/
+  before_script:
+    - npm ci --prefer-offline --no-audit --fund=false
+  script:
+    - npx ng build           # catches SSR/production build errors early
+    - npx ng test --watch=false
+
+# The image is built on the target host itself (`docker compose up -d --build`)
+# from the shipped source, so this runner only ever needs ssh/tar/scp — no
+# docker:dind, no registry push.
+deploy:contabo:
+  stage: deploy
+  image: alpine:3.21
+  needs: ['test']
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "develop"'
+      when: on_success
+  before_script:
+    - apk add --no-cache openssh-client tar gzip
+    - mkdir -p ~/.ssh
+    - printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+    - chmod 600 ~/.ssh/id_ed25519
+    - ssh-keyscan -p "${PROD_PORT:-22}" "$PROD_HOST" >> ~/.ssh/known_hosts
+  script:
+    - >
+      tar --exclude='.git' --exclude='node_modules' --exclude='.angular' --exclude='dist'
+      -czf /tmp/lvbadmin-release.tgz .
+    - ssh -p "${PROD_PORT:-22}" "$PROD_USER@$PROD_HOST" "mkdir -p '$DEPLOY_PATH/releases/$CI_COMMIT_SHORT_SHA'"
+    - scp -P "${PROD_PORT:-22}" /tmp/lvbadmin-release.tgz "$PROD_USER@$PROD_HOST:$DEPLOY_PATH/releases/$CI_COMMIT_SHORT_SHA/release.tgz"
+    - >
+      ssh -p "${PROD_PORT:-22}" "$PROD_USER@$PROD_HOST" "
+      set -eu &&
+      cd '$DEPLOY_PATH/releases/$CI_COMMIT_SHORT_SHA' &&
+      tar -xzf release.tgz && rm release.tgz &&
+      ln -sfn '$DEPLOY_PATH/releases/$CI_COMMIT_SHORT_SHA' '$DEPLOY_PATH/current' &&
+      cd '$DEPLOY_PATH/current' &&
+      docker compose -f docker-compose.prod.yml up -d --build &&
+      docker image prune -f
+      "
+  environment:
+    name: production
+    url: 'http://38.242.228.212:5050'

@@ -1,0 +1,12 @@
+# Run on the Contabo host itself — built and started there by the GitLab CI
+# deploy job over SSH, so the runner never needs Docker access.
+services:
+  lvbadmin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: lvbadmin:latest
+    container_name: lvbadmin
+    restart: unless-stopped
+    ports:
+      - "${LVBADMIN_HTTP_PORT:-5050}:4000"
