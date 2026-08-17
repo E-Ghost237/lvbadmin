@@ -6,27 +6,29 @@ import { GeoPoint } from '../../../core/models';
 @Component({
   selector: 'app-polygon-picker',
   template: `
-    <div class="relative w-full overflow-hidden rounded-(--radius-md)" [style.height.px]="height()" style="background: var(--surface-2)">
+    <div class="relative w-full h-full overflow-hidden rounded-(--radius-md)" style="background: var(--surface-2)">
       <div #mapEl class="absolute inset-0"></div>
       <div class="absolute top-2 left-2 z-[1000] px-2.5 py-1 rounded-full text-[11px] font-medium" style="background: var(--surface-1); border: 1px solid var(--border-strong)">
         {{ points().length }} point(s) — minimum 3
       </div>
     </div>
   `,
+  styles: [`:host { display: block; }`],
 })
 export class PolygonPickerComponent {
   readonly center = input<GeoPoint>({ lat: 4.0511, lng: 9.7679 });
   readonly zoom = input(12);
-  readonly height = input(280);
   readonly points = input<GeoPoint[]>([]);
 
   readonly pointsChange = output<GeoPoint[]>();
 
   private readonly mapEl = viewChild.required<ElementRef<HTMLDivElement>>('mapEl');
+  private readonly host = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
   private map: L.Map | undefined;
   private polygon: L.Polygon | undefined;
   private markers: L.CircleMarker[] = [];
+  private resizeObserver: ResizeObserver | undefined;
 
   constructor() {
     afterNextRender(() => {
@@ -38,7 +40,16 @@ export class PolygonPickerComponent {
         this.pointsChange.emit([...this.points(), { lat: e.latlng.lat, lng: e.latlng.lng }]);
       });
       this.map = map;
-      this.destroyRef.onDestroy(() => map.remove());
+
+      // Same responsive-container caveat as MapPanelComponent: Leaflet needs
+      // an explicit nudge whenever the host's CSS-driven size changes.
+      this.resizeObserver = new ResizeObserver(() => this.map?.invalidateSize());
+      this.resizeObserver.observe(this.host.nativeElement);
+
+      this.destroyRef.onDestroy(() => {
+        this.resizeObserver?.disconnect();
+        map.remove();
+      });
       this.redraw();
     });
 

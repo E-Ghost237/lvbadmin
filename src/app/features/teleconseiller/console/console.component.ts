@@ -1,4 +1,4 @@
-import { DecimalPipe, KeyValuePipe } from '@angular/common';
+import { DecimalPipe } from '@angular/common';
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
@@ -7,7 +7,7 @@ import {
 } from '../../../core/services/teleconseiller.service';
 import { GeoPoint, ProblemDetails } from '../../../core/models';
 import { e164Phone } from '../../../core/utils/validators';
-import { formatDateTime, formatXaf } from '../../../core/utils/formatters';
+import { formatDateTime, formatXaf, humanizeSlug } from '../../../core/utils/formatters';
 import {
   BreadcrumbsComponent, FormFieldComponent, LocationPickerComponent, ModalComponent, SearchInputComponent,
   TabDef, TabsComponent, ToastService,
@@ -16,10 +16,25 @@ import {
 type WizardStep = 1 | 2 | 3;
 type PointTarget = 'pickup' | 'dropoff';
 
+/** Curated labels for the deterministic pricing engine's decomposition lines (RG-010→016); falls back to a humanized key for any line the backend adds before a label exists here. */
+const DECOMPOSITION_LABELS: Record<string, string> = {
+  prix_base: 'Prix de base',
+  charge_distance: 'Charge distance',
+  charge_duree: 'Charge durée',
+  frais_prise_en_charge: 'Frais de prise en charge',
+  supplement_poids: 'Supplément poids',
+  supplement_volume: 'Supplément volume',
+  supplement_fragile: 'Supplément colis fragile',
+  supplement_zone_difficile: 'Supplément zone difficile',
+  prix_avant_remise: 'Prix avant remise',
+  remise: 'Remise',
+  prix_ajuste: 'Prix ajusté',
+};
+
 @Component({
   selector: 'app-console',
   imports: [
-    DecimalPipe, KeyValuePipe, ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent,
+    DecimalPipe, ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent,
     LocationPickerComponent, SearchInputComponent, ModalComponent,
   ],
   templateUrl: './console.component.html',
@@ -352,5 +367,16 @@ export class ConsoleComponent {
 
   xaf(amount: number): string {
     return formatXaf(amount);
+  }
+
+  decompositionLabel(key: string): string {
+    return DECOMPOSITION_LABELS[key] ?? humanizeSlug(key);
+  }
+
+  /** Reads like a receipt (base → charges/suppléments → remise → prix ajusté) instead of the alphabetical order a plain keyvalue pipe would give. Unknown future lines are appended at the end rather than dropped. */
+  orderedDecomposition(decomposition: Record<string, number>): [string, number][] {
+    const known = Object.keys(DECOMPOSITION_LABELS).filter((k) => k in decomposition);
+    const rest = Object.keys(decomposition).filter((k) => !(k in DECOMPOSITION_LABELS));
+    return [...known, ...rest].map((k) => [k, decomposition[k]]);
   }
 }

@@ -4,7 +4,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { UsersService } from '../../../core/services/users.service';
 import { RolesService } from '../../../core/services/roles.service';
 import { AdminUserSummary, CursorPage, ProblemDetails, RbacCatalog, RbacRole, UserProfile } from '../../../core/models';
-import { formatDate } from '../../../core/utils/formatters';
+import { formatDate, humanizeSlug } from '../../../core/utils/formatters';
+import { I18nService } from '../../../core/i18n/i18n.service';
 import {
   BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, FormFieldComponent,
   ModalComponent, SearchInputComponent, StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService,
@@ -24,6 +25,7 @@ export class UsersPageComponent {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
+  protected readonly i18n = inject(I18nService);
 
   protected readonly tabs: TabDef[] = [
     { id: 'clients', label: 'Clients' }, { id: 'internal', label: 'Personnel interne' }, { id: 'roles', label: 'Rôles & permissions' },
@@ -120,10 +122,11 @@ export class UsersPageComponent {
   }
 
   async suspend(row: AdminUserSummary, refresh: () => void): Promise<void> {
-    const ok = await this.confirm.ask({ title: 'Suspendre ce compte ?', message: `${row.prenom} ${row.nom} ne pourra plus se connecter.`, danger: true });
-    if (!ok) return;
-    const motif = window.prompt('Motif de suspension (obligatoire) :');
-    if (!motif || motif.trim().length < 5) return;
+    const motif = await this.confirm.askReason({
+      title: 'Suspendre ce compte ?', message: `${row.prenom} ${row.nom} ne pourra plus se connecter.`,
+      label: 'Motif de suspension', minLength: 5, danger: true, confirmLabel: 'Suspendre',
+    });
+    if (!motif) return;
     this.users.suspend(row.uuid, motif).subscribe({
       next: () => { this.toast.success('Compte suspendu'); refresh(); },
       error: (err: ProblemDetails) => this.toast.error('Échec', err.detail),
@@ -138,10 +141,11 @@ export class UsersPageComponent {
   }
 
   async remove(row: AdminUserSummary, refresh: () => void): Promise<void> {
-    const ok = await this.confirm.ask({ title: 'Supprimer ce compte ?', message: 'Anonymisation conforme à la politique de rétention.', danger: true });
-    if (!ok) return;
-    const motif = window.prompt('Motif de suppression (obligatoire) :');
-    if (!motif || motif.trim().length < 5) return;
+    const motif = await this.confirm.askReason({
+      title: 'Supprimer ce compte ?', message: 'Anonymisation conforme à la politique de rétention.',
+      label: 'Motif de suppression', minLength: 5, danger: true, confirmLabel: 'Supprimer',
+    });
+    if (!motif) return;
     this.users.delete(row.uuid, motif).subscribe({
       next: () => { this.toast.success('Compte supprimé'); refresh(); },
       error: (err: ProblemDetails) => this.toast.error('Échec', err.detail),
@@ -201,6 +205,13 @@ export class UsersPageComponent {
         this.toast.error('Échec', err.detail);
       },
     });
+  }
+
+  /** Curated label for a raw RBAC permission slug (e.g. `drivers.kyc.review`); falls back to a humanized slug for any permission the backend adds before a translation exists for it. */
+  permissionLabel(permission: string): string {
+    const key = `permission.${permission}`;
+    const label = this.i18n.t(key);
+    return label === key ? humanizeSlug(permission) : label;
   }
 
   fetchCatalog(): void {

@@ -65,7 +65,7 @@
     @if (forbiddenZones()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission catalog.manage." />
     } @else if (zoneFormOpen()) {
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl">
+      <div class="grid grid-cols-1 lg:grid-cols-[minmax(280px,340px)_1fr] gap-4 items-start">
         <form [formGroup]="zoneForm" (ngSubmit)="createZone()" class="card p-5 flex flex-col gap-3">
           <app-field label="Nom" [control]="zoneForm.controls.nom" required><input class="input" formControlName="nom" /></app-field>
           <app-field label="Type" [control]="zoneForm.controls.type" required>
@@ -84,20 +84,20 @@
             <button type="submit" class="btn btn-primary btn-sm" [disabled]="savingZone() || zonePoints().length < 3">Créer la zone</button>
           </div>
         </form>
-        <div class="card p-4">
+        <div class="card p-4 flex flex-col">
           <p class="text-xs mb-2" style="color: var(--text-muted)">Cliquez sur la carte pour tracer le polygone (3 points minimum).</p>
-          <app-polygon-picker [points]="zonePoints()" (pointsChange)="onPolygonPoints($event)" [height]="320" />
+          <app-polygon-picker [points]="zonePoints()" (pointsChange)="onPolygonPoints($event)" class="block h-85 sm:h-105 xl:h-120 2xl:h-150" />
         </div>
       </div>
     } @else if (loadingZones()) {
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"><div class="skeleton h-20"></div><div class="skeleton h-20"></div></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3"><div class="skeleton h-20"></div><div class="skeleton h-20"></div></div>
     } @else {
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
         @for (z of zones(); track z.id) {
           <div class="card p-4 flex items-center justify-between">
             <div>
               <p class="text-sm font-medium">{{ z.nom }}</p>
-              <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ z.type }}</p>
+              <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ zoneTypeLabel[z.type] }}</p>
             </div>
             <button type="button" class="btn btn-danger-ghost btn-sm !py-1" (click)="deleteZone(z)">Supprimer</button>
           </div>

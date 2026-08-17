@@ -26,7 +26,7 @@ import { ToastContainerComponent } from '../../ui/toast/toast-container.componen
       <div class="flex-1 flex flex-col min-w-0">
         <app-topbar (openMobileMenu)="mobileMenuOpen.set(true)" />
         <main class="flex-1 overflow-y-auto thin-scroll">
-          <div class="max-w-[1400px] mx-auto p-4 lg:p-6">
+          <div class="max-w-[1600px] 2xl:max-w-[1920px] mx-auto p-4 lg:p-6 2xl:p-8">
             <router-outlet />
           </div>
         </main>

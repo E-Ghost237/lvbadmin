@@ -31,7 +31,7 @@ const TONE_COLOR: Record<MapMarker['tone'], string> = {
 @Component({
   selector: 'app-map-panel',
   template: `
-    <div class="relative w-full overflow-hidden rounded-(--radius-md)" [style.height.px]="height()" style="background: var(--surface-2)">
+    <div class="relative w-full h-full overflow-hidden rounded-(--radius-md)" style="background: var(--surface-2)">
       <div #mapEl class="absolute inset-0"></div>
 
       <div class="absolute top-2 right-2 z-[1000] flex rounded-(--radius-sm) overflow-hidden shadow-(--shadow-sm)" style="border: 1px solid var(--border-strong)">
@@ -62,7 +62,6 @@ export class MapPanelComponent {
   readonly bbox = input.required<{ latMin: number; latMax: number; lngMin: number; lngMax: number }>();
   readonly markers = input<MapMarker[]>([]);
   readonly zones = input<MapZoneShape[]>([]);
-  readonly height = input(320);
 
   readonly markerClick = output<string>();
 
@@ -74,6 +73,7 @@ export class MapPanelComponent {
   protected readonly baseLayer = signal<BaseLayer>('road');
 
   private readonly mapEl = viewChild.required<ElementRef<HTMLDivElement>>('mapEl');
+  private readonly host = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
 
   private map: L.Map | undefined;
@@ -81,6 +81,7 @@ export class MapPanelComponent {
   private hybridOverlay: L.TileLayer | undefined;
   private markerLayer: L.LayerGroup | undefined;
   private zoneLayer: L.LayerGroup | undefined;
+  private resizeObserver: ResizeObserver | undefined;
 
   private readonly boundsFromBbox = computed(() => {
     const b = this.bbox();
@@ -90,7 +91,18 @@ export class MapPanelComponent {
   constructor() {
     afterNextRender(() => {
       this.initMap();
-      this.destroyRef.onDestroy(() => this.map?.remove());
+
+      // The map's CSS size changes with the viewport (responsive height
+      // classes on the host) and with sidebar collapse/expand — Leaflet
+      // caches its container size at init and after each fitBounds, so it
+      // must be told explicitly whenever that box changes.
+      this.resizeObserver = new ResizeObserver(() => this.map?.invalidateSize());
+      this.resizeObserver.observe(this.host.nativeElement);
+
+      this.destroyRef.onDestroy(() => {
+        this.resizeObserver?.disconnect();
+        this.map?.remove();
+      });
     });
 
     effect(() => {

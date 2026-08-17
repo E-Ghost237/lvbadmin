@@ -11,7 +11,7 @@ import { GeoPoint } from '../../../core/models';
 @Component({
   selector: 'app-location-picker',
   template: `
-    <div class="relative w-full overflow-hidden rounded-(--radius-md)" [style.height.px]="height()" style="background: var(--surface-2)">
+    <div class="relative w-full h-full overflow-hidden rounded-(--radius-md)" style="background: var(--surface-2)">
       <div #mapEl class="absolute inset-0"></div>
       @if (!value()) {
         <div class="absolute inset-x-0 top-2 flex justify-center pointer-events-none">
@@ -20,19 +20,21 @@ import { GeoPoint } from '../../../core/models';
       }
     </div>
   `,
+  styles: [`:host { display: block; }`],
 })
 export class LocationPickerComponent {
   readonly center = input<GeoPoint>({ lat: 4.0511, lng: 9.7679 });
   readonly zoom = input(12);
-  readonly height = input(220);
   readonly value = input<GeoPoint | null>(null);
 
   readonly valueChange = output<GeoPoint>();
 
   private readonly mapEl = viewChild.required<ElementRef<HTMLDivElement>>('mapEl');
+  private readonly host = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
   private map: L.Map | undefined;
   private marker: L.Marker | undefined;
+  private resizeObserver: ResizeObserver | undefined;
 
   // Leaflet's default marker icon resolves to image paths the bundler doesn't
   // serve; a small inline SVG pin avoids that broken-image issue entirely.
@@ -52,7 +54,14 @@ export class LocationPickerComponent {
         this.valueChange.emit({ lat: e.latlng.lat, lng: e.latlng.lng });
       });
       this.map = map;
-      this.destroyRef.onDestroy(() => map.remove());
+
+      this.resizeObserver = new ResizeObserver(() => this.map?.invalidateSize());
+      this.resizeObserver.observe(this.host.nativeElement);
+
+      this.destroyRef.onDestroy(() => {
+        this.resizeObserver?.disconnect();
+        map.remove();
+      });
       this.syncMarker();
     });
 

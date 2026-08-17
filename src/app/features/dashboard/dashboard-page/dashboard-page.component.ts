@@ -3,9 +3,10 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { SupervisionAlert, SupervisionAlertType, SupervisionDashboard, SupervisionService } from '../../../core/services/supervision.service';
 import { GeoPoint, ProblemDetails } from '../../../core/models';
 import { formatRelative, formatXaf } from '../../../core/utils/formatters';
+import { I18nService } from '../../../core/i18n/i18n.service';
 import {
   BreadcrumbsComponent, ForbiddenStateComponent, FormFieldComponent, MapMarker,
-  MapPanelComponent, ModalComponent, StatTileComponent, ToastService,
+  MapPanelComponent, ModalComponent, StatTileComponent, ToastService, i18nKeyFor,
 } from '../../../shared/ui';
 
 const ALERT_TYPE_LABELS: Record<SupervisionAlertType, string> = {
@@ -33,6 +34,7 @@ export class DashboardPageComponent {
   private readonly supervision = inject(SupervisionService);
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
+  private readonly i18n = inject(I18nService);
 
   protected readonly loading = signal(true);
   protected readonly forbidden = signal(false);
@@ -77,7 +79,7 @@ export class DashboardPageComponent {
         id: drv.user_uuid,
         point: { lat: drv.lat, lng: drv.lng },
         tone: OPERATIONAL_TONE[drv.operational_status] ?? 'neutral',
-        label: `${drv.matricule} — ${drv.operational_status}`,
+        label: `${drv.matricule} — ${this.i18n.t(i18nKeyFor('driverOp', drv.operational_status))}`,
       }));
   });
 

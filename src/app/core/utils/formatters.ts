@@ -75,6 +75,24 @@ export function formatPhone(phone: string | null | undefined): string {
   return `+237 ${match[1]} ${match[2]} ${match[3]} ${match[4]}`;
 }
 
+/**
+ * Readable fallback for raw backend identifiers (`permission.action`,
+ * `resource_type` snake_case, audit action codes…) that have no curated
+ * i18n label yet — turns `drivers.kyc.review` into `Drivers › Kyc Review`
+ * instead of leaking the dotted technical slug straight into the UI.
+ */
+export function humanizeSlug(slug: string | null | undefined): string {
+  if (!slug) return '—';
+  return slug
+    .split('.')
+    .map((segment) => segment
+      .split('_')
+      .filter(Boolean)
+      .map((word) => word[0].toUpperCase() + word.slice(1).toLowerCase())
+      .join(' '))
+    .join(' › ');
+}
+
 export function initials(name: string | null | undefined): string {
   if (!name) return '?';
   const parts = name.trim().split(/\s+/).filter(Boolean);

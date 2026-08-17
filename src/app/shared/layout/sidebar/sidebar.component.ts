@@ -11,10 +11,8 @@ const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
   imports: [RouterLink, RouterLinkActive],
   template: `
     <aside class="flex h-full shrink-0 flex-col transition-[width] duration-200" [style.width.px]="collapsed() ? 72 : 256" style="background: var(--sidebar-bg)">
-      <div class="flex items-center gap-2.5 h-16 shrink-0 px-3" [class.justify-center]="collapsed()" style="border-bottom: 1px solid var(--sidebar-border)">
-        <div class="h-9 w-9 rounded-full bg-white flex items-center justify-center shrink-0 overflow-hidden p-1">
-          <img src="/logo/Logo_lvb.png" alt="LVB" class="h-full w-full object-contain" />
-        </div>
+      <div class="flex items-center gap-2.5 h-18 shrink-0 px-3" [class.justify-center]="collapsed()" style="border-bottom: 1px solid var(--sidebar-border)">
+        <img src="/logo/Logo_lvb_trimmed.png" alt="LVB" class="h-14 w-auto shrink-0" />
         @if (!collapsed()) {
           <div class="min-w-0">
             <p class="text-sm font-semibold leading-tight truncate" style="color: var(--sidebar-text-active); font-family: var(--font-heading)">{{ i18n.t('app.name') }}</p>

@@ -14,6 +14,10 @@ interface CreatedGrille {
   activated: boolean;
 }
 
+const ZONE_TYPE_LABELS: Record<ZoneType, string> = {
+  COUVERTURE: 'Couverture', INTERDITE: 'Interdite', MAJORATION: 'Majoration', DIFFICILE: 'Difficile',
+};
+
 @Component({
   selector: 'app-pricing-page',
   imports: [ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, PolygonPickerComponent, ForbiddenStateComponent],
@@ -27,6 +31,7 @@ export class PricingPageComponent {
 
   protected readonly tabs: TabDef[] = [{ id: 'grilles', label: 'Grilles tarifaires' }, { id: 'zones', label: 'Zones' }];
   protected readonly activeTab = signal('grilles');
+  protected readonly zoneTypeLabel = ZONE_TYPE_LABELS;
 
   // --- Grilles --------------------------------------------------------
   protected readonly grilleForm = this.fb.nonNullable.group({

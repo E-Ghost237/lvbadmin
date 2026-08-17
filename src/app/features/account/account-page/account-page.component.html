@@ -62,15 +62,16 @@
 
   @if (activeTab() === 'notifications') {
     <div class="card p-5">
-      <p class="text-sm font-medium mb-3">Préférences par catégorie</p>
+      <p class="text-sm font-medium mb-1">Préférences par catégorie</p>
+      <p class="text-xs mb-3" style="color: var(--text-muted)">L’API renvoie ces catégories sous forme d’identifiants numériques, sans nom associé — l’intitulé exact n’est pas encore disponible côté serveur.</p>
       @if (loadingPrefs()) {
         <div class="skeleton h-16"></div>
       } @else if (prefs(); as p) {
         <div class="flex flex-col gap-3">
           @for (key of p | keyvalue; track key.key) {
             <div class="flex items-center justify-between gap-3">
-              <p class="text-sm">{{ key.key }}</p>
-              <app-toggle [checked]="key.value" (checkedChange)="togglePref($any(key.key), $event)" [label]="$any(key.key)" />
+              <p class="text-sm">{{ categoryLabel($any(key.key)) }}</p>
+              <app-toggle [checked]="key.value" (checkedChange)="togglePref($any(key.key), $event)" [label]="categoryLabel($any(key.key))" />
             </div>
           }
         </div>

@@ -181,4 +181,25 @@ export const FR: Record<string, string> = {
   'gravity.MOYENNE': 'Moyenne',
   'gravity.HAUTE': 'Haute',
   'gravity.CRITIQUE': 'Critique',
+
+  // RBAC permission catalogue (GET /v1/admin/rbac) — curated labels for the
+  // known permission set; permission-label() falls back to a humanized slug
+  // for any key the backend adds that isn't listed here yet.
+  'permission.analytics.view': 'Consulter les analyses',
+  'permission.audit.view': 'Consulter le journal d’audit',
+  'permission.catalog.manage': 'Gérer la tarification & les zones',
+  'permission.console.access': 'Accéder à la console téléconseiller',
+  'permission.disputes.arbitrate': 'Arbitrer les réclamations & litiges',
+  'permission.drivers.kyc.review': 'Examiner les dossiers KYC livreurs',
+  'permission.drivers.quality.manage': 'Gérer la qualité des livreurs',
+  'permission.exports.manage': 'Gérer les exports',
+  'permission.notifications.configure': 'Configurer les notifications',
+  'permission.notifications.cost.view': 'Consulter le coût des notifications',
+  'permission.partners.validate': 'Valider les comptes partenaires',
+  'permission.privacy.manage': 'Gérer la confidentialité des données',
+  'permission.roles.manage': 'Gérer les rôles & permissions',
+  'permission.supervision.alert.acknowledge': 'Acquitter les alertes de supervision',
+  'permission.supervision.view': 'Consulter la supervision',
+  'permission.users.manage': 'Gérer les comptes utilisateurs',
+  'permission.users.view': 'Consulter les comptes utilisateurs',
 };

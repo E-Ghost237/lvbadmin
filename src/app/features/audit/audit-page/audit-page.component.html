@@ -22,13 +22,14 @@
   @if (nextCursor()) { <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loading()" (click)="fetch(nextCursor()!)">Charger plus</button> }
 }
 
-<app-modal [open]="!!detail()" title="Détail de l’entrée" [subtitle]="detail()?.action ?? ''" (closed)="detail.set(null)">
+<app-modal [open]="!!detail()" title="Détail de l’entrée" [subtitle]="humanize(detail()?.action)" (closed)="detail.set(null)">
   @if (detail(); as d) {
     <div class="grid grid-cols-2 gap-3 text-sm mb-4">
-      <div><p class="text-xs" style="color: var(--text-muted)">Ressource</p><p>{{ d.ressource_type }} #{{ d.ressource_id }}</p></div>
-      <div><p class="text-xs" style="color: var(--text-muted)">Acteur</p><p>{{ d.acteur_type }} @if (d.acteur_utilisateur_id) { (#{{ d.acteur_utilisateur_id }}) }</p></div>
+      <div><p class="text-xs" style="color: var(--text-muted)">Ressource</p><p>{{ humanize(d.ressource_type) }} #{{ d.ressource_id }}</p></div>
+      <div><p class="text-xs" style="color: var(--text-muted)">Acteur</p><p>{{ humanize(d.acteur_type) }} @if (d.acteur_utilisateur_id) { (#{{ d.acteur_utilisateur_id }}) }</p></div>
       <div><p class="text-xs" style="color: var(--text-muted)">IP</p><p>{{ d.ip ?? '—' }}</p></div>
     </div>
+    <p class="text-[11px] mb-4" style="color: var(--text-muted)">Code brut : <span class="font-mono">{{ d.action }}</span></p>
     <div class="grid grid-cols-2 gap-3">
       <div>
         <p class="text-xs font-semibold mb-1.5" style="color: var(--text-muted)">AVANT</p>

@@ -2,7 +2,7 @@ import { JsonPipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { AuditLogEntry, AuditService } from '../../../core/services/audit.service';
 import { ProblemDetails } from '../../../core/models';
-import { formatDateTime } from '../../../core/utils/formatters';
+import { formatDateTime, humanizeSlug } from '../../../core/utils/formatters';
 import {
   BreadcrumbsComponent, ColumnDef, DataTableComponent, ForbiddenStateComponent, ModalComponent, ToastService,
 } from '../../../shared/ui';
@@ -18,11 +18,14 @@ export class AuditPageComponent {
 
   protected readonly columns: ColumnDef<AuditLogEntry>[] = [
     { key: 'cree_le', label: 'Horodatage', cell: (r) => formatDateTime(r.cree_le) },
-    { key: 'action', label: 'Action' },
-    { key: 'ressource_type', label: 'Ressource' },
-    { key: 'acteur_type', label: 'Acteur' },
+    { key: 'action', label: 'Action', cell: (r) => humanizeSlug(r.action) },
+    { key: 'ressource_type', label: 'Ressource', cell: (r) => humanizeSlug(r.ressource_type) },
+    { key: 'acteur_type', label: 'Acteur', cell: (r) => humanizeSlug(r.acteur_type) },
     { key: 'ip', label: 'IP', cell: (r) => r.ip ?? '—' },
   ];
+
+  /** Exposed for the raw-value detail modal / tooltips — the table itself always shows the humanized form. */
+  protected readonly humanize = humanizeSlug;
   protected readonly trackById = (row: AuditLogEntry) => row.id;
 
   protected readonly rows = signal<AuditLogEntry[]>([]);

@@ -181,4 +181,25 @@ export const EN: Record<string, string> = {
   'gravity.MOYENNE': 'Medium',
   'gravity.HAUTE': 'High',
   'gravity.CRITIQUE': 'Critical',
+
+  // RBAC permission catalogue (GET /v1/admin/rbac) — curated labels for the
+  // known permission set; permission-label() falls back to a humanized slug
+  // for any key the backend adds that isn't listed here yet.
+  'permission.analytics.view': 'View analytics',
+  'permission.audit.view': 'View audit log',
+  'permission.catalog.manage': 'Manage pricing & zones',
+  'permission.console.access': 'Access call-center console',
+  'permission.disputes.arbitrate': 'Arbitrate claims & disputes',
+  'permission.drivers.kyc.review': 'Review driver KYC files',
+  'permission.drivers.quality.manage': 'Manage driver quality',
+  'permission.exports.manage': 'Manage exports',
+  'permission.notifications.configure': 'Configure notifications',
+  'permission.notifications.cost.view': 'View notification costs',
+  'permission.partners.validate': 'Validate partner accounts',
+  'permission.privacy.manage': 'Manage data privacy',
+  'permission.roles.manage': 'Manage roles & permissions',
+  'permission.supervision.alert.acknowledge': 'Acknowledge supervision alerts',
+  'permission.supervision.view': 'View supervision',
+  'permission.users.manage': 'Manage user accounts',
+  'permission.users.view': 'View user accounts',
 };

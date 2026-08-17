@@ -9,7 +9,7 @@ type Theme = 'light' | 'dark' | 'system';
   selector: 'app-topbar',
   imports: [RouterLink],
   template: `
-    <header class="flex items-center gap-3 h-16 px-4 lg:px-6 shrink-0" style="background: var(--sidebar-bg)">
+    <header class="flex items-center gap-3 h-18 px-4 lg:px-6 shrink-0" style="background: var(--sidebar-bg)">
       <button type="button" class="lg:hidden btn btn-ghost btn-sm !px-1.5 topbar-icon-btn" (click)="openMobileMenu.emit()" aria-label="Ouvrir le menu">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
       </button>

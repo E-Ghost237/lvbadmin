@@ -310,3 +310,14 @@ h1, h2, h3, h4, h5, h6 {
 .thin-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
 .thin-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
 .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/*
+ * Safety net for app-modal's [modal-footer] slot: ModalComponent applies its
+ * own flex/gap to the *projected* footer element, but that projected content
+ * lives in the emulated-encapsulation scope of whichever page declared it —
+ * not the modal's — so a page that forgets its own `class="flex gap-2"` on
+ * that element silently loses button spacing (buttons render flush against
+ * each other). This global rule makes correct spacing the default instead of
+ * something every call site has to remember.
+ */
+[modal-footer] { display: flex; align-items: center; gap: 0.5rem; }

@@ -4,7 +4,7 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/auth/auth.service';
 import { AccountService, ConsentType } from '../../../core/services/account.service';
 import { DeviceSessionSummary, ProblemDetails } from '../../../core/models';
-import { formatDateTime } from '../../../core/utils/formatters';
+import { formatDateTime, humanizeSlug } from '../../../core/utils/formatters';
 import {
   AlertBannerComponent, BreadcrumbsComponent, ConfirmService, FormFieldComponent, TabDef, TabsComponent,
   ToggleComponent, ToastService,
@@ -102,6 +102,19 @@ export class AccountPageComponent {
       next: (p) => { this.loadingPrefs.set(false); this.prefs.set(p); },
       error: (err: ProblemDetails) => { this.loadingPrefs.set(false); this.toast.error('Chargement impossible', err.detail); },
     });
+  }
+
+  /**
+   * The API contract promises named categories (`Record<string, boolean>`)
+   * but the deployed backend currently returns bare numeric keys ("0", "1"…)
+   * — there is no category-catalog endpoint anywhere to resolve a real name
+   * from, so this can only present them as ordinal placeholders rather than
+   * invent labels. Flagged in the info banner below; needs a backend fix
+   * (named categories, or a small lookup endpoint) against the cahier des
+   * charges, not a frontend one.
+   */
+  categoryLabel(key: string): string {
+    return /^\d+$/.test(key) ? `Catégorie ${Number(key) + 1}` : humanizeSlug(key);
   }
 
   togglePref(category: string, enabled: boolean): void {

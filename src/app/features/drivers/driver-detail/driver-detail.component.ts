@@ -76,10 +76,11 @@ export class DriverDetailComponent {
   }
 
   async suspend(): Promise<void> {
-    const ok = await this.confirm.ask({ title: 'Suspendre ce livreur ?', message: 'Le compte sera immédiatement suspendu.', danger: true });
-    if (!ok) return;
-    const motif = window.prompt('Motif de suspension (obligatoire) :');
-    if (!motif || motif.trim().length < 5) return;
+    const motif = await this.confirm.askReason({
+      title: 'Suspendre ce livreur ?', message: 'Le compte sera immédiatement suspendu.',
+      label: 'Motif de suspension', minLength: 5, danger: true, confirmLabel: 'Suspendre',
+    });
+    if (!motif) return;
     this.driversService.suspend(this.uuid, motif).subscribe({
       next: () => { this.toast.success('Compte suspendu'); this.fetch(); },
       error: (err: ProblemDetails) => this.toast.error('Échec', err.detail),

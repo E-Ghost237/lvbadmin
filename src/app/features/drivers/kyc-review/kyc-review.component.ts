@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DriversService, KycDocumentType, KycDossier } from '../../../core/services/drivers.service';
 import { ProblemDetails } from '../../../core/models';
-import { BreadcrumbsComponent, StatusBadgeComponent, ToastService } from '../../../shared/ui';
+import { BreadcrumbsComponent, ConfirmService, StatusBadgeComponent, ToastService } from '../../../shared/ui';
 
 const DOCUMENT_LABELS: Record<KycDocumentType, string> = {
   CNI_RECTO: 'CNI (recto)', CNI_VERSO: 'CNI (verso)', PERMIS_CONDUIRE: 'Permis de conduire',
@@ -20,6 +20,7 @@ export class KycReviewComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
+  private readonly confirm = inject(ConfirmService);
 
   protected readonly uuid = this.route.snapshot.paramMap.get('uuid')!;
   protected readonly loading = signal(true);
@@ -49,9 +50,11 @@ export class KycReviewComponent {
     this.decide(type, true);
   }
 
-  reject(type: KycDocumentType): void {
-    const motif = window.prompt('Motif du rejet (obligatoire, 5 caractères minimum) :');
-    if (!motif || motif.trim().length < 5) return;
+  async reject(type: KycDocumentType): Promise<void> {
+    const motif = await this.confirm.askReason({
+      title: 'Rejeter ce document ?', label: 'Motif du rejet', minLength: 5, danger: true, confirmLabel: 'Rejeter',
+    });
+    if (!motif) return;
     this.decide(type, false, motif);
   }
 

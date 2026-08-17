@@ -75,9 +75,9 @@
         <table class="w-full text-sm border-collapse">
           <thead>
             <tr style="border-bottom: 1px solid var(--border)">
-              <th class="text-left px-4 py-2.5 text-xs uppercase" style="color: var(--text-muted)">Permission</th>
+              <th class="text-left px-4 py-2.5 text-xs uppercase min-w-56" style="color: var(--text-muted)">Permission</th>
               @for (role of c.roles; track role.id) {
-                <th class="text-center px-3 py-2.5 text-xs" style="color: var(--text-muted)">
+                <th class="text-center px-3 py-2.5 text-xs min-w-28" style="color: var(--text-muted)">
                   {{ role.name }}
                   <div class="text-[10px] font-normal">{{ role.users_count }} compte(s)</div>
                   @if (role.users_count === 0) {
@@ -90,7 +90,7 @@
           <tbody>
             @for (perm of c.permissions; track perm) {
               <tr style="border-bottom: 1px solid var(--border)">
-                <td class="px-4 py-2 font-mono text-xs">{{ perm }}</td>
+                <td class="px-4 py-2.5 text-sm" [attr.title]="perm">{{ permissionLabel(perm) }}</td>
                 @for (role of c.roles; track role.id) {
                   <td class="text-center px-3 py-2">
                     <input type="checkbox" class="checkbox" [checked]="role.permissions.includes(perm)" (change)="toggleRolePermission(role, perm)" />
@@ -145,9 +145,9 @@
       <p class="field-label">Permissions</p>
       <div class="flex flex-col gap-1.5 max-h-60 overflow-y-auto thin-scroll">
         @for (perm of c.permissions; track perm) {
-          <label class="flex items-center gap-2 text-xs">
+          <label class="flex items-center gap-2 text-xs" [attr.title]="perm">
             <input type="checkbox" class="checkbox" [checked]="newRolePermissions().has(perm)" (change)="toggleNewRolePermission(perm)" />
-            <span class="font-mono">{{ perm }}</span>
+            <span>{{ permissionLabel(perm) }}</span>
           </label>
         }
       </div>

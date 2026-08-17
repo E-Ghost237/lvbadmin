@@ -53,7 +53,7 @@
       }
 
       @if (wizardStep() === 2) {
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl">
+        <div class="grid grid-cols-1 lg:grid-cols-[minmax(280px,360px)_1fr] gap-4 items-start">
           <form [formGroup]="trajetForm" class="card p-5 flex flex-col gap-4">
             <div class="grid grid-cols-2 gap-3">
               <app-field label="Ville" [control]="trajetForm.controls.ville" required>
@@ -80,7 +80,7 @@
             </div>
           </form>
 
-          <div class="card p-4">
+          <div class="card p-4 flex flex-col">
             <div class="flex rounded-(--radius-sm) overflow-hidden mb-3" style="border: 1px solid var(--border-strong)">
               <button type="button" class="flex-1 px-3 py-1.5 text-xs font-medium" [style.background]="activePointTarget() === 'pickup' ? 'var(--brand)' : 'transparent'" [style.color]="activePointTarget() === 'pickup' ? 'white' : 'var(--text-secondary)'" (click)="activePointTarget.set('pickup')">
                 Ramassage {{ pickupPoint() ? '✓' : '' }}
@@ -89,13 +89,13 @@
                 Livraison {{ dropoffPoint() ? '✓' : '' }}
               </button>
             </div>
-            <app-location-picker [value]="activePointTarget() === 'pickup' ? pickupPoint() : dropoffPoint()" (valueChange)="onMapPoint($event)" [height]="280" />
+            <app-location-picker [value]="activePointTarget() === 'pickup' ? pickupPoint() : dropoffPoint()" (valueChange)="onMapPoint($event)" class="block h-85 sm:h-105 xl:h-120 2xl:h-150" />
           </div>
         </div>
       }
 
       @if (wizardStep() === 3 && quote(); as q) {
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <form [formGroup]="deliveryForm" (ngSubmit)="submitOrder()" class="card p-5 flex flex-col gap-4">
             <app-field label="Nom du destinataire" [control]="deliveryForm.controls.destinataire_nom" required><input class="input" formControlName="destinataire_nom" /></app-field>
             <app-field label="Téléphone du destinataire" [control]="deliveryForm.controls.destinataire_telephone" required><input class="input" formControlName="destinataire_telephone" placeholder="+237600000001" /></app-field>
@@ -124,8 +124,8 @@
             </div>
             <p class="text-xs font-medium mt-4 mb-1.5" style="color: var(--text-muted)">Décomposition</p>
             <div class="flex flex-col gap-1 text-xs">
-              @for (line of q.decomposition | keyvalue; track line.key) {
-                <div class="flex justify-between"><span>{{ line.key }}</span><span class="tabular-nums">{{ xaf(line.value) }}</span></div>
+              @for (line of orderedDecomposition(q.decomposition); track line[0]) {
+                <div class="flex justify-between"><span>{{ decompositionLabel(line[0]) }}</span><span class="tabular-nums">{{ xaf(line[1]) }}</span></div>
               }
             </div>
           </div>
