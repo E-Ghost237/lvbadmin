@@ -4,6 +4,23 @@ import { Observable } from 'rxjs';
 import { API_BASE_URL, newIdempotencyKey, withIdempotencyKey } from '../http/api.config';
 import { AdminUserDetail, AdminUserSummary, CursorPage, UserProfile } from '../models';
 
+export interface CreateInternalAccountRequest {
+  telephone: string;
+  email: string;
+  nom: string;
+  prenom?: string | null;
+  langue?: 'fr' | 'en';
+  password: string;
+  password_confirmation: string;
+  roles: string[];
+}
+
+export interface InternalAccountCreated {
+  uuid: string;
+  statut: 'ACTIF';
+  roles: string[];
+}
+
 /** UC-ADM-02/04 — /v1/admin/users, /v1/admin/partners (Identity module). */
 @Injectable({ providedIn: 'root' })
 export class UsersService {
@@ -37,6 +54,12 @@ export class UsersService {
 
   validatePartner(uuid: string, encoursAutoriseXaf: number): Observable<{ message: string }> {
     return this.http.post<{ message: string }>(`${this.baseUrl}/admin/partners/${uuid}/validate`, { encours_autorise_xaf: encoursAutoriseXaf }, {
+      context: withIdempotencyKey(newIdempotencyKey()),
+    });
+  }
+
+  createInternal(req: CreateInternalAccountRequest): Observable<InternalAccountCreated> {
+    return this.http.post<InternalAccountCreated>(`${this.baseUrl}/admin/users`, req, {
       context: withIdempotencyKey(newIdempotencyKey()),
     });
   }

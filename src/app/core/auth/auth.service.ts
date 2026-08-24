@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable, map, tap } from 'rxjs';
+import { Observable, catchError, finalize, map, shareReplay, tap, throwError } from 'rxjs';
 import { API_BASE_URL } from '../http/api.config';
 import { AuthIdentity, DeviceSessionSummary } from '../models';
 
@@ -46,8 +46,11 @@ interface AuthenticatedSessionResponse {
  * every write the server rejects comes back as a real 403, which the UI
  * surfaces via ForbiddenStateComponent — nothing is gated speculatively.
  *
- * There is also no refresh-token endpoint on the backend, so an expired
- * 15-minute access token simply forces a fresh login (no silent refresh).
+ * `POST /v1/auth/refresh` rotates the 15-minute access token using the
+ * (single-use) refresh token — `authInterceptor` calls `refreshSession()`
+ * on a 401 and retries the original request once. `refreshSession()` itself
+ * is a single-flight call (`shareReplay`) so concurrent 401s share one
+ * rotation instead of each burning the one-time refresh token.
  */
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -56,6 +59,7 @@ export class AuthService {
 
   private readonly _identity = signal<AuthIdentity | null>(this.readStoredIdentity());
   private readonly _challengeToken = signal<string | null>(null);
+  private refreshInFlight$: Observable<void> | null = null;
 
   readonly identity = this._identity.asReadonly();
   readonly isAuthenticated = computed(() => this._identity() !== null);
@@ -102,9 +106,43 @@ export class AuthService {
   }
 
   logout(): void {
-    // No server-side logout endpoint exists; clearing the local token is the
-    // only available action (the token remains valid server-side until its
-    // 15-minute expiry).
+    // Best-effort server-side revocation — the local session is cleared
+    // regardless of whether this call succeeds (e.g. token already expired).
+    this.http.post<void>(`${this.baseUrl}/auth/logout`, {}).subscribe({ error: () => undefined });
+    this.clearLocalSession();
+  }
+
+  /**
+   * Rotates the access/refresh token pair. Single-flight: a second caller
+   * while a rotation is already in progress gets the same in-flight
+   * Observable rather than issuing its own request against the (single-use)
+   * refresh token.
+   */
+  refreshSession(): Observable<void> {
+    if (this.refreshInFlight$) return this.refreshInFlight$;
+
+    const stored = this.readStoredSession();
+    if (!stored?.refreshToken) return throwError(() => new Error('Aucun jeton de rafraîchissement disponible.'));
+
+    const body = {
+      refresh_token: stored.refreshToken,
+      appareil_nom: 'Navigateur web',
+      appareil_modele: shortBrowserLabel(),
+    };
+    this.refreshInFlight$ = this.http.post<AuthenticatedSessionResponse>(`${this.baseUrl}/auth/refresh`, body).pipe(
+      tap((res) => this.persistSession(res, stored.email)),
+      map(() => undefined),
+      catchError((err) => {
+        this.clearLocalSession();
+        return throwError(() => err);
+      }),
+      shareReplay(1),
+      finalize(() => { this.refreshInFlight$ = null; }),
+    );
+    return this.refreshInFlight$;
+  }
+
+  private clearLocalSession(): void {
     if (typeof localStorage !== 'undefined') localStorage.removeItem(SESSION_KEY);
     this._identity.set(null);
     this._challengeToken.set(null);
@@ -136,17 +174,19 @@ export class AuthService {
     return this.http.patch<void>(`${this.baseUrl}/profile`, patch);
   }
 
+  /**
+   * Deliberately does not evict the session once `accessExpiresAt` has
+   * passed: the refresh token can still be good, and `refreshSession()`
+   * needs it. The server's own 401 is the authority on whether the access
+   * token still works — the interceptor refreshes and retries on that,
+   * rather than this client-side clock pre-empting a still-valid session.
+   */
   private readStoredSession(): StoredSession | null {
     if (typeof localStorage === 'undefined') return null;
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     try {
-      const stored: StoredSession = JSON.parse(raw);
-      if (stored.accessExpiresAt < Date.now()) {
-        localStorage.removeItem(SESSION_KEY);
-        return null;
-      }
-      return stored;
+      return JSON.parse(raw) as StoredSession;
     } catch {
       localStorage.removeItem(SESSION_KEY);
       return null;

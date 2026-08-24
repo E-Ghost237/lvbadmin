@@ -145,6 +145,9 @@ export const FR: Record<string, string> = {
   'status.order.RETOURNEE': 'Retournée',
   'status.order.ANNULEE': 'Annulée',
   'status.order.EXPIREE': 'Expirée',
+  'status.order.ECHEC_PAIEMENT': 'Échec de paiement',
+  'status.order.INCIDENT': 'Incident',
+  'status.order.EN_LITIGE': 'En litige',
 
   'status.driverOp.HORS_LIGNE': 'Hors ligne',
   'status.driverOp.DISPONIBLE': 'Disponible',
@@ -173,9 +176,16 @@ export const FR: Record<string, string> = {
   'status.transaction.LITIGE': 'Litige',
 
   'status.withdrawal.EN_ATTENTE': 'En attente',
-  'status.withdrawal.VALIDE': 'Validé',
+  'status.withdrawal.EN_COURS': 'En cours',
+  'status.withdrawal.PAYE': 'Payé',
   'status.withdrawal.REJETE': 'Rejeté',
-  'status.withdrawal.VERSE': 'Versé',
+  'status.withdrawal.ECHEC': 'Échec',
+
+  'status.reconciliation.OUVERTE': 'Ouverte',
+  'status.reconciliation.CLOTUREE': 'Clôturée',
+
+  'status.reconciliationItem.OUVERT': 'Ouvert',
+  'status.reconciliationItem.QUALIFIE': 'Qualifié',
 
   'gravity.FAIBLE': 'Faible',
   'gravity.MOYENNE': 'Moyenne',
@@ -202,4 +212,11 @@ export const FR: Record<string, string> = {
   'permission.supervision.view': 'Consulter la supervision',
   'permission.users.manage': 'Gérer les comptes utilisateurs',
   'permission.users.view': 'Consulter les comptes utilisateurs',
+  'permission.orders.view': 'Consulter les commandes',
+  'permission.dispatch.assign': 'Affecter manuellement une commande',
+  'permission.drivers.view': 'Consulter les livreurs',
+  'permission.drivers.approve': 'Approuver les livreurs',
+  'permission.withdrawals.manage': 'Gérer les retraits livreurs',
+  'permission.finance.reconcile': 'Gérer le rapprochement financier',
+  'permission.settings.manage': 'Gérer les paramètres système',
 };

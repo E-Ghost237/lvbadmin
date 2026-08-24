@@ -1,12 +1,13 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Parametre, ParametreType, SettingsService } from '../../../core/services/settings.service';
+import { Parametre, ParametreType, SettingSummary, SettingsService } from '../../../core/services/settings.service';
 import { ProblemDetails } from '../../../core/models';
-import { AlertBannerComponent, BreadcrumbsComponent, FormFieldComponent, ToastService } from '../../../shared/ui';
+import { formatDateTime } from '../../../core/utils/formatters';
+import { AlertBannerComponent, BreadcrumbsComponent, ForbiddenStateComponent, FormFieldComponent, ToastService } from '../../../shared/ui';
 
 @Component({
   selector: 'app-settings-page',
-  imports: [ReactiveFormsModule, BreadcrumbsComponent, FormFieldComponent, AlertBannerComponent],
+  imports: [ReactiveFormsModule, BreadcrumbsComponent, FormFieldComponent, AlertBannerComponent, ForbiddenStateComponent],
   templateUrl: './settings-page.component.html',
 })
 export class SettingsPageComponent {
@@ -19,12 +20,46 @@ export class SettingsPageComponent {
   protected readonly notFound = signal(false);
   protected readonly current = signal<Parametre | null>(null);
 
+  protected readonly settingsList = signal<SettingSummary[]>([]);
+  protected readonly loadingList = signal(true);
+  protected readonly forbidden = signal(false);
+  protected readonly listCursor = signal<string | null>(null);
+
   protected readonly editForm = this.fb.nonNullable.group({
     valeur: ['', [Validators.required]],
     type: ['string' as ParametreType, [Validators.required]],
     description: [''],
   });
   protected readonly saving = signal(false);
+
+  constructor() {
+    this.fetchList();
+  }
+
+  fetchList(cursor?: string): void {
+    this.loadingList.set(true);
+    this.forbidden.set(false);
+    this.settings.list(cursor).subscribe({
+      next: (page) => {
+        this.loadingList.set(false);
+        this.settingsList.set(cursor ? [...this.settingsList(), ...page.items] : page.items);
+        this.listCursor.set(page.next_cursor);
+      },
+      error: (err: ProblemDetails) => {
+        this.loadingList.set(false);
+        if (err.status === 403) this.forbidden.set(true);
+      },
+    });
+  }
+
+  selectKey(k: string): void {
+    this.key.set(k);
+    this.lookup();
+  }
+
+  dateTime(iso: string | null): string {
+    return formatDateTime(iso);
+  }
 
   onKeyInput(value: string): void {
     this.key.set(value);
@@ -62,6 +97,7 @@ export class SettingsPageComponent {
         this.toast.success('Paramètre enregistré');
         this.notFound.set(false);
         this.current.set({ cle: this.key().trim(), valeur: v.valeur });
+        this.fetchList();
       },
       error: (err: ProblemDetails) => {
         this.saving.set(false);

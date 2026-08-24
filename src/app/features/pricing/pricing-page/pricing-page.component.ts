@@ -1,21 +1,22 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { CreateZoneRequest, PricingService, Zone, ZoneType } from '../../../core/services/pricing.service';
+import { CreateZoneRequest, PricingGridStatus, PricingGridSummary, PricingService, Zone, ZoneType } from '../../../core/services/pricing.service';
 import { GeoPoint, ProblemDetails } from '../../../core/models';
+import { formatXaf } from '../../../core/utils/formatters';
 import {
   BreadcrumbsComponent, ConfirmService, ForbiddenStateComponent, FormFieldComponent, PolygonPickerComponent, TabDef,
   TabsComponent, ToastService,
 } from '../../../shared/ui';
 
-interface CreatedGrille {
-  id: number;
-  nom: string;
-  ville: string;
-  activated: boolean;
-}
-
 const ZONE_TYPE_LABELS: Record<ZoneType, string> = {
   COUVERTURE: 'Couverture', INTERDITE: 'Interdite', MAJORATION: 'Majoration', DIFFICILE: 'Difficile',
+};
+
+const GRID_STATUS_LABELS: Record<PricingGridStatus, string> = {
+  BROUILLON: 'Brouillon', ACTIVE: 'Active', ARCHIVEE: 'Archivée',
+};
+const GRID_STATUS_COLORS: Record<PricingGridStatus, string> = {
+  BROUILLON: 'var(--text-muted)', ACTIVE: 'var(--status-good)', ARCHIVEE: 'var(--text-muted)',
 };
 
 @Component({
@@ -32,6 +33,12 @@ export class PricingPageComponent {
   protected readonly tabs: TabDef[] = [{ id: 'grilles', label: 'Grilles tarifaires' }, { id: 'zones', label: 'Zones' }];
   protected readonly activeTab = signal('grilles');
   protected readonly zoneTypeLabel = ZONE_TYPE_LABELS;
+  protected readonly gridStatusLabel = GRID_STATUS_LABELS;
+  protected readonly gridStatusColor = GRID_STATUS_COLORS;
+
+  xaf(amount: number): string {
+    return formatXaf(amount);
+  }
 
   // --- Grilles --------------------------------------------------------
   protected readonly grilleForm = this.fb.nonNullable.group({
@@ -45,8 +52,33 @@ export class PricingPageComponent {
     plafond_remise: [1000],
   });
   protected readonly creatingGrille = signal(false);
-  protected readonly sessionGrilles = signal<CreatedGrille[]>([]);
-  protected readonly activatingId = signal<number | null>(null);
+
+  protected readonly gridCity = signal<'Douala' | 'Yaoundé'>('Douala');
+  protected readonly grids = signal<PricingGridSummary[]>([]);
+  protected readonly loadingGrids = signal(true);
+  protected readonly forbiddenGrids = signal(false);
+  protected readonly activatingUuid = signal<string | null>(null);
+
+  selectGridCity(v: 'Douala' | 'Yaoundé'): void {
+    this.gridCity.set(v);
+    this.fetchGrids();
+  }
+
+  fetchGrids(): void {
+    this.loadingGrids.set(true);
+    this.forbiddenGrids.set(false);
+    this.pricing.listPricingGrids({ city: this.gridCity() }).subscribe({
+      next: (page) => {
+        this.loadingGrids.set(false);
+        this.grids.set(page.items);
+      },
+      error: (err: ProblemDetails) => {
+        this.loadingGrids.set(false);
+        if (err.status === 403) this.forbiddenGrids.set(true);
+        else this.toast.error('Chargement impossible', err.detail);
+      },
+    });
+  }
 
   createGrille(): void {
     if (this.grilleForm.invalid) {
@@ -56,11 +88,11 @@ export class PricingPageComponent {
     const v = this.grilleForm.getRawValue();
     this.creatingGrille.set(true);
     this.pricing.createGrille(v).subscribe({
-      next: (res) => {
+      next: () => {
         this.creatingGrille.set(false);
-        this.sessionGrilles.update((list) => [{ id: res.id, nom: v.nom, ville: v.ville, activated: false }, ...list]);
-        this.toast.success('Grille créée', `#${res.id}`);
+        this.toast.success('Grille créée (brouillon)');
         this.grilleForm.reset({ nom: '', ville: v.ville, frais_prise_en_charge: 500, tarif_km: 150, tarif_minute: 15, prix_minimum: 1000, arrondi: 25, plafond_remise: 1000 });
+        if (v.ville === this.gridCity()) this.fetchGrids();
       },
       error: (err: ProblemDetails) => {
         this.creatingGrille.set(false);
@@ -69,18 +101,18 @@ export class PricingPageComponent {
     });
   }
 
-  async activateGrille(g: CreatedGrille): Promise<void> {
-    const ok = await this.confirm.ask({ title: 'Activer cette grille ?', message: `La grille active actuelle de ${g.ville} sera archivée.` });
+  async activateGrid(g: PricingGridSummary): Promise<void> {
+    const ok = await this.confirm.ask({ title: 'Activer cette grille ?', message: `La grille active actuelle de ${g.city} sera archivée.` });
     if (!ok) return;
-    this.activatingId.set(g.id);
-    this.pricing.activateGrille(g.id, g.ville).subscribe({
+    this.activatingUuid.set(g.uuid);
+    this.pricing.activateGrille(g.uuid, g.city).subscribe({
       next: () => {
-        this.activatingId.set(null);
-        this.sessionGrilles.update((list) => list.map((x) => (x.id === g.id ? { ...x, activated: true } : x)));
+        this.activatingUuid.set(null);
         this.toast.success('Grille activée');
+        this.fetchGrids();
       },
       error: (err: ProblemDetails) => {
-        this.activatingId.set(null);
+        this.activatingUuid.set(null);
         this.toast.error('Échec de l’activation', err.detail);
       },
     });
@@ -103,6 +135,7 @@ export class PricingPageComponent {
   protected readonly savingZone = signal(false);
 
   constructor() {
+    this.fetchGrids();
     this.fetchZones();
   }
 

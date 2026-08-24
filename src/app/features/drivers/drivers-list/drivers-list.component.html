@@ -10,7 +10,7 @@
 <div class="mt-5">
   @if (activeTab() === 'all') {
     @if (forbidden()) {
-      <app-forbidden-state detail="Votre compte n’a pas la permission users.view." />
+      <app-forbidden-state detail="Votre compte n’a pas la permission drivers.view." />
     } @else {
       <div class="mb-3 max-w-sm">
         <app-search-input placeholder="Nom, téléphone, matricule…" (searchChange)="onSearch($event)" />
@@ -20,7 +20,7 @@
           [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [rowClickable]="true"
           [trackBy]="trackByUuid" (rowClick)="openDriver($event)"
         >
-          <ng-template appCell="statut" let-row><app-status-badge domain="account" [status]="row.statut" /></ng-template>
+          <ng-template appCell="statut_compte" let-row><app-status-badge domain="account" [status]="row.statut_compte" /></ng-template>
         </app-data-table>
       </div>
       @if (nextCursor()) {

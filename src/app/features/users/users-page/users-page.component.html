@@ -41,7 +41,7 @@
     @if (forbiddenInternal()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission users.view." />
     } @else {
-      <p class="text-xs mb-3" style="color: var(--text-muted)">Les comptes internes sont provisionnés hors interface (aucun point d’accès de création n’existe côté API) ; cette page gère leur cycle de vie et leurs rôles.</p>
+      <button type="button" class="btn btn-primary btn-sm mb-3" (click)="openNewInternal()">+ Nouveau compte interne</button>
       <div class="card">
         <app-data-table [columns]="columns" [rows]="internalRows()" [loading]="loadingInternal() && internalRows().length === 0" [trackBy]="trackByUuid">
           <ng-template appCell="statut" let-row><app-status-badge domain="account" [status]="row.statut" /></ng-template>
@@ -156,5 +156,46 @@
   <div modal-footer class="flex gap-2">
     <button type="button" class="btn btn-secondary" (click)="newRoleOpen.set(false)">Annuler</button>
     <button type="button" class="btn btn-primary" [disabled]="savingRole()" (click)="createRole()">Créer</button>
+  </div>
+</app-modal>
+
+<app-modal [open]="newInternalOpen()" title="Nouveau compte interne" size="lg" (closed)="newInternalOpen.set(false)">
+  <form [formGroup]="newInternalForm" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <app-field label="Nom" [control]="newInternalForm.controls.nom" required><input class="input" formControlName="nom" /></app-field>
+    <app-field label="Prénom" [control]="newInternalForm.controls.prenom"><input class="input" formControlName="prenom" /></app-field>
+    <app-field label="Téléphone" [control]="newInternalForm.controls.telephone" required>
+      <input class="input" formControlName="telephone" placeholder="+237600000001" />
+    </app-field>
+    <app-field label="Email professionnel" [control]="newInternalForm.controls.email" required>
+      <input type="email" class="input" formControlName="email" placeholder="prenom.nom@lvb.cm" />
+    </app-field>
+    <app-field label="Langue" [control]="newInternalForm.controls.langue" required>
+      <select class="select" formControlName="langue"><option value="fr">Français</option><option value="en">English</option></select>
+    </app-field>
+    <div></div>
+    <app-field label="Mot de passe" [control]="newInternalForm.controls.password" required hint="Minimum 12 caractères, majuscule, minuscule et chiffre.">
+      <input type="password" class="input" formControlName="password" autocomplete="new-password" />
+    </app-field>
+    <app-field label="Confirmer le mot de passe" [control]="newInternalForm.controls.password_confirmation" required>
+      <input type="password" class="input" formControlName="password_confirmation" autocomplete="new-password" />
+    </app-field>
+    @if (catalog(); as c) {
+      <div class="col-span-full">
+        <p class="field-label">Rôles</p>
+        <div class="flex flex-col gap-1.5 max-h-40 overflow-y-auto thin-scroll">
+          @for (role of c.roles; track role.id) {
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" class="checkbox" [checked]="newInternalRoles().has(role.name)" (change)="toggleNewInternalRole(role.name)" />
+              {{ role.name }}
+            </label>
+          }
+        </div>
+        @if (newInternalRoles().size === 0) { <p class="field-hint">Sélectionnez au moins un rôle.</p> }
+      </div>
+    }
+  </form>
+  <div modal-footer class="flex gap-2">
+    <button type="button" class="btn btn-secondary" (click)="newInternalOpen.set(false)">Annuler</button>
+    <button type="button" class="btn btn-primary" [disabled]="creatingInternal()" (click)="createInternalAccount()">Créer le compte</button>
   </div>
 </app-modal>

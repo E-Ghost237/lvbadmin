@@ -2,7 +2,23 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL, newIdempotencyKey, withIdempotencyKey } from '../http/api.config';
-import { AdminUserDetail, AdminUserSummary, CursorPage } from '../models';
+import { AccountStatus, AdminUserDetail, AdminUserSummary, CursorPage, DriverOperationalStatus, UuidCursorPage } from '../models';
+
+export interface AdminDriverSummary {
+  uuid: string;
+  matricule: string;
+  nom: string;
+  prenom: string | null;
+  telephone: string;
+  email: string | null;
+  statut_compte: string;
+  statut_operationnel: DriverOperationalStatus | null;
+  encours_cod_xaf: number;
+  plafond_cod_xaf: number;
+  note_moyenne: number | null;
+  taux_acceptation_7j: number | null;
+  cree_le: string;
+}
 
 export type KycDocumentType =
   | 'CNI_RECTO' | 'CNI_VERSO' | 'PERMIS_CONDUIRE' | 'CARTE_GRISE' | 'PHOTO_VEHICULE' | 'PHOTO_PROFIL' | 'ATTESTATION_ASSURANCE';
@@ -33,25 +49,32 @@ export interface DriverQuality {
 export type SanctionType = 'AVERTISSEMENT' | 'SUSPENSION_TEMPORAIRE' | 'DESACTIVATION';
 
 /**
- * UC-ADM-05/11 — no general "list all drivers with quality/COD" endpoint
- * exists; the list is the generic admin/users search scoped to
- * profil=LIVREUR (thin fields only), quality/sanctions are per-driver
- * lookups. There is also no "list sanctions for a driver" endpoint — a
- * proposed sanction's id only exists in the response of `proposeSanction`,
- * so confirm/cancel only work in the same session it was proposed.
+ * UC-ADM-05/11 — `/v1/admin/drivers` lists drivers with quality/COD fields
+ * inline (matricule, operational status, COD exposure, rating, acceptance
+ * rate) so the list view no longer needs a per-row `quality()` lookup.
+ * There is still no "list sanctions for a driver" endpoint — a proposed
+ * sanction's id only exists in the response of `proposeSanction`, so
+ * confirm/cancel only work in the same session it was proposed.
  */
 @Injectable({ providedIn: 'root' })
 export class DriversService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = inject(API_BASE_URL);
 
-  list(opts: { q?: string; statut?: string; cursor?: number; limit?: number }): Observable<CursorPage<AdminUserSummary>> {
-    const params: Record<string, string> = { profil: 'LIVREUR' };
+  list(opts: { q?: string; accountStatus?: AccountStatus; operationalStatus?: DriverOperationalStatus; cursor?: string; limit?: number }): Observable<UuidCursorPage<AdminDriverSummary>> {
+    const params: Record<string, string> = {};
     if (opts.q) params['q'] = opts.q;
-    if (opts.statut) params['statut'] = opts.statut;
-    if (opts.cursor) params['cursor'] = String(opts.cursor);
+    if (opts.accountStatus) params['account_status'] = opts.accountStatus;
+    if (opts.operationalStatus) params['operational_status'] = opts.operationalStatus;
+    if (opts.cursor) params['cursor'] = opts.cursor;
     if (opts.limit) params['limit'] = String(opts.limit);
-    return this.http.get<CursorPage<AdminUserSummary>>(`${this.baseUrl}/admin/users`, { params });
+    return this.http.get<UuidCursorPage<AdminDriverSummary>>(`${this.baseUrl}/admin/drivers`, { params });
+  }
+
+  approve(uuid: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/admin/drivers/${uuid}/approve`, {}, {
+      context: withIdempotencyKey(newIdempotencyKey()),
+    });
   }
 
   get(uuid: string): Observable<AdminUserDetail> {

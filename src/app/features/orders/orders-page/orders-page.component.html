@@ -1,0 +1,109 @@
+<app-breadcrumbs [crumbs]="[{ label: 'Commandes' }]" />
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">Commandes</h1>
+  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Recherche globale des commandes et affectation manuelle (UC-ADM-08→10).</p>
+</div>
+
+@if (forbidden()) {
+  <app-forbidden-state detail="Votre compte n’a pas la permission orders.view." />
+} @else {
+  <div class="flex flex-wrap items-center gap-3 mb-4">
+    <div class="max-w-xs flex-1 min-w-55">
+      <app-search-input placeholder="UUID, nom ou téléphone du destinataire…" (searchChange)="onSearch($event)" />
+    </div>
+
+    <div class="flex rounded-(--radius-sm) overflow-hidden" style="border: 1px solid var(--border-strong)">
+      <button type="button" class="px-3 py-1.5 text-xs font-medium" [style.background]="cityFilter() === '' ? 'var(--brand)' : 'transparent'" [style.color]="cityFilter() === '' ? 'white' : 'var(--text-secondary)'" (click)="selectCity('')">Toutes villes</button>
+      <button type="button" class="px-3 py-1.5 text-xs font-medium" [style.background]="cityFilter() === 'Douala' ? 'var(--brand)' : 'transparent'" [style.color]="cityFilter() === 'Douala' ? 'white' : 'var(--text-secondary)'" (click)="selectCity('Douala')">Douala</button>
+      <button type="button" class="px-3 py-1.5 text-xs font-medium" [style.background]="cityFilter() === 'Yaoundé' ? 'var(--brand)' : 'transparent'" [style.color]="cityFilter() === 'Yaoundé' ? 'white' : 'var(--text-secondary)'" (click)="selectCity('Yaoundé')">Yaoundé</button>
+    </div>
+
+    <select class="select w-auto" [disabled]="unassignedOnly()" [value]="statusFilter()" (change)="onStatusFilterChange($any($event.target).value)">
+      <option value="">Tous les statuts</option>
+      @for (s of statusValues; track s) {
+        <option [value]="s">{{ i18n.t('status.order.' + s) }}</option>
+      }
+    </select>
+
+    <label class="flex items-center gap-2 text-xs font-medium">
+      <input type="checkbox" class="checkbox" [checked]="unassignedOnly()" (change)="toggleUnassignedOnly()" />
+      Non affectées uniquement
+    </label>
+  </div>
+
+  <div class="card">
+    <app-data-table [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [trackBy]="trackByUuid">
+      <ng-template appCell="destinataire" let-row>
+        <p class="text-sm font-medium">{{ row.destinataire.nom }}</p>
+        <p class="text-xs" style="color: var(--text-muted)">{{ row.destinataire.telephone }}</p>
+      </ng-template>
+      <ng-template appCell="statut" let-row><app-status-badge domain="order" [status]="row.statut" /></ng-template>
+      <ng-template appCell="livreur" let-row>
+        @if (row.livreur; as l) {
+          <p class="text-sm">{{ l.matricule }}</p>
+          <p class="text-xs" style="color: var(--text-muted)">{{ l.prenom }} {{ l.nom }}</p>
+        } @else {
+          <span class="text-xs" style="color: var(--text-muted)">—</span>
+        }
+      </ng-template>
+      <ng-template appCell="actions" let-row>
+        @if (isUnassignable(row)) {
+          <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openAssign(row)">Affecter</button>
+        }
+      </ng-template>
+    </app-data-table>
+  </div>
+  @if (nextCursor()) {
+    <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loading()" (click)="fetch(nextCursor()!)">Charger plus</button>
+  }
+}
+
+<app-modal [open]="!!assignTarget()" title="Affecter manuellement" [subtitle]="assignTarget()?.destinataire?.nom ?? ''" size="lg" (closed)="assignTarget.set(null)">
+  @if (assignTarget(); as order) {
+    <div class="flex flex-col gap-4">
+      <div class="rounded-(--radius-sm) px-3 py-2.5 text-xs" style="background: var(--surface-2)">
+        {{ order.ville }} · {{ xaf(order.prix_final_xaf) }} · échéance {{ dateTime(order.echeance_promise) }}
+      </div>
+
+      <div>
+        <p class="field-label">Livreur</p>
+        @if (selectedDriver(); as d) {
+          <div class="flex items-center justify-between rounded-(--radius-sm) px-3 py-2.5" style="background: var(--brand-50)">
+            <div>
+              <p class="text-sm font-medium">{{ d.matricule }} — {{ d.prenom }} {{ d.nom }}</p>
+              <p class="text-xs" style="color: var(--text-muted)">{{ d.telephone }}</p>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" (click)="clearDriver()">Changer</button>
+          </div>
+        } @else {
+          <app-search-input placeholder="Matricule, nom, téléphone…" (searchChange)="searchDrivers($event)" />
+          <div class="flex flex-col gap-1 mt-2 max-h-40 overflow-y-auto thin-scroll">
+            @for (d of driverCandidates(); track d.uuid) {
+              <button type="button" class="text-left rounded-(--radius-sm) px-2.5 py-2 text-sm hover:bg-(--surface-2)" (click)="selectDriver(d)">
+                {{ d.matricule }} — {{ d.prenom }} {{ d.nom }} <span style="color: var(--text-muted)">· {{ d.telephone }}</span>
+              </button>
+            } @empty {
+              @if (driverQuery().trim() && !loadingDrivers()) {
+                <p class="text-xs text-center py-3" style="color: var(--text-muted)">Aucun livreur trouvé.</p>
+              }
+            }
+          </div>
+        }
+      </div>
+
+      <div>
+        <label class="field-label">Motif de l’affectation manuelle</label>
+        <textarea class="textarea" rows="3" [value]="assignReason()" (input)="onReasonInput($any($event.target).value)"></textarea>
+        <p class="field-hint">Minimum 5 caractères.</p>
+      </div>
+    </div>
+  }
+  <div modal-footer class="flex gap-2">
+    <button type="button" class="btn btn-secondary" (click)="assignTarget.set(null)">Annuler</button>
+    <button
+      type="button" class="btn btn-primary" [disabled]="assigning() || !selectedDriver() || assignReason().trim().length < 5"
+      (click)="confirmAssign()"
+    >Affecter</button>
+  </div>
+</app-modal>

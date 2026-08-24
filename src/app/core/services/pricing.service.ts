@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { API_BASE_URL } from '../http/api.config';
-import { GeoPoint } from '../models';
+import { API_BASE_URL, newIdempotencyKey, withIdempotencyKey } from '../http/api.config';
+import { GeoPoint, UuidCursorPage } from '../models';
 
 export interface CreateGrilleRequest {
   nom: string;
@@ -13,6 +13,22 @@ export interface CreateGrilleRequest {
   prix_minimum: number;
   arrondi: number;
   plafond_remise?: number | null;
+}
+
+export type PricingGridStatus = 'BROUILLON' | 'ACTIVE' | 'ARCHIVEE';
+
+export interface PricingGridSummary {
+  uuid: string;
+  name: string;
+  city: string;
+  status: PricingGridStatus;
+  base_fee_xaf: number;
+  price_per_km_xaf: number;
+  price_per_minute_xaf: number;
+  minimum_price_xaf: number;
+  rounding_xaf: number;
+  active_from: string | null;
+  archived_at: string | null;
 }
 
 export type ZoneType = 'COUVERTURE' | 'INTERDITE' | 'MAJORATION' | 'DIFFICILE';
@@ -33,23 +49,31 @@ export interface CreateZoneRequest {
   prix_minimum?: number | null;
 }
 
-/**
- * UC-ADM-06/07 — /v1/admin/grilles-tarifaires, /v1/admin/zones (Catalog
- * module). There is no list/get for pricing grids — only create + activate
- * — so a grid can only be activated in the same session it was created in
- * (its id is only known from the create response).
- */
+/** UC-ADM-06/07 — /v1/admin/pricing-grids, /v1/admin/zones (Catalog module). */
 @Injectable({ providedIn: 'root' })
 export class PricingService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = inject(API_BASE_URL);
 
-  createGrille(req: CreateGrilleRequest): Observable<{ id: number }> {
-    return this.http.post<{ id: number }>(`${this.baseUrl}/admin/grilles-tarifaires`, req);
+  listPricingGrids(opts: { city?: string; status?: PricingGridStatus; cursor?: string; limit?: number } = {}): Observable<UuidCursorPage<PricingGridSummary>> {
+    const params: Record<string, string> = {};
+    if (opts.city) params['city'] = opts.city;
+    if (opts.status) params['status'] = opts.status;
+    if (opts.cursor) params['cursor'] = opts.cursor;
+    if (opts.limit) params['limit'] = String(opts.limit);
+    return this.http.get<UuidCursorPage<PricingGridSummary>>(`${this.baseUrl}/admin/pricing-grids`, { params });
   }
 
-  activateGrille(id: number, ville: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/admin/grilles-tarifaires/${id}/activer`, { ville });
+  createGrille(req: CreateGrilleRequest): Observable<{ uuid: string; status: PricingGridStatus }> {
+    return this.http.post<{ uuid: string; status: PricingGridStatus }>(`${this.baseUrl}/admin/pricing-grids`, req, {
+      context: withIdempotencyKey(newIdempotencyKey()),
+    });
+  }
+
+  activateGrille(uuid: string, city: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/admin/pricing-grids/${uuid}/activate`, { city }, {
+      context: withIdempotencyKey(newIdempotencyKey()),
+    });
   }
 
   listZones(ville?: string): Observable<Zone[]> {

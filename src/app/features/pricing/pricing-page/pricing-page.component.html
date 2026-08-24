@@ -9,48 +9,61 @@
 
 <div class="mt-5">
   @if (activeTab() === 'grilles') {
-    <p class="text-xs mb-3 max-w-2xl" style="color: var(--text-muted)">Il n’existe pas de point d’accès pour lister les grilles existantes — seules celles créées pendant cette session apparaissent ci-dessous pour activation.</p>
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl">
-      <form [formGroup]="grilleForm" (ngSubmit)="createGrille()" class="card p-5 flex flex-col gap-3">
-        <p class="text-sm font-medium mb-1">Nouvelle grille</p>
-        <div class="grid grid-cols-2 gap-3">
-          <app-field label="Nom" [control]="grilleForm.controls.nom" required><input class="input" formControlName="nom" placeholder="DOUALA_2026_R1" /></app-field>
-          <app-field label="Ville" [control]="grilleForm.controls.ville" required>
-            <select class="select" formControlName="ville"><option value="Douala">Douala</option><option value="Yaoundé">Yaoundé</option></select>
-          </app-field>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <app-field label="Frais prise en charge" [control]="grilleForm.controls.frais_prise_en_charge" required><input type="number" min="0" class="input" formControlName="frais_prise_en_charge" /></app-field>
-          <app-field label="Tarif / km" [control]="grilleForm.controls.tarif_km" required><input type="number" min="0" class="input" formControlName="tarif_km" /></app-field>
-          <app-field label="Tarif / min" [control]="grilleForm.controls.tarif_minute" required><input type="number" min="0" class="input" formControlName="tarif_minute" /></app-field>
-          <app-field label="Prix minimum" [control]="grilleForm.controls.prix_minimum" required><input type="number" min="0" class="input" formControlName="prix_minimum" /></app-field>
-          <app-field label="Arrondi" [control]="grilleForm.controls.arrondi" required><input type="number" min="0" class="input" formControlName="arrondi" /></app-field>
-          <app-field label="Plafond remise" [control]="grilleForm.controls.plafond_remise"><input type="number" min="0" class="input" formControlName="plafond_remise" /></app-field>
-        </div>
-        <button type="submit" class="btn btn-primary self-start" [disabled]="creatingGrille()">Créer (brouillon)</button>
-      </form>
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex rounded-(--radius-sm) overflow-hidden" style="border: 1px solid var(--border-strong)">
+        <button type="button" class="px-3 py-1.5 text-xs font-medium" [style.background]="gridCity() === 'Douala' ? 'var(--brand)' : 'transparent'" [style.color]="gridCity() === 'Douala' ? 'white' : 'var(--text-secondary)'" (click)="selectGridCity('Douala')">Douala</button>
+        <button type="button" class="px-3 py-1.5 text-xs font-medium" [style.background]="gridCity() === 'Yaoundé' ? 'var(--brand)' : 'transparent'" [style.color]="gridCity() === 'Yaoundé' ? 'white' : 'var(--text-secondary)'" (click)="selectGridCity('Yaoundé')">Yaoundé</button>
+      </div>
+    </div>
 
-      <div class="card p-4">
-        <p class="text-sm font-medium mb-3">Grilles créées cette session</p>
-        <div class="flex flex-col gap-2">
-          @for (g of sessionGrilles(); track g.id) {
-            <div class="flex items-center justify-between rounded-(--radius-sm) px-3 py-2.5" style="background: var(--surface-2)">
-              <div>
-                <p class="text-sm font-medium">{{ g.nom }}</p>
-                <p class="text-xs" style="color: var(--text-muted)">{{ g.ville }} · #{{ g.id }}</p>
-              </div>
-              @if (g.activated) {
-                <span class="text-xs font-medium" style="color: var(--status-good)">Activée</span>
-              } @else {
-                <button type="button" class="btn btn-secondary btn-sm !py-1" [disabled]="activatingId() === g.id" (click)="activateGrille(g)">Activer</button>
+    @if (forbiddenGrids()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission catalog.manage." />
+    } @else {
+      <div class="grid grid-cols-1 lg:grid-cols-[minmax(320px,420px)_1fr] gap-4 items-start">
+        <form [formGroup]="grilleForm" (ngSubmit)="createGrille()" class="card p-5 flex flex-col gap-3">
+          <p class="text-sm font-medium mb-1">Nouvelle grille</p>
+          <div class="grid grid-cols-2 gap-3">
+            <app-field label="Nom" [control]="grilleForm.controls.nom" required><input class="input" formControlName="nom" placeholder="DOUALA_2026_R1" /></app-field>
+            <app-field label="Ville" [control]="grilleForm.controls.ville" required>
+              <select class="select" formControlName="ville"><option value="Douala">Douala</option><option value="Yaoundé">Yaoundé</option></select>
+            </app-field>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <app-field label="Frais prise en charge" [control]="grilleForm.controls.frais_prise_en_charge" required><input type="number" min="0" class="input" formControlName="frais_prise_en_charge" /></app-field>
+            <app-field label="Tarif / km" [control]="grilleForm.controls.tarif_km" required><input type="number" min="0" class="input" formControlName="tarif_km" /></app-field>
+            <app-field label="Tarif / min" [control]="grilleForm.controls.tarif_minute" required><input type="number" min="0" class="input" formControlName="tarif_minute" /></app-field>
+            <app-field label="Prix minimum" [control]="grilleForm.controls.prix_minimum" required><input type="number" min="0" class="input" formControlName="prix_minimum" /></app-field>
+            <app-field label="Arrondi" [control]="grilleForm.controls.arrondi" required><input type="number" min="0" class="input" formControlName="arrondi" /></app-field>
+            <app-field label="Plafond remise" [control]="grilleForm.controls.plafond_remise"><input type="number" min="0" class="input" formControlName="plafond_remise" /></app-field>
+          </div>
+          <button type="submit" class="btn btn-primary self-start" [disabled]="creatingGrille()">Créer (brouillon)</button>
+        </form>
+
+        <div class="card p-4">
+          <p class="text-sm font-medium mb-3">Grilles — {{ gridCity() }}</p>
+          @if (loadingGrids()) {
+            <div class="flex flex-col gap-2"><div class="skeleton h-16"></div><div class="skeleton h-16"></div></div>
+          } @else {
+            <div class="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3">
+              @for (g of grids(); track g.uuid) {
+                <div class="rounded-(--radius-sm) px-3 py-3 flex flex-col gap-2" style="background: var(--surface-2)">
+                  <div class="flex items-start justify-between gap-2">
+                    <p class="text-sm font-medium">{{ g.name }}</p>
+                    <span class="text-xs font-medium shrink-0" [style.color]="gridStatusColor[g.status]">{{ gridStatusLabel[g.status] }}</span>
+                  </div>
+                  <p class="text-xs" style="color: var(--text-muted)">{{ xaf(g.base_fee_xaf) }} + {{ xaf(g.price_per_km_xaf) }}/km · min {{ xaf(g.minimum_price_xaf) }}</p>
+                  @if (g.status !== 'ACTIVE') {
+                    <button type="button" class="btn btn-secondary btn-sm !py-1 self-start" [disabled]="activatingUuid() === g.uuid" (click)="activateGrid(g)">Activer</button>
+                  }
+                </div>
+              } @empty {
+                <p class="text-xs col-span-full text-center py-6" style="color: var(--text-muted)">Aucune grille pour {{ gridCity() }}.</p>
               }
             </div>
-          } @empty {
-            <p class="text-xs text-center py-6" style="color: var(--text-muted)">Aucune grille créée pour l’instant.</p>
           }
         </div>
       </div>
-    </div>
+    }
   }
 
   @if (activeTab() === 'zones') {

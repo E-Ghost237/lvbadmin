@@ -23,14 +23,17 @@ export type OrderStatus =
   | 'RETOUR_EXPEDITEUR'
   | 'RETOURNEE'
   | 'ANNULEE'
-  | 'EXPIREE';
+  | 'EXPIREE'
+  | 'ECHEC_PAIEMENT'
+  | 'INCIDENT'
+  | 'EN_LITIGE';
 
 export const ORDER_STATUS_VALUES: OrderStatus[] = [
   'BROUILLON', 'EN_ATTENTE_PAIEMENT', 'PLANIFIEE', 'EN_ATTENTE_AFFECTATION',
   'EN_ATTENTE_MANUELLE', 'AFFECTEE', 'EN_ROUTE_RAMASSAGE', 'ARRIVE_RAMASSAGE',
   'COLIS_RECUPERE', 'EN_LIVRAISON', 'ARRIVE_LIVRAISON', 'LIVREE',
   'ECHEC_RAMASSAGE', 'ECHEC_LIVRAISON', 'RETOUR_EXPEDITEUR', 'RETOURNEE',
-  'ANNULEE', 'EXPIREE',
+  'ANNULEE', 'EXPIREE', 'ECHEC_PAIEMENT', 'INCIDENT', 'EN_LITIGE',
 ];
 
 /** Statuses considered "active" (still executing) for supervision alerting (§5.7.1). */
@@ -97,6 +100,12 @@ export type ReconciliationDomain = 'MOBILE_MONEY' | 'COD' | 'RETRAITS_LIVREURS';
 export type ReconciliationGapKind =
   | 'PLATEFORME_SANS_OPERATEUR' | 'OPERATEUR_SANS_PLATEFORME' | 'ECART_MONTANT' | 'DOUBLON_SUSPECTE';
 
-export type WithdrawalStatus = 'EN_ATTENTE' | 'VALIDE' | 'REJETE' | 'VERSE';
+export type WithdrawalStatus = 'EN_ATTENTE' | 'EN_COURS' | 'PAYE' | 'REJETE' | 'ECHEC';
+
+export type ReconciliationStatus = 'OUVERTE' | 'CLOTUREE';
+
+export type ReconciliationItemStatus = 'OUVERT' | 'QUALIFIE';
+
+export type ReconciliationResolutionAction = 'REMBOURSEMENT' | 'REGULARISATION' | 'ENQUETE';
 
 export type Locale = 'fr' | 'en';

@@ -31,6 +31,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/teleconseiller/teleconseiller.routes').then((m) => m.TELECONSEILLER_ROUTES),
       },
       {
+        path: 'orders',
+        loadChildren: () => import('./features/orders/orders.routes').then((m) => m.ORDERS_ROUTES),
+      },
+      {
         path: 'drivers',
         loadChildren: () => import('./features/drivers/drivers.routes').then((m) => m.DRIVERS_ROUTES),
       },
@@ -45,6 +49,10 @@ export const routes: Routes = [
       {
         path: 'claims',
         loadChildren: () => import('./features/claims/claims.routes').then((m) => m.CLAIMS_ROUTES),
+      },
+      {
+        path: 'finance',
+        loadChildren: () => import('./features/finance/finance.routes').then((m) => m.FINANCE_ROUTES),
       },
       {
         path: 'reports',

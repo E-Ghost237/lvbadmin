@@ -27,6 +27,7 @@ export class KycReviewComponent {
   protected readonly dossier = signal<KycDossier | null>(null);
   protected readonly decidingType = signal<KycDocumentType | null>(null);
   protected readonly documentLabels = DOCUMENT_LABELS;
+  protected readonly approving = signal(false);
 
   constructor() {
     this.fetch();
@@ -75,5 +76,28 @@ export class KycReviewComponent {
 
   goToDriver(): void {
     this.router.navigate(['/drivers', this.uuid]);
+  }
+
+  allDocumentsValidated(d: KycDossier): boolean {
+    return d.documents.length > 0 && d.documents.every((doc) => doc.statut === 'VALIDE');
+  }
+
+  async approveDriver(): Promise<void> {
+    const ok = await this.confirm.ask({
+      title: 'Approuver ce livreur ?', message: 'Le compte passera au statut actif et pourra prendre des missions.',
+    });
+    if (!ok) return;
+    this.approving.set(true);
+    this.drivers.approve(this.uuid).subscribe({
+      next: () => {
+        this.approving.set(false);
+        this.toast.success('Livreur approuvé');
+        this.fetch();
+      },
+      error: (err: ProblemDetails) => {
+        this.approving.set(false);
+        this.toast.error('Échec', err.detail);
+      },
+    });
   }
 }

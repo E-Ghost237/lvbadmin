@@ -10,6 +10,9 @@
     </div>
     <div class="flex items-center gap-2">
       <app-status-badge domain="account" [status]="d.statut_compte" />
+      @if (d.statut_compte !== 'ACTIF' && allDocumentsValidated(d)) {
+        <button type="button" class="btn btn-primary btn-sm" [disabled]="approving()" (click)="approveDriver()">Approuver le livreur</button>
+      }
       <button type="button" class="btn btn-secondary btn-sm" (click)="goToDriver()">Voir la fiche livreur</button>
     </div>
   </div>

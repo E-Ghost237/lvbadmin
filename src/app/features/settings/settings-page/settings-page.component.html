@@ -5,48 +5,76 @@
   <p class="text-sm mt-0.5" style="color: var(--text-muted)">Paramètres opérationnels modifiables sans redéploiement (UC-ADM-13).</p>
 </div>
 
-<app-alert-banner kind="info">
-  L’API expose un magasin clé/valeur générique, sans registre de clés ni liste — recherchez une clé pour la consulter ou la créer.
-</app-alert-banner>
+@if (forbidden()) {
+  <app-forbidden-state detail="Votre compte n’a pas la permission settings.manage." />
+} @else {
+<div class="grid grid-cols-1 lg:grid-cols-[1fr_minmax(300px,380px)] gap-4 items-start">
+  <div>
+    <div class="card p-4 flex items-end gap-3">
+      <div class="flex-1">
+        <label class="field-label">Clé du paramètre</label>
+        <input class="input" [value]="key()" (input)="onKeyInput($any($event.target).value)" (keydown.enter)="lookup()" placeholder="ex. dispatch.rayon_vague_1_km" />
+      </div>
+      <button type="button" class="btn btn-primary" [disabled]="loading() || !key().trim()" (click)="lookup()">Charger</button>
+    </div>
 
-<div class="card p-4 max-w-xl mt-4 flex items-end gap-3">
-  <div class="flex-1">
-    <label class="field-label">Clé du paramètre</label>
-    <input class="input" [value]="key()" (input)="onKeyInput($any($event.target).value)" (keydown.enter)="lookup()" placeholder="ex. dispatch.rayon_vague_1_km" />
+    @if (loading()) {
+      <div class="skeleton h-40 mt-4"></div>
+    } @else if (notFound()) {
+      <div class="mt-4 flex flex-col gap-3">
+        <app-alert-banner kind="warning">Cette clé n’existe pas encore — vous pouvez la créer ci-dessous.</app-alert-banner>
+        <form [formGroup]="editForm" class="card p-5 flex flex-col gap-3">
+          <app-field label="Valeur" [control]="editForm.controls.valeur" required><input class="input" formControlName="valeur" /></app-field>
+          <app-field label="Type" [control]="editForm.controls.type" required>
+            <select class="select" formControlName="type">
+              <option value="string">Texte</option><option value="integer">Entier</option><option value="decimal">Décimal</option>
+              <option value="boolean">Booléen</option><option value="json">JSON</option>
+            </select>
+          </app-field>
+          <app-field label="Description" [control]="editForm.controls.description"><input class="input" formControlName="description" /></app-field>
+          <button type="button" class="btn btn-primary self-start" [disabled]="saving()" (click)="save()">Créer</button>
+        </form>
+      </div>
+    } @else if (current(); as p) {
+      <div class="mt-4">
+        <form [formGroup]="editForm" class="card p-5 flex flex-col gap-3">
+          <p class="text-sm font-medium font-mono">{{ p.cle }}</p>
+          <app-field label="Valeur" [control]="editForm.controls.valeur" required><input class="input" formControlName="valeur" /></app-field>
+          <app-field label="Type" [control]="editForm.controls.type" required>
+            <select class="select" formControlName="type">
+              <option value="string">Texte</option><option value="integer">Entier</option><option value="decimal">Décimal</option>
+              <option value="boolean">Booléen</option><option value="json">JSON</option>
+            </select>
+          </app-field>
+          <app-field label="Description" [control]="editForm.controls.description"><input class="input" formControlName="description" /></app-field>
+          <button type="button" class="btn btn-primary self-start" [disabled]="saving()" (click)="save()">Enregistrer</button>
+        </form>
+      </div>
+    }
   </div>
-  <button type="button" class="btn btn-primary" [disabled]="loading() || !key().trim()" (click)="lookup()">Charger</button>
+
+  <div class="card p-4">
+    <p class="text-sm font-medium mb-3">Paramètres existants</p>
+    @if (loadingList() && settingsList().length === 0) {
+      <div class="flex flex-col gap-2"><div class="skeleton h-11"></div><div class="skeleton h-11"></div><div class="skeleton h-11"></div></div>
+    } @else {
+      <div class="flex flex-col gap-1 max-h-150 overflow-y-auto thin-scroll">
+        @for (s of settingsList(); track s.key) {
+          <button
+            type="button" class="text-left rounded-(--radius-sm) px-2.5 py-2 hover:bg-(--surface-2) transition-colors"
+            [style.background]="key() === s.key ? 'var(--brand-50)' : 'transparent'" (click)="selectKey(s.key)"
+          >
+            <p class="text-sm font-mono">{{ s.key }}</p>
+            <p class="text-xs mt-0.5 truncate" style="color: var(--text-muted)">{{ s.value }} @if (s.updated_at) { · {{ dateTime(s.updated_at) }} }</p>
+          </button>
+        } @empty {
+          <p class="text-xs text-center py-6" style="color: var(--text-muted)">Aucun paramètre enregistré pour l’instant.</p>
+        }
+      </div>
+      @if (listCursor()) {
+        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingList()" (click)="fetchList(listCursor()!)">Charger plus</button>
+      }
+    }
+  </div>
 </div>
-
-@if (loading()) {
-  <div class="skeleton h-40 mt-4 max-w-xl"></div>
-} @else if (notFound()) {
-  <div class="mt-4 max-w-xl flex flex-col gap-3">
-    <app-alert-banner kind="warning">Cette clé n’existe pas encore — vous pouvez la créer ci-dessous.</app-alert-banner>
-    <form [formGroup]="editForm" class="card p-5 flex flex-col gap-3">
-      <app-field label="Valeur" [control]="editForm.controls.valeur" required><input class="input" formControlName="valeur" /></app-field>
-      <app-field label="Type" [control]="editForm.controls.type" required>
-        <select class="select" formControlName="type">
-          <option value="string">Texte</option><option value="integer">Entier</option><option value="decimal">Décimal</option>
-          <option value="boolean">Booléen</option><option value="json">JSON</option>
-        </select>
-      </app-field>
-      <app-field label="Description" [control]="editForm.controls.description"><input class="input" formControlName="description" /></app-field>
-      <button type="button" class="btn btn-primary self-start" [disabled]="saving()" (click)="save()">Créer</button>
-    </form>
-  </div>
-} @else if (current(); as p) {
-  <div class="mt-4 max-w-xl">
-    <form [formGroup]="editForm" class="card p-5 flex flex-col gap-3">
-      <p class="text-sm font-medium">{{ p.cle }}</p>
-      <app-field label="Valeur" [control]="editForm.controls.valeur" required><input class="input" formControlName="valeur" /></app-field>
-      <app-field label="Type" [control]="editForm.controls.type" required>
-        <select class="select" formControlName="type">
-          <option value="string">Texte</option><option value="integer">Entier</option><option value="decimal">Décimal</option>
-          <option value="boolean">Booléen</option><option value="json">JSON</option>
-        </select>
-      </app-field>
-      <app-field label="Description" [control]="editForm.controls.description"><input class="input" formControlName="description" /></app-field>
-      <button type="button" class="btn btn-primary self-start" [disabled]="saving()" (click)="save()">Enregistrer</button>
-    </form>
-  </div>
 }

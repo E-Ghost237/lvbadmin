@@ -1,0 +1,138 @@
+<app-breadcrumbs [crumbs]="[{ label: 'Finance' }]" />
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">Finance</h1>
+  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Retraits livreurs et rapprochement des flux Mobile Money / COD (UC-ADM-15→16).</p>
+</div>
+
+<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
+
+<div class="mt-5">
+  @if (activeTab() === 'withdrawals') {
+    <div class="flex items-center justify-between mb-3">
+      <select class="select w-auto" [value]="withdrawalStatusFilter()" (change)="onWithdrawalStatusFilterChange($any($event.target).value)">
+        <option value="">Tous les statuts</option>
+        @for (s of withdrawalStatuses; track s) { <option [value]="s">{{ s }}</option> }
+      </select>
+    </div>
+
+    @if (forbiddenWithdrawals()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission withdrawals.manage." />
+    } @else {
+      <div class="card">
+        <app-data-table [columns]="withdrawalColumns" [rows]="withdrawals()" [loading]="loadingWithdrawals() && withdrawals().length === 0" [trackBy]="trackByWithdrawalUuid">
+          <ng-template appCell="statut" let-row><app-status-badge domain="withdrawal" [status]="row.statut" /></ng-template>
+          <ng-template appCell="actions" let-row>
+            @if (row.statut === 'EN_ATTENTE') {
+              <div class="flex gap-1.5 justify-end">
+                <button type="button" class="btn btn-secondary btn-sm !py-1" [disabled]="decidingWithdrawal() === row.uuid" (click)="approveWithdrawal(row)">Approuver</button>
+                <button type="button" class="btn btn-danger-ghost btn-sm !py-1" [disabled]="decidingWithdrawal() === row.uuid" (click)="rejectWithdrawal(row)">Rejeter</button>
+              </div>
+            }
+          </ng-template>
+        </app-data-table>
+      </div>
+      @if (withdrawalsCursor()) {
+        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingWithdrawals()" (click)="fetchWithdrawals(withdrawalsCursor()!)">Charger plus</button>
+      }
+    }
+  }
+
+  @if (activeTab() === 'reconciliation') {
+    <div class="flex items-center justify-between mb-3">
+      <select class="select w-auto" [value]="periodStatusFilter()" (change)="onPeriodStatusFilterChange($any($event.target).value)">
+        <option value="">Tous les statuts</option>
+        @for (s of reconciliationStatuses; track s) { <option [value]="s">{{ s === 'OUVERTE' ? 'Ouverte' : 'Clôturée' }}</option> }
+      </select>
+    </div>
+
+    @if (forbiddenPeriods()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission finance.reconcile." />
+    } @else {
+      <div class="card">
+        <app-data-table
+          [columns]="periodColumns" [rows]="periods()" [loading]="loadingPeriods() && periods().length === 0"
+          [rowClickable]="true" (rowClick)="openPeriod($event)"
+        >
+          <ng-template appCell="statut" let-row><app-status-badge domain="reconciliation" [status]="row.status" /></ng-template>
+          <ng-template appCell="gap_xaf" let-row>
+            <span [style.color]="row.alert ? 'var(--status-critical)' : 'inherit'" [style.fontWeight]="row.alert ? 600 : 400">
+              {{ xaf(row.gap_xaf) }} ({{ percent(row.gap_rate) }})
+            </span>
+          </ng-template>
+        </app-data-table>
+      </div>
+      @if (periodsCursor()) {
+        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingPeriods()" (click)="fetchPeriods(periodsCursor()!)">Charger plus</button>
+      }
+    }
+  }
+</div>
+
+<app-modal [open]="!!selectedPeriod() || loadingDetail()" title="Détail de la période" size="xl" (closed)="closeDetail()">
+  @if (loadingDetail()) {
+    <div class="skeleton h-60"></div>
+  } @else if (selectedPeriod(); as p) {
+    <div class="flex flex-col gap-4">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+        <div><p class="text-xs" style="color: var(--text-muted)">Période</p><p class="font-medium">{{ dateOnly(p.from) }} → {{ dateOnly(p.to) }}</p></div>
+        <div><p class="text-xs" style="color: var(--text-muted)">Attendu</p><p class="font-medium tabular-nums">{{ xaf(p.expected_amount_xaf) }}</p></div>
+        <div><p class="text-xs" style="color: var(--text-muted)">Relevé</p><p class="font-medium tabular-nums">{{ xaf(p.statement_amount_xaf) }}</p></div>
+        <div><p class="text-xs" style="color: var(--text-muted)">Écart</p><p class="font-medium tabular-nums" [style.color]="p.alert ? 'var(--status-critical)' : 'inherit'">{{ xaf(p.gap_xaf) }} ({{ percent(p.gap_rate) }})</p></div>
+      </div>
+
+      <div>
+        <p class="text-sm font-medium mb-2">Écarts ({{ p.discrepancies.length }})</p>
+        <div class="flex flex-col gap-2 max-h-100 overflow-y-auto thin-scroll">
+          @for (item of p.discrepancies; track item.uuid) {
+            <div class="rounded-(--radius-sm) px-3 py-2.5" style="background: var(--surface-2)">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <p class="text-sm font-medium">{{ item.channel }} · {{ item.reference }}</p>
+                  <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ gapKindLabel(item.nature) }} — écart {{ xaf(item.gap_xaf) }}</p>
+                  @if (item.resolution_reason) { <p class="text-xs mt-1">{{ resolutionActionLabel(item.action) }} — {{ item.resolution_reason }}</p> }
+                </div>
+                <app-status-badge domain="reconciliationItem" [status]="item.status" />
+              </div>
+              @if (item.status === 'OUVERT') {
+                @if (resolvingItem()?.uuid === item.uuid) {
+                  <form [formGroup]="resolveForm" class="flex flex-col gap-2 mt-2.5 pt-2.5" style="border-top: 1px solid var(--border)">
+                    <app-field label="Action" [control]="resolveForm.controls.action" required>
+                      <select class="select" formControlName="action">
+                        <option value="REMBOURSEMENT">Remboursement</option>
+                        <option value="REGULARISATION">Régularisation</option>
+                        <option value="ENQUETE">Enquête</option>
+                      </select>
+                    </app-field>
+                    <app-field label="Motif" [control]="resolveForm.controls.reason" required hint="Minimum 10 caractères.">
+                      <textarea class="textarea" rows="2" formControlName="reason"></textarea>
+                    </app-field>
+                    <div class="flex gap-2">
+                      <button type="button" class="btn btn-secondary btn-sm" (click)="resolvingItem.set(null)">Annuler</button>
+                      <button type="button" class="btn btn-primary btn-sm" [disabled]="resolvingSubmit()" (click)="confirmResolve()">Qualifier</button>
+                    </div>
+                  </form>
+                } @else {
+                  <button type="button" class="btn btn-secondary btn-sm !py-1 mt-2" (click)="openResolve(item)">Qualifier l’écart</button>
+                }
+              }
+            </div>
+          } @empty {
+            <p class="text-xs text-center py-6" style="color: var(--text-muted)">Aucun écart pour cette période.</p>
+          }
+        </div>
+      </div>
+    </div>
+  }
+  <div modal-footer class="flex gap-2">
+    <button type="button" class="btn btn-secondary" (click)="closeDetail()">Fermer</button>
+    @if (selectedPeriod(); as p) {
+      @if (p.status === 'OUVERTE') {
+        <button
+          type="button" class="btn btn-primary" [disabled]="closingPeriod() || hasOpenItems(p)"
+          [title]="hasOpenItems(p) ? 'Tous les écarts doivent être qualifiés avant clôture' : ''" (click)="closePeriod()"
+        >Clôturer la période</button>
+      }
+    }
+  </div>
+</app-modal>

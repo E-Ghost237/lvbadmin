@@ -37,6 +37,12 @@ export interface CursorPage<T> {
   next_cursor: number | null;
 }
 
+/** Same shape, but for the newer "contract" admin endpoints (admin/orders, admin/drivers, pricing-grids, settings…) that cursor on an opaque UUID rather than a numeric id. */
+export interface UuidCursorPage<T> {
+  items: T[];
+  next_cursor: string | null;
+}
+
 export interface ListQuery {
   page?: number;
   page_size?: number;

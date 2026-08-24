@@ -1,11 +1,12 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { DriversService, KycDossierSummary } from '../../../core/services/drivers.service';
-import { AdminUserSummary, ProblemDetails } from '../../../core/models';
-import { formatDate } from '../../../core/utils/formatters';
+import { AdminDriverSummary, DriversService, KycDossierSummary } from '../../../core/services/drivers.service';
+import { DriverOperationalStatus, ProblemDetails } from '../../../core/models';
+import { formatDate, formatPercent, formatXaf } from '../../../core/utils/formatters';
+import { I18nService } from '../../../core/i18n/i18n.service';
 import {
   BreadcrumbsComponent, ColumnDef, DataTableComponent, ForbiddenStateComponent, SearchInputComponent,
-  StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService,
+  StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService, i18nKeyFor,
 } from '../../../shared/ui';
 
 @Component({
@@ -20,25 +21,30 @@ export class DriversListComponent {
   private readonly drivers = inject(DriversService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly i18n = inject(I18nService);
 
-  protected readonly trackByUuid = (row: AdminUserSummary) => row.uuid;
+  protected readonly trackByUuid = (row: AdminDriverSummary) => row.uuid;
 
   protected readonly tabs: TabDef[] = [{ id: 'all', label: 'Tous les livreurs' }, { id: 'kyc', label: 'Dossiers KYC' }];
   protected readonly activeTab = signal('all');
 
-  protected readonly columns: ColumnDef<AdminUserSummary>[] = [
+  protected readonly columns: ColumnDef<AdminDriverSummary>[] = [
     { key: 'nom', label: 'Livreur', cell: (r) => `${r.prenom ?? ''} ${r.nom}`.trim() },
     { key: 'matricule', label: 'Matricule' },
     { key: 'telephone', label: 'Téléphone' },
-    { key: 'statut', label: 'Statut' },
+    { key: 'statut_compte', label: 'Statut' },
+    { key: 'statut_operationnel', label: 'En service', cell: (r) => this.driverOpLabel(r.statut_operationnel) },
+    { key: 'encours_cod_xaf', label: 'Encours COD', align: 'right', cell: (r) => `${formatXaf(r.encours_cod_xaf)} / ${formatXaf(r.plafond_cod_xaf)}` },
+    { key: 'note_moyenne', label: 'Note', align: 'right', cell: (r) => (r.note_moyenne === null ? '—' : r.note_moyenne.toFixed(1)) },
+    { key: 'taux_acceptation_7j', label: 'Accept. 7j', align: 'right', cell: (r) => (r.taux_acceptation_7j === null ? '—' : formatPercent(r.taux_acceptation_7j)) },
     { key: 'cree_le', label: 'Inscrit le', cell: (r) => formatDate(r.cree_le) },
   ];
 
-  protected readonly rows = signal<AdminUserSummary[]>([]);
+  protected readonly rows = signal<AdminDriverSummary[]>([]);
   protected readonly loading = signal(true);
   protected readonly forbidden = signal(false);
   protected readonly search = signal('');
-  protected readonly nextCursor = signal<number | null>(null);
+  protected readonly nextCursor = signal<string | null>(null);
 
   protected readonly kycRows = signal<KycDossierSummary[]>([]);
   protected readonly loadingKyc = signal(true);
@@ -53,7 +59,7 @@ export class DriversListComponent {
     if (id === 'kyc' && this.kycRows().length === 0) this.fetchKyc();
   }
 
-  fetch(cursor?: number): void {
+  fetch(cursor?: string): void {
     this.loading.set(true);
     this.forbidden.set(false);
     this.drivers.list({ q: this.search() || undefined, cursor }).subscribe({
@@ -90,8 +96,12 @@ export class DriversListComponent {
     this.fetch();
   }
 
-  openDriver(row: AdminUserSummary): void {
+  openDriver(row: AdminDriverSummary): void {
     this.router.navigate(['/drivers', row.uuid]);
+  }
+
+  driverOpLabel(status: DriverOperationalStatus | null): string {
+    return status ? this.i18n.t(i18nKeyFor('driverOp', status)) : '—';
   }
 
   openKyc(row: KycDossierSummary): void {

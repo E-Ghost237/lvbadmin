@@ -5,6 +5,7 @@ import { UsersService } from '../../../core/services/users.service';
 import { RolesService } from '../../../core/services/roles.service';
 import { AdminUserSummary, CursorPage, ProblemDetails, RbacCatalog, RbacRole, UserProfile } from '../../../core/models';
 import { formatDate, humanizeSlug } from '../../../core/utils/formatters';
+import { e164Phone, matchControls, passwordPolicy } from '../../../core/utils/validators';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
   BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, FormFieldComponent,
@@ -53,6 +54,20 @@ export class UsersPageComponent {
   protected readonly loadingInternal = signal(true);
   protected readonly forbiddenInternal = signal(false);
   protected readonly internalCursor = signal<number | null>(null);
+
+  // --- New internal account -----------------------------------------------
+  protected readonly newInternalOpen = signal(false);
+  protected readonly newInternalRoles = signal<Set<string>>(new Set());
+  protected readonly creatingInternal = signal(false);
+  protected readonly newInternalForm = this.fb.nonNullable.group({
+    nom: ['', [Validators.required, Validators.maxLength(100)]],
+    prenom: [''],
+    telephone: ['', [Validators.required, e164Phone()]],
+    email: ['', [Validators.required, Validators.email, Validators.maxLength(255)]],
+    langue: ['fr' as 'fr' | 'en', [Validators.required]],
+    password: ['', [Validators.required, passwordPolicy()]],
+    password_confirmation: ['', [Validators.required]],
+  }, { validators: [matchControls('password', 'password_confirmation')] });
 
   // --- Partner validation -------------------------------------------------
   protected readonly partnerTarget = signal<AdminUserSummary | null>(null);
@@ -149,6 +164,43 @@ export class UsersPageComponent {
     this.users.delete(row.uuid, motif).subscribe({
       next: () => { this.toast.success('Compte supprimé'); refresh(); },
       error: (err: ProblemDetails) => this.toast.error('Échec', err.detail),
+    });
+  }
+
+  openNewInternal(): void {
+    this.newInternalForm.reset({ nom: '', prenom: '', telephone: '', email: '', langue: 'fr', password: '', password_confirmation: '' });
+    this.newInternalRoles.set(new Set());
+    this.newInternalOpen.set(true);
+    if (!this.catalog()) this.fetchCatalog();
+  }
+
+  toggleNewInternalRole(name: string): void {
+    const next = new Set(this.newInternalRoles());
+    if (next.has(name)) next.delete(name); else next.add(name);
+    this.newInternalRoles.set(next);
+  }
+
+  createInternalAccount(): void {
+    if (this.newInternalForm.invalid || this.newInternalRoles().size === 0) {
+      this.newInternalForm.markAllAsTouched();
+      return;
+    }
+    const v = this.newInternalForm.getRawValue();
+    this.creatingInternal.set(true);
+    this.users.createInternal({
+      telephone: v.telephone, email: v.email, nom: v.nom, prenom: v.prenom || null, langue: v.langue,
+      password: v.password, password_confirmation: v.password_confirmation, roles: Array.from(this.newInternalRoles()),
+    }).subscribe({
+      next: () => {
+        this.creatingInternal.set(false);
+        this.newInternalOpen.set(false);
+        this.toast.success('Compte interne créé');
+        this.fetchInternal();
+      },
+      error: (err: ProblemDetails) => {
+        this.creatingInternal.set(false);
+        this.toast.error('Échec de la création', err.detail);
+      },
     });
   }
 
