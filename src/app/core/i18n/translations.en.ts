@@ -114,6 +114,7 @@ export const EN: Record<string, string> = {
   'auth.login.submit': 'Sign in',
   'auth.login.forgot': 'Forgot password?',
   'auth.login.invalid': 'Incorrect credentials.',
+  'auth.login.compliance': 'Compliant with cahier des charges LVB-CDC-TECH-2026-V2.0',
   'auth.mfa.title': 'Two-factor verification',
   'auth.mfa.subtitle': 'Enter the 6-digit code from your authenticator app.',
   'auth.mfa.code': 'Verification code',
