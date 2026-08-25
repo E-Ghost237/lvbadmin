@@ -1,6 +1,6 @@
 export const EN: Record<string, string> = {
   'app.name': 'LVB Admin',
-  'app.tagline': 'La Vie est Belle — Delivery platform',
+  'app.tagline': 'La Vie est Belle Administration platform',
 
   'nav.dashboard': 'Live ops',
   'nav.orders': 'Orders',
@@ -109,7 +109,7 @@ export const EN: Record<string, string> = {
 
   'auth.login.title': 'Sign in',
   'auth.login.subtitle': 'Restricted to LVB staff',
-  'auth.login.email': 'Work email',
+  'auth.login.email': 'Email',
   'auth.login.password': 'Password',
   'auth.login.submit': 'Sign in',
   'auth.login.forgot': 'Forgot password?',

@@ -1,5 +1,7 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { FaIconComponent } from '@fortawesome/angular-fontawesome';
+import { faChevronLeft, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { AuthService } from '../../../core/auth/auth.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { NAV_ITEMS } from '../nav-data';
@@ -8,7 +10,7 @@ const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
 
 @Component({
   selector: 'app-sidebar',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, FaIconComponent],
   template: `
     <aside class="flex h-full shrink-0 flex-col transition-[width] duration-200" [style.width.px]="collapsed() ? 72 : 256" style="background: var(--sidebar-bg)">
       <div class="flex items-center gap-2.5 h-18 shrink-0 px-3" [class.justify-center]="collapsed()" style="border-bottom: 1px solid var(--sidebar-border)">
@@ -20,7 +22,7 @@ const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
           </div>
         }
         <button type="button" class="ml-auto lg:hidden btn btn-ghost btn-sm !px-1.5" style="color: var(--sidebar-text)" (click)="closeMobile.emit()" aria-label="Fermer le menu">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          <fa-icon [icon]="closeIcon" style="font-size: 16px"></fa-icon>
         </button>
       </div>
 
@@ -34,9 +36,7 @@ const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
             [attr.aria-label]="collapsed() ? i18n.t(item.labelKey) : null"
             (click)="closeMobile.emit()"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="shrink-0" aria-hidden="true">
-              <path [attr.d]="item.icon" />
-            </svg>
+            <fa-icon [icon]="item.icon" class="shrink-0" style="font-size: 16px; width: 18px; text-align: center" aria-hidden="true"></fa-icon>
             @if (!collapsed()) {
               <span class="truncate">{{ i18n.t(item.labelKey) }}</span>
             }
@@ -68,9 +68,10 @@ const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
             [attr.aria-expanded]="!collapsed()" aria-label="Réduire ou étendre le menu"
             (click)="toggleCollapsed()"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0 transition-transform" [style.transform]="collapsed() ? 'rotate(180deg)' : 'none'">
-              <path d="M15 6l-6 6 6 6" />
-            </svg>
+            <fa-icon
+              [icon]="collapseIcon" class="shrink-0 transition-transform" style="font-size: 14px"
+              [style.transform]="collapsed() ? 'rotate(180deg)' : 'none'"
+            ></fa-icon>
             @if (!collapsed()) { <span class="text-xs font-medium">Réduire</span> }
           </button>
         }
@@ -95,6 +96,8 @@ export class SidebarComponent {
   readonly allowCollapse = input(true);
 
   protected readonly navItems = NAV_ITEMS;
+  protected readonly closeIcon = faXmark;
+  protected readonly collapseIcon = faChevronLeft;
   protected readonly collapsed = signal(this.readCollapsed());
 
   protected readonly userEmail = computed(() => this.auth.identity()?.email ?? '');
