@@ -182,14 +182,12 @@
     @if (catalog(); as c) {
       <div class="col-span-full">
         <p class="field-label">Rôles</p>
-        <div class="flex flex-col gap-1.5 max-h-40 overflow-y-auto thin-scroll">
+        <select class="select" multiple size="5" (change)="onNewInternalRolesChange($event)">
           @for (role of c.roles; track role.id) {
-            <label class="flex items-center gap-2 text-sm">
-              <input type="checkbox" class="checkbox" [checked]="newInternalRoles().has(role.name)" (change)="toggleNewInternalRole(role.name)" />
-              {{ role.name }}
-            </label>
+            <option [value]="role.name">{{ role.name }}</option>
           }
-        </div>
+        </select>
+        <p class="field-hint">Maintenez Ctrl (ou Cmd) enfoncé pour sélectionner plusieurs rôles.</p>
         @if (newInternalRoles().size === 0) { <p class="field-hint">Sélectionnez au moins un rôle.</p> }
       </div>
     }

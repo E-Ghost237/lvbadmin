@@ -180,6 +180,11 @@ export class UsersPageComponent {
     this.newInternalRoles.set(next);
   }
 
+  onNewInternalRolesChange(event: Event): void {
+    const selected = Array.from((event.target as HTMLSelectElement).selectedOptions).map((o) => o.value);
+    this.newInternalRoles.set(new Set(selected));
+  }
+
   createInternalAccount(): void {
     if (this.newInternalForm.invalid || this.newInternalRoles().size === 0) {
       this.newInternalForm.markAllAsTouched();

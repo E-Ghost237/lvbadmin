@@ -19,8 +19,35 @@ export function withIdempotencyKey(key: string): HttpContext {
   return new HttpContext().set(IDEMPOTENCY_KEY, key);
 }
 
+/**
+ * The backend validates this header as a real UUID (ERR-4001 otherwise), so
+ * every fallback path here must still produce RFC 4122 v4 shape.
+ * `crypto.randomUUID()` requires a secure context (HTTPS or localhost) —
+ * this admin panel is deployed over plain HTTP, so that branch is never
+ * actually reachable there and previously fell through to a non-UUID
+ * `idem-<timestamp>-<random>` string that the backend rejected outright.
+ * `crypto.getRandomValues()` has no such restriction, so it's the real
+ * fallback; only a bare `Math.random()` string is used if `crypto` itself
+ * doesn't exist at all (non-browser/SSR execution).
+ */
 export function newIdempotencyKey(): string {
-  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : `idem-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  // `any` deliberately: DOM's `Crypto` and Node's global crypto typings
+  // disagree on this surface, and the point here is to probe at runtime
+  // for whichever methods actually exist rather than trust either type.
+  const webCrypto: any = typeof crypto !== 'undefined' ? crypto : undefined;
+
+  if (typeof webCrypto?.randomUUID === 'function') {
+    return webCrypto.randomUUID();
+  }
+  if (typeof webCrypto?.getRandomValues === 'function') {
+    const bytes: Uint8Array = webCrypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
 }
