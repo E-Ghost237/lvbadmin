@@ -20,7 +20,10 @@
   </div>
 
   <div class="card">
-    <app-data-table [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [trackBy]="trackByUuid">
+    <app-data-table
+      [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [rowClickable]="true"
+      [trackBy]="trackByUuid" (rowClick)="openPartner($event)"
+    >
       <ng-template appCell="nom_commercial" let-row>
         <p class="text-sm font-medium">{{ row.nom_commercial }}</p>
         <p class="text-xs" style="color: var(--text-muted)">{{ row.telephone }}</p>
@@ -32,7 +35,7 @@
       <ng-template appCell="statut_partenaire" let-row><app-status-badge domain="partner" [status]="row.statut_partenaire" /></ng-template>
       <ng-template appCell="actions" let-row>
         @if (row.statut_partenaire === 'EN_ATTENTE_VALIDATION') {
-          <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openValidate(row)">Valider</button>
+          <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="$event.stopPropagation(); openValidate(row)">Valider</button>
         }
       </ng-template>
     </app-data-table>

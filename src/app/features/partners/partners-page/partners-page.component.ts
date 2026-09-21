@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { PartnersService } from '../../../core/services/partners.service';
 import { UsersService } from '../../../core/services/users.service';
 import { AdminUserSummary, CreatePartnerRequest, Partner, PartnerStatus, ProblemDetails } from '../../../core/models';
@@ -29,6 +30,7 @@ export class PartnersPageComponent {
   private readonly users = inject(UsersService);
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
   protected readonly i18n = inject(I18nService);
 
   protected readonly statusValues = PARTNER_STATUS_VALUES;
@@ -74,6 +76,10 @@ export class PartnersPageComponent {
   onStatusFilterChange(value: string): void {
     this.statusFilter.set(value as PartnerStatus | '');
     this.fetch();
+  }
+
+  openPartner(row: Partner): void {
+    this.router.navigate(['/partners', row.uuid]);
   }
 
   // --- Create partner -------------------------------------------------
