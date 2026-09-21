@@ -156,6 +156,19 @@
         </app-data-table>
       </div>
     }
+
+    @if (activeTab() === 'audit') {
+      <div class="card">
+        <app-data-table
+          [columns]="auditColumns" [rows]="auditEntries()" [loading]="loadingAudit() && auditEntries().length === 0"
+          [rowClickable]="true" [trackBy]="trackByAuditId" (rowClick)="openAuditDetail($event)"
+          emptyTitle="Aucune entrée" emptyHint="Aucune action sensible n’a encore été journalisée pour ce partenaire."
+        />
+      </div>
+      @if (auditCursor()) {
+        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingAudit()" (click)="fetchAudit(auditCursor()!)">Charger plus</button>
+      }
+    }
   </div>
 }
 
@@ -251,4 +264,25 @@
     <button type="button" class="btn btn-secondary" (click)="inviteOpen.set(false)">Annuler</button>
     <button type="button" class="btn btn-primary" [disabled]="inviting()" (click)="submitInvite()">Inviter</button>
   </div>
+</app-modal>
+
+<app-modal [open]="!!auditDetail()" title="Détail de l’entrée" [subtitle]="humanize(auditDetail()?.action)" (closed)="auditDetail.set(null)">
+  @if (auditDetail(); as d) {
+    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+      <div><p class="text-xs" style="color: var(--text-muted)">Ressource</p><p>{{ humanize(d.ressource_type) }} #{{ d.ressource_id }}</p></div>
+      <div><p class="text-xs" style="color: var(--text-muted)">Acteur</p><p>{{ humanize(d.acteur_type) }} @if (d.acteur_utilisateur_id) { (#{{ d.acteur_utilisateur_id }}) }</p></div>
+      <div><p class="text-xs" style="color: var(--text-muted)">IP</p><p>{{ d.ip ?? '—' }}</p></div>
+    </div>
+    <p class="text-[11px] mb-4" style="color: var(--text-muted)">Code brut : <span class="font-mono">{{ d.action }}</span></p>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <p class="text-xs font-semibold mb-1.5" style="color: var(--text-muted)">AVANT</p>
+        <pre class="text-xs p-2.5 rounded-(--radius-sm) overflow-x-auto thin-scroll" style="background: var(--surface-2)">{{ d.valeur_avant | json }}</pre>
+      </div>
+      <div>
+        <p class="text-xs font-semibold mb-1.5" style="color: var(--text-muted)">APRÈS</p>
+        <pre class="text-xs p-2.5 rounded-(--radius-sm) overflow-x-auto thin-scroll" style="background: var(--surface-2)">{{ d.valeur_apres | json }}</pre>
+      </div>
+    </div>
+  }
 </app-modal>

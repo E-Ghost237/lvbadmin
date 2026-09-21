@@ -1,12 +1,13 @@
+import { JsonPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { PartnersService } from '../../../core/services/partners.service';
 import {
-  AdminUpdatePartnerRequest, Partner, PartnerCategory, PartnerChangeRequest, PartnerDocument, PartnerDocumentType,
-  PartnerMember, PartnerRole, PartnerStatus, ProblemDetails,
+  AdminUpdatePartnerRequest, Partner, PartnerAuditEntry, PartnerCategory, PartnerChangeRequest, PartnerDocument,
+  PartnerDocumentType, PartnerMember, PartnerRole, PartnerStatus, ProblemDetails,
 } from '../../../core/models';
-import { formatDate, formatDateTime } from '../../../core/utils/formatters';
+import { formatDate, formatDateTime, humanizeSlug } from '../../../core/utils/formatters';
 import { e164Phone } from '../../../core/utils/validators';
 import {
   BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, FormFieldComponent, ModalComponent,
@@ -56,8 +57,8 @@ const STATUS_TRANSITIONS: Record<PartnerStatus, StatusTransition[]> = {
 @Component({
   selector: 'app-partner-detail',
   imports: [
-    ReactiveFormsModule, BreadcrumbsComponent, StatusBadgeComponent, ModalComponent, FormFieldComponent, TabsComponent,
-    DataTableComponent, TableCellDefDirective,
+    JsonPipe, ReactiveFormsModule, BreadcrumbsComponent, StatusBadgeComponent, ModalComponent, FormFieldComponent,
+    TabsComponent, DataTableComponent, TableCellDefDirective,
   ],
   templateUrl: './partner-detail.component.html',
 })
@@ -78,7 +79,7 @@ export class PartnerDetailComponent {
 
   protected readonly tabs: TabDef[] = [
     { id: 'profil', label: 'Profil' }, { id: 'documents', label: 'Documents' }, { id: 'changes', label: 'Demandes de modification' },
-    { id: 'team', label: 'Équipe' },
+    { id: 'team', label: 'Équipe' }, { id: 'audit', label: 'Journal d’audit' },
   ];
   protected readonly activeTab = signal('profil');
 
@@ -92,6 +93,7 @@ export class PartnerDetailComponent {
     if (id === 'documents' && this.documents().length === 0) this.fetchDocuments();
     if (id === 'changes' && this.changeRequests().length === 0) this.fetchChangeRequests();
     if (id === 'team' && this.members().length === 0) this.fetchMembers();
+    if (id === 'audit' && this.auditEntries().length === 0) this.fetchAudit();
   }
 
   fetch(): void {
@@ -440,5 +442,42 @@ export class PartnerDetailComponent {
         this.toast.error('Échec de l’invitation', err.detail);
       },
     });
+  }
+
+  // --- Audit (P-C10) -----------------------------------------------
+
+  protected readonly auditColumns: ColumnDef<PartnerAuditEntry>[] = [
+    { key: 'cree_le', label: 'Horodatage', cell: (r) => formatDateTime(r.cree_le) },
+    { key: 'action', label: 'Action', cell: (r) => humanizeSlug(r.action) },
+    { key: 'ressource_type', label: 'Ressource', cell: (r) => humanizeSlug(r.ressource_type) },
+    { key: 'acteur_type', label: 'Acteur', cell: (r) => humanizeSlug(r.acteur_type) },
+    { key: 'ip', label: 'IP', cell: (r) => r.ip ?? '—' },
+  ];
+  /** Exposed for the raw-value detail modal — the table itself always shows the humanized form. */
+  protected readonly humanize = humanizeSlug;
+  protected readonly trackByAuditId = (row: PartnerAuditEntry) => row.id;
+
+  protected readonly auditEntries = signal<PartnerAuditEntry[]>([]);
+  protected readonly loadingAudit = signal(true);
+  protected readonly auditCursor = signal<number | null>(null);
+  protected readonly auditDetail = signal<PartnerAuditEntry | null>(null);
+
+  fetchAudit(cursor?: number): void {
+    this.loadingAudit.set(true);
+    this.partners.audit(this.uuid, { cursor, limit: 50 }).subscribe({
+      next: (page) => {
+        this.loadingAudit.set(false);
+        this.auditEntries.set(cursor ? [...this.auditEntries(), ...page.items] : page.items);
+        this.auditCursor.set(page.next_cursor);
+      },
+      error: (err: ProblemDetails) => {
+        this.loadingAudit.set(false);
+        this.toast.error('Chargement impossible', err.detail);
+      },
+    });
+  }
+
+  openAuditDetail(entry: PartnerAuditEntry): void {
+    this.auditDetail.set(entry);
   }
 }
