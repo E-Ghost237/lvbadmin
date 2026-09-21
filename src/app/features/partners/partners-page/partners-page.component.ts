@@ -166,8 +166,12 @@ export class PartnersPageComponent {
       responsable_telephone: v.responsable_telephone,
       email: v.email || null,
       secteur_activite: v.secteur_activite || null,
-      rccm: v.rccm || null,
       responsable_email: v.responsable_email || null,
+      // Omitted entirely (not sent as `null`) when blank: the backend's
+      // `rccm` rule is `sometimes|required`, not `nullable` — an explicit
+      // null still counts as "present" and fails `required`, unlike the
+      // other optional fields above which are genuinely `nullable` server-side.
+      ...(v.rccm ? { rccm: v.rccm } : {}),
     };
     this.creatingPartner.set(true);
     this.partners.create(req).subscribe({

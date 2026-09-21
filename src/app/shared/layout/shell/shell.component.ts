@@ -16,7 +16,7 @@ import { ToastContainerComponent } from '../../ui/toast/toast-container.componen
 
       @if (mobileMenuOpen()) {
         <div class="fixed inset-0 z-40 lg:hidden">
-          <div class="absolute inset-0 bg-black/40" (click)="mobileMenuOpen.set(false)"></div>
+          <div class="absolute inset-0" style="background: rgba(0, 0, 0, 0.4)" (click)="mobileMenuOpen.set(false)"></div>
           <div class="absolute inset-y-0 left-0">
             <app-sidebar [allowCollapse]="false" (closeMobile)="mobileMenuOpen.set(false)" />
           </div>

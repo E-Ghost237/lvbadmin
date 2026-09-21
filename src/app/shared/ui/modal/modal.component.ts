@@ -16,7 +16,7 @@ const SIZE_CLASS: Record<ModalSize, string> = { sm: 'max-w-md', md: 'max-w-xl', 
   template: `
     @if (open()) {
       <div class="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
-        <div class="absolute inset-0 bg-black/40" (click)="dismiss()" aria-hidden="true"></div>
+        <div class="absolute inset-0" style="background: rgba(0, 0, 0, 0.4)" (click)="dismiss()" aria-hidden="true"></div>
         <div
           cdkTrapFocus cdkTrapFocusAutoCapture
           class="relative w-full card shadow-(--shadow-lg) flex flex-col max-h-[90vh]"
