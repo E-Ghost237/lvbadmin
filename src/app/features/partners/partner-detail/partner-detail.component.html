@@ -122,6 +122,40 @@
         </div>
       }
     }
+
+    @if (activeTab() === 'team') {
+      <button type="button" class="btn btn-primary btn-sm mb-3" (click)="openInvite()">+ Inviter un membre</button>
+      <div class="card">
+        <app-data-table
+          [columns]="memberColumns" [rows]="members()" [loading]="loadingMembers() && members().length === 0"
+          [trackBy]="trackByMemberUuid" emptyTitle="Aucun membre" emptyHint="Invitez un utilisateur pour lui donner accès au périmètre partenaire."
+        >
+          <ng-template appCell="nom" let-row>
+            @if (row.utilisateur; as u) {
+              <p class="text-sm font-medium">{{ u.prenom }} {{ u.nom }}</p>
+            } @else {
+              <span class="text-xs" style="color: var(--text-muted)">Compte introuvable</span>
+            }
+          </ng-template>
+          <ng-template appCell="role" let-row>
+            <select
+              class="select w-auto" [value]="row.role" [disabled]="changingMemberRole() === row.uuid"
+              (change)="onMemberRoleChange(row, $any($event.target).value)"
+            >
+              @for (r of roleValues; track r) {
+                <option [value]="r">{{ roleLabel[r] }}</option>
+              }
+            </select>
+          </ng-template>
+          <ng-template appCell="actif" let-row>
+            <span [style.color]="row.actif ? 'var(--status-good)' : 'var(--status-critical)'">{{ row.actif ? 'Actif' : 'Inactif' }}</span>
+          </ng-template>
+          <ng-template appCell="actions" let-row>
+            <button type="button" class="btn btn-danger-ghost btn-sm !py-1" [disabled]="revokingMember() === row.uuid" (click)="revokeMember(row)">Révoquer</button>
+          </ng-template>
+        </app-data-table>
+      </div>
+    }
   </div>
 }
 
@@ -178,5 +212,43 @@
   <div modal-footer class="flex gap-2">
     <button type="button" class="btn btn-secondary" (click)="validateOpen.set(false)">Annuler</button>
     <button type="button" class="btn btn-primary" [disabled]="validating()" (click)="confirmValidate()">Valider</button>
+  </div>
+</app-modal>
+
+<app-modal [open]="inviteOpen()" title="Inviter un membre" (closed)="inviteOpen.set(false)">
+  <form [formGroup]="inviteForm" class="flex flex-col gap-3">
+    <div class="flex rounded-(--radius-sm) overflow-hidden w-fit" style="border: 1px solid var(--border-strong)">
+      <button
+        type="button" class="px-3 py-1.5 text-xs font-medium" (click)="setInviteContactType('email')"
+        [style.background]="inviteContactType() === 'email' ? 'var(--brand)' : 'transparent'"
+        [style.color]="inviteContactType() === 'email' ? 'white' : 'var(--text-secondary)'"
+      >Email</button>
+      <button
+        type="button" class="px-3 py-1.5 text-xs font-medium" (click)="setInviteContactType('telephone')"
+        [style.background]="inviteContactType() === 'telephone' ? 'var(--brand)' : 'transparent'"
+        [style.color]="inviteContactType() === 'telephone' ? 'white' : 'var(--text-secondary)'"
+      >Téléphone</button>
+    </div>
+    @if (inviteContactType() === 'email') {
+      <app-field label="Email" [control]="inviteForm.controls.email" required>
+        <input type="email" class="input" formControlName="email" />
+      </app-field>
+    } @else {
+      <app-field label="Téléphone" [control]="inviteForm.controls.telephone" required>
+        <input class="input" formControlName="telephone" placeholder="+237600000001" />
+      </app-field>
+    }
+    <app-field label="Rôle" [control]="inviteForm.controls.role" required>
+      <select class="select" formControlName="role">
+        @for (r of roleValues; track r) {
+          <option [value]="r">{{ roleLabel[r] }}</option>
+        }
+      </select>
+    </app-field>
+    <p class="field-hint">L’invitation expire après 72 heures. Le destinataire doit déjà disposer d’un compte actif correspondant.</p>
+  </form>
+  <div modal-footer class="flex gap-2">
+    <button type="button" class="btn btn-secondary" (click)="inviteOpen.set(false)">Annuler</button>
+    <button type="button" class="btn btn-primary" [disabled]="inviting()" (click)="submitInvite()">Inviter</button>
   </div>
 </app-modal>

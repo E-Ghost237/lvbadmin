@@ -4,7 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { PartnersService } from '../../../core/services/partners.service';
 import {
   AdminUpdatePartnerRequest, Partner, PartnerCategory, PartnerChangeRequest, PartnerDocument, PartnerDocumentType,
-  PartnerStatus, ProblemDetails,
+  PartnerMember, PartnerRole, PartnerStatus, ProblemDetails,
 } from '../../../core/models';
 import { formatDate, formatDateTime } from '../../../core/utils/formatters';
 import { e164Phone } from '../../../core/utils/validators';
@@ -29,6 +29,12 @@ const SENSITIVE_FIELD_LABELS: Record<string, string> = {
   raison_sociale: 'Raison sociale', numero_contribuable: 'Numéro contribuable',
   rccm: 'RCCM', responsable_nom: 'Nom du responsable',
 };
+
+/** Fixed, closed role set (RG-PRT-010) — a partner can never grant a role outside this list. */
+const PARTNER_ROLE_LABELS: Record<PartnerRole, string> = {
+  RESPONSABLE_PARTENAIRE: 'Responsable', OPERATEUR_PARTENAIRE: 'Opérateur', LECTEUR_PARTENAIRE: 'Lecteur',
+};
+const PARTNER_ROLE_VALUES: PartnerRole[] = ['RESPONSABLE_PARTENAIRE', 'OPERATEUR_PARTENAIRE', 'LECTEUR_PARTENAIRE'];
 
 /** RG-PRT-003 — every transition other than validation (its own dedicated endpoint). */
 const STATUS_TRANSITIONS: Record<PartnerStatus, StatusTransition[]> = {
@@ -72,6 +78,7 @@ export class PartnerDetailComponent {
 
   protected readonly tabs: TabDef[] = [
     { id: 'profil', label: 'Profil' }, { id: 'documents', label: 'Documents' }, { id: 'changes', label: 'Demandes de modification' },
+    { id: 'team', label: 'Équipe' },
   ];
   protected readonly activeTab = signal('profil');
 
@@ -84,6 +91,7 @@ export class PartnerDetailComponent {
     this.activeTab.set(id);
     if (id === 'documents' && this.documents().length === 0) this.fetchDocuments();
     if (id === 'changes' && this.changeRequests().length === 0) this.fetchChangeRequests();
+    if (id === 'team' && this.members().length === 0) this.fetchMembers();
   }
 
   fetch(): void {
@@ -323,6 +331,113 @@ export class PartnerDetailComponent {
       error: (err: ProblemDetails) => {
         this.decidingChange.set(null);
         this.toast.error('Échec', err.detail);
+      },
+    });
+  }
+
+  // --- Team (PRT-M04, RG-PRT-010) ---------------------------------------
+
+  protected readonly roleLabel = PARTNER_ROLE_LABELS;
+  protected readonly roleValues = PARTNER_ROLE_VALUES;
+  protected readonly memberColumns: ColumnDef<PartnerMember>[] = [
+    { key: 'nom', label: 'Membre' },
+    { key: 'role', label: 'Rôle' },
+    { key: 'actif', label: 'Statut' },
+    { key: 'actions', label: '' },
+  ];
+  protected readonly trackByMemberUuid = (row: PartnerMember) => row.uuid;
+
+  protected readonly members = signal<PartnerMember[]>([]);
+  protected readonly loadingMembers = signal(true);
+  protected readonly changingMemberRole = signal<string | null>(null);
+  protected readonly revokingMember = signal<string | null>(null);
+
+  fetchMembers(): void {
+    this.loadingMembers.set(true);
+    this.partners.listMembers(this.uuid).subscribe({
+      next: (res) => { this.loadingMembers.set(false); this.members.set(res.items); },
+      error: (err: ProblemDetails) => { this.loadingMembers.set(false); this.toast.error('Chargement impossible', err.detail); },
+    });
+  }
+
+  onMemberRoleChange(member: PartnerMember, role: string): void {
+    if (role === member.role) return;
+    this.changingMemberRole.set(member.uuid);
+    this.partners.changeMemberRole(this.uuid, member.uuid, role as PartnerRole).subscribe({
+      next: () => {
+        this.changingMemberRole.set(null);
+        this.toast.success('Rôle mis à jour');
+        this.fetchMembers();
+      },
+      error: (err: ProblemDetails) => {
+        this.changingMemberRole.set(null);
+        this.toast.error('Échec', err.detail);
+        this.fetchMembers();
+      },
+    });
+  }
+
+  async revokeMember(member: PartnerMember): Promise<void> {
+    const ok = await this.confirm.ask({
+      title: 'Révoquer ce membre ?',
+      message: `${member.utilisateur?.prenom ?? ''} ${member.utilisateur?.nom ?? ''} perdra l’accès au périmètre partenaire.`.trim(),
+      danger: true, confirmLabel: 'Révoquer',
+    });
+    if (!ok) return;
+    this.revokingMember.set(member.uuid);
+    this.partners.revokeMember(this.uuid, member.uuid).subscribe({
+      next: () => {
+        this.revokingMember.set(null);
+        this.toast.success('Membre révoqué');
+        this.fetchMembers();
+      },
+      error: (err: ProblemDetails) => {
+        this.revokingMember.set(null);
+        this.toast.error('Échec', err.detail);
+      },
+    });
+  }
+
+  // --- Invitation ---------------------------------------------------
+
+  protected readonly inviteOpen = signal(false);
+  protected readonly inviting = signal(false);
+  protected readonly inviteContactType = signal<'email' | 'telephone'>('email');
+  protected readonly inviteForm = this.fb.nonNullable.group({
+    email: ['', [Validators.email, Validators.maxLength(254)]],
+    telephone: ['', [e164Phone()]],
+    role: ['LECTEUR_PARTENAIRE' as PartnerRole, [Validators.required]],
+  });
+
+  openInvite(): void {
+    this.inviteForm.reset({ email: '', telephone: '', role: 'LECTEUR_PARTENAIRE' });
+    this.inviteContactType.set('email');
+    this.inviteOpen.set(true);
+  }
+
+  setInviteContactType(type: 'email' | 'telephone'): void {
+    this.inviteContactType.set(type);
+  }
+
+  submitInvite(): void {
+    const type = this.inviteContactType();
+    const control = this.inviteForm.controls[type];
+    const contact = control.value.trim();
+    if (!contact || control.invalid) {
+      control.markAsTouched();
+      return;
+    }
+    const role = this.inviteForm.getRawValue().role;
+    this.inviting.set(true);
+    this.partners.inviteMember(this.uuid, type === 'email' ? { email: contact, role } : { telephone: contact, role }).subscribe({
+      next: (inv) => {
+        this.inviting.set(false);
+        this.inviteOpen.set(false);
+        this.toast.success(`Invitation envoyée — expire le ${this.dateTime(inv.expire_le)}`);
+      },
+      error: (err: ProblemDetails) => {
+        this.inviting.set(false);
+        this.toast.error('Échec de l’invitation', err.detail);
       },
     });
   }
