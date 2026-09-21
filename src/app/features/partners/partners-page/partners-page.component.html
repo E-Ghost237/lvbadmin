@@ -16,7 +16,10 @@
       }
     </select>
 
-    <button type="button" class="btn btn-primary btn-sm" (click)="openNewPartner()">+ Nouveau partenaire</button>
+    <div class="flex items-center gap-2">
+      <button type="button" class="btn btn-secondary btn-sm" (click)="openCategories()">Gérer les catégories</button>
+      <button type="button" class="btn btn-primary btn-sm" (click)="openNewPartner()">+ Nouveau partenaire</button>
+    </div>
   </div>
 
   <div class="card">
@@ -122,5 +125,38 @@
   <div modal-footer class="flex gap-2">
     <button type="button" class="btn btn-secondary" (click)="validateTarget.set(null)">Annuler</button>
     <button type="button" class="btn btn-primary" [disabled]="validating()" (click)="confirmValidate()">Valider</button>
+  </div>
+</app-modal>
+
+<app-modal [open]="categoriesOpen()" title="Catégories partenaire" (closed)="categoriesOpen.set(false)">
+  @if (loadingCategories()) {
+    <div class="skeleton h-32"></div>
+  } @else {
+    <div class="flex flex-col gap-2 max-h-72 overflow-y-auto thin-scroll">
+      @for (category of categories(); track category.uuid) {
+        <div class="flex items-center gap-2">
+          <input
+            class="input flex-1" [value]="category.nom" [disabled]="savingCategory() === category.uuid"
+            (change)="renameCategory(category, $any($event.target).value)"
+          />
+          <app-toggle
+            [checked]="category.actif" [disabled]="savingCategory() === category.uuid" [label]="'Catégorie active : ' + category.nom"
+            (checkedChange)="toggleCategoryActive(category)"
+          />
+        </div>
+      } @empty {
+        <p class="text-xs text-center py-3" style="color: var(--text-muted)">Aucune catégorie.</p>
+      }
+    </div>
+    <div class="flex items-center gap-2 mt-3 pt-3" style="border-top: 1px solid var(--border)">
+      <input
+        class="input flex-1" placeholder="Nouvelle catégorie…" [value]="newCategoryName()"
+        (input)="onNewCategoryNameInput($any($event.target).value)"
+      />
+      <button type="button" class="btn btn-secondary btn-sm" [disabled]="creatingCategory() || !newCategoryName().trim()" (click)="createCategory()">Ajouter</button>
+    </div>
+  }
+  <div modal-footer class="flex gap-2">
+    <button type="button" class="btn btn-secondary" (click)="categoriesOpen.set(false)">Fermer</button>
   </div>
 </app-modal>

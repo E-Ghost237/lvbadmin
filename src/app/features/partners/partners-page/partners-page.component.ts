@@ -3,13 +3,15 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { PartnersService } from '../../../core/services/partners.service';
 import { UsersService } from '../../../core/services/users.service';
-import { AdminUserSummary, CreatePartnerRequest, Partner, PartnerStatus, ProblemDetails } from '../../../core/models';
+import {
+  AdminUserSummary, CreatePartnerRequest, Partner, PartnerCategory, PartnerStatus, ProblemDetails,
+} from '../../../core/models';
 import { formatDate } from '../../../core/utils/formatters';
 import { e164Phone } from '../../../core/utils/validators';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
   BreadcrumbsComponent, ColumnDef, DataTableComponent, ForbiddenStateComponent, FormFieldComponent, ModalComponent,
-  SearchInputComponent, StatusBadgeComponent, TableCellDefDirective, ToastService,
+  SearchInputComponent, StatusBadgeComponent, TableCellDefDirective, ToastService, ToggleComponent,
 } from '../../../shared/ui';
 
 const PARTNER_STATUS_VALUES: PartnerStatus[] = [
@@ -21,7 +23,7 @@ const PARTNER_STATUS_VALUES: PartnerStatus[] = [
   selector: 'app-partners-page',
   imports: [
     ReactiveFormsModule, BreadcrumbsComponent, ForbiddenStateComponent, StatusBadgeComponent, SearchInputComponent,
-    ModalComponent, FormFieldComponent, DataTableComponent, TableCellDefDirective,
+    ModalComponent, FormFieldComponent, DataTableComponent, TableCellDefDirective, ToggleComponent,
   ],
   templateUrl: './partners-page.component.html',
 })
@@ -209,6 +211,81 @@ export class PartnersPageComponent {
       error: (err: ProblemDetails) => {
         this.validating.set(false);
         this.toast.error('Échec', err.detail);
+      },
+    });
+  }
+
+  // --- Categories (reference data feeding the create/edit forms) ---------
+
+  protected readonly categoriesOpen = signal(false);
+  protected readonly categories = signal<PartnerCategory[]>([]);
+  protected readonly loadingCategories = signal(false);
+  protected readonly savingCategory = signal<string | null>(null);
+  protected readonly newCategoryName = signal('');
+  protected readonly creatingCategory = signal(false);
+
+  openCategories(): void {
+    this.categoriesOpen.set(true);
+    this.newCategoryName.set('');
+    this.fetchCategories();
+  }
+
+  fetchCategories(): void {
+    this.loadingCategories.set(true);
+    this.partners.listCategories().subscribe({
+      next: (page) => { this.loadingCategories.set(false); this.categories.set(page.items); },
+      error: (err: ProblemDetails) => { this.loadingCategories.set(false); this.toast.error('Chargement impossible', err.detail); },
+    });
+  }
+
+  renameCategory(category: PartnerCategory, nom: string): void {
+    const trimmed = nom.trim();
+    if (!trimmed || trimmed === category.nom) return;
+    this.savingCategory.set(category.uuid);
+    this.partners.updateCategory(category.uuid, trimmed, category.actif).subscribe({
+      next: () => {
+        this.savingCategory.set(null);
+        this.toast.success('Catégorie mise à jour');
+        this.fetchCategories();
+      },
+      error: (err: ProblemDetails) => {
+        this.savingCategory.set(null);
+        this.toast.error('Échec', err.detail);
+        this.fetchCategories();
+      },
+    });
+  }
+
+  toggleCategoryActive(category: PartnerCategory): void {
+    this.savingCategory.set(category.uuid);
+    this.partners.updateCategory(category.uuid, category.nom, !category.actif).subscribe({
+      next: () => { this.savingCategory.set(null); this.fetchCategories(); },
+      error: (err: ProblemDetails) => {
+        this.savingCategory.set(null);
+        this.toast.error('Échec', err.detail);
+        this.fetchCategories();
+      },
+    });
+  }
+
+  onNewCategoryNameInput(value: string): void {
+    this.newCategoryName.set(value);
+  }
+
+  createCategory(): void {
+    const nom = this.newCategoryName().trim();
+    if (!nom) return;
+    this.creatingCategory.set(true);
+    this.partners.createCategory(nom).subscribe({
+      next: () => {
+        this.creatingCategory.set(false);
+        this.newCategoryName.set('');
+        this.toast.success('Catégorie créée');
+        this.fetchCategories();
+      },
+      error: (err: ProblemDetails) => {
+        this.creatingCategory.set(false);
+        this.toast.error('Échec de la création', err.detail);
       },
     });
   }
