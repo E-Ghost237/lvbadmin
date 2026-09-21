@@ -8,6 +8,7 @@ export const EN: Record<string, string> = {
   'nav.drivers': 'Drivers',
   'nav.users': 'Users & roles',
   'nav.pricing': 'Pricing & zones',
+  'nav.partners': 'Partners',
   'nav.finance': 'Finance',
   'nav.claims': 'Claims & disputes',
   'nav.reports': 'Reports & KPIs',

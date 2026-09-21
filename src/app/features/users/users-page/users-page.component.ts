@@ -56,8 +56,10 @@ export class UsersPageComponent {
   protected readonly internalCursor = signal<number | null>(null);
 
   // --- New internal account -----------------------------------------------
+  // A staff account gets exactly one role (a single-select, not a multi-role
+  // picker) — the backend contract's `roles` field still takes an array, so
+  // this sends a one-element array rather than dropping down to a scalar.
   protected readonly newInternalOpen = signal(false);
-  protected readonly newInternalRoles = signal<Set<string>>(new Set());
   protected readonly creatingInternal = signal(false);
   protected readonly newInternalForm = this.fb.nonNullable.group({
     nom: ['', [Validators.required, Validators.maxLength(100)]],
@@ -65,20 +67,17 @@ export class UsersPageComponent {
     telephone: ['', [Validators.required, e164Phone()]],
     email: ['', [Validators.required, Validators.email, Validators.maxLength(255)]],
     langue: ['fr' as 'fr' | 'en', [Validators.required]],
+    role: ['', [Validators.required]],
     password: ['', [Validators.required, passwordPolicy()]],
     password_confirmation: ['', [Validators.required]],
   }, { validators: [matchControls('password', 'password_confirmation')] });
 
-  // --- Partner validation -------------------------------------------------
-  protected readonly partnerTarget = signal<AdminUserSummary | null>(null);
-  protected readonly partnerForm = this.fb.nonNullable.group({
-    encours_autorise_xaf: [500000, [Validators.required, Validators.min(0)]],
-  });
-  protected readonly validatingPartner = signal(false);
-
   // --- Role assignment --------------------------------------------------
+  // Same one-role-per-account rule as account creation — this replaces a
+  // user's whole role set, so it takes exactly one value, sent as a
+  // one-element array to match the backend's `roles: string[]` contract.
   protected readonly assignTarget = signal<AdminUserSummary | null>(null);
-  protected readonly assignSelection = signal<Set<string>>(new Set());
+  protected readonly assignRole = signal('');
   protected readonly assigning = signal(false);
 
   // --- Roles & permissions ------------------------------------------------
@@ -168,25 +167,13 @@ export class UsersPageComponent {
   }
 
   openNewInternal(): void {
-    this.newInternalForm.reset({ nom: '', prenom: '', telephone: '', email: '', langue: 'fr', password: '', password_confirmation: '' });
-    this.newInternalRoles.set(new Set());
+    this.newInternalForm.reset({ nom: '', prenom: '', telephone: '', email: '', langue: 'fr', role: '', password: '', password_confirmation: '' });
     this.newInternalOpen.set(true);
     if (!this.catalog()) this.fetchCatalog();
   }
 
-  toggleNewInternalRole(name: string): void {
-    const next = new Set(this.newInternalRoles());
-    if (next.has(name)) next.delete(name); else next.add(name);
-    this.newInternalRoles.set(next);
-  }
-
-  onNewInternalRolesChange(event: Event): void {
-    const selected = Array.from((event.target as HTMLSelectElement).selectedOptions).map((o) => o.value);
-    this.newInternalRoles.set(new Set(selected));
-  }
-
   createInternalAccount(): void {
-    if (this.newInternalForm.invalid || this.newInternalRoles().size === 0) {
+    if (this.newInternalForm.invalid) {
       this.newInternalForm.markAllAsTouched();
       return;
     }
@@ -194,7 +181,7 @@ export class UsersPageComponent {
     this.creatingInternal.set(true);
     this.users.createInternal({
       telephone: v.telephone, email: v.email, nom: v.nom, prenom: v.prenom || null, langue: v.langue,
-      password: v.password, password_confirmation: v.password_confirmation, roles: Array.from(this.newInternalRoles()),
+      password: v.password, password_confirmation: v.password_confirmation, roles: [v.role],
     }).subscribe({
       next: () => {
         this.creatingInternal.set(false);
@@ -209,49 +196,21 @@ export class UsersPageComponent {
     });
   }
 
-  openPartnerValidation(row: AdminUserSummary): void {
-    this.partnerForm.reset({ encours_autorise_xaf: 500000 });
-    this.partnerTarget.set(row);
-  }
-
-  confirmPartnerValidation(): void {
-    const target = this.partnerTarget();
-    if (!target || this.partnerForm.invalid) {
-      this.partnerForm.markAllAsTouched();
-      return;
-    }
-    this.validatingPartner.set(true);
-    this.users.validatePartner(target.uuid, this.partnerForm.getRawValue().encours_autorise_xaf).subscribe({
-      next: () => {
-        this.validatingPartner.set(false);
-        this.partnerTarget.set(null);
-        this.toast.success('Partenaire validé');
-        this.fetchClients();
-      },
-      error: (err: ProblemDetails) => {
-        this.validatingPartner.set(false);
-        this.toast.error('Échec', err.detail);
-      },
-    });
-  }
-
   openAssignRoles(row: AdminUserSummary): void {
     this.assignTarget.set(row);
-    this.assignSelection.set(new Set());
+    this.assignRole.set('');
     if (!this.catalog()) this.fetchCatalog();
   }
 
-  toggleAssignRole(name: string): void {
-    const next = new Set(this.assignSelection());
-    if (next.has(name)) next.delete(name); else next.add(name);
-    this.assignSelection.set(next);
+  onAssignRoleChange(value: string): void {
+    this.assignRole.set(value);
   }
 
   confirmAssignRoles(): void {
     const target = this.assignTarget();
-    if (!target || this.assignSelection().size === 0) return;
+    if (!target || !this.assignRole()) return;
     this.assigning.set(true);
-    this.rolesService.assignUserRoles(target.uuid, Array.from(this.assignSelection())).subscribe({
+    this.rolesService.assignUserRoles(target.uuid, [this.assignRole()]).subscribe({
       next: () => {
         this.assigning.set(false);
         this.assignTarget.set(null);

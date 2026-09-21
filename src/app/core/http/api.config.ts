@@ -20,8 +20,13 @@ export function withIdempotencyKey(key: string): HttpContext {
 }
 
 /**
- * The backend validates this header as a real UUID (ERR-4001 otherwise), so
- * every fallback path here must still produce RFC 4122 v4 shape.
+ * A random UUID, used both for `Idempotency-Key` (the backend validates
+ * this one as a real UUID, ERR-4001 otherwise) and for `X-Request-Id` (the
+ * backend accepts any string there, but there's no reason to keep two
+ * separate "make up a random ID" implementations at different quality
+ * levels — see `requestContextInterceptor`).
+ *
+ * Every fallback path here must still produce RFC 4122 v4 shape.
  * `crypto.randomUUID()` requires a secure context (HTTPS or localhost) —
  * this admin panel is deployed over plain HTTP, so that branch is never
  * actually reachable there and previously fell through to a non-UUID

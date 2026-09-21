@@ -20,9 +20,6 @@
             <div class="flex items-center justify-between gap-2">
               <span>{{ row.cree_le ? (row.cree_le | slice: 0:10) : '—' }}</span>
               <div class="flex gap-1.5">
-                @if (row.type_client === 'ENTREPRISE' && !row.partenaire_verifie) {
-                  <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openPartnerValidation(row)">Valider partenaire</button>
-                }
                 @if (row.statut === 'SUSPENDU' || row.statut === 'SUSPENDU_DOCUMENT') {
                   <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="reactivate(row, fetchClients.bind(this))">Réactiver</button>
                 } @else {
@@ -105,34 +102,21 @@
   }
 </div>
 
-<app-modal [open]="!!partnerTarget()" title="Valider le partenaire" [subtitle]="partnerTarget()?.nom ?? ''" (closed)="partnerTarget.set(null)">
-  <form [formGroup]="partnerForm" class="flex flex-col gap-3">
-    <app-field label="Plafond d’encours autorisé (XAF)" [control]="partnerForm.controls.encours_autorise_xaf" required>
-      <input type="number" min="0" class="input" formControlName="encours_autorise_xaf" />
-    </app-field>
-  </form>
-  <div modal-footer class="flex gap-2">
-    <button type="button" class="btn btn-secondary" (click)="partnerTarget.set(null)">Annuler</button>
-    <button type="button" class="btn btn-primary" [disabled]="validatingPartner()" (click)="confirmPartnerValidation()">Valider</button>
-  </div>
-</app-modal>
-
-<app-modal [open]="!!assignTarget()" title="Affecter des rôles" [subtitle]="assignTarget()?.nom ?? ''" (closed)="assignTarget.set(null)">
+<app-modal [open]="!!assignTarget()" title="Affecter un rôle" [subtitle]="assignTarget()?.nom ?? ''" (closed)="assignTarget.set(null)">
   @if (loadingCatalog()) {
     <div class="skeleton h-20"></div>
   } @else if (catalog(); as c) {
-    <div class="flex flex-col gap-2">
+    <label class="field-label">Rôle</label>
+    <select class="select" [value]="assignRole()" (change)="onAssignRoleChange($any($event.target).value)">
+      <option value="" disabled>Sélectionner un rôle</option>
       @for (role of c.roles; track role.id) {
-        <label class="flex items-center gap-2 text-sm">
-          <input type="checkbox" class="checkbox" [checked]="assignSelection().has(role.name)" (change)="toggleAssignRole(role.name)" />
-          {{ role.name }}
-        </label>
+        <option [value]="role.name">{{ role.name }}</option>
       }
-    </div>
+    </select>
   }
   <div modal-footer class="flex gap-2">
     <button type="button" class="btn btn-secondary" (click)="assignTarget.set(null)">Annuler</button>
-    <button type="button" class="btn btn-primary" [disabled]="assigning() || assignSelection().size === 0" (click)="confirmAssignRoles()">Affecter</button>
+    <button type="button" class="btn btn-primary" [disabled]="assigning() || !assignRole()" (click)="confirmAssignRoles()">Affecter</button>
   </div>
 </app-modal>
 
@@ -172,25 +156,24 @@
     <app-field label="Langue" [control]="newInternalForm.controls.langue" required>
       <select class="select" formControlName="langue"><option value="fr">Français</option><option value="en">English</option></select>
     </app-field>
-    <div></div>
+    @if (catalog(); as c) {
+      <app-field label="Rôle" [control]="newInternalForm.controls.role" required>
+        <select class="select" formControlName="role">
+          <option value="" disabled>Sélectionner un rôle</option>
+          @for (role of c.roles; track role.id) {
+            <option [value]="role.name">{{ role.name }}</option>
+          }
+        </select>
+      </app-field>
+    } @else {
+      <div></div>
+    }
     <app-field label="Mot de passe" [control]="newInternalForm.controls.password" required hint="Minimum 12 caractères, majuscule, minuscule et chiffre.">
       <input type="password" class="input" formControlName="password" autocomplete="new-password" />
     </app-field>
     <app-field label="Confirmer le mot de passe" [control]="newInternalForm.controls.password_confirmation" required>
       <input type="password" class="input" formControlName="password_confirmation" autocomplete="new-password" />
     </app-field>
-    @if (catalog(); as c) {
-      <div class="col-span-full">
-        <p class="field-label">Rôles</p>
-        <select class="select" multiple size="5" (change)="onNewInternalRolesChange($event)">
-          @for (role of c.roles; track role.id) {
-            <option [value]="role.name">{{ role.name }}</option>
-          }
-        </select>
-        <p class="field-hint">Maintenez Ctrl (ou Cmd) enfoncé pour sélectionner plusieurs rôles.</p>
-        @if (newInternalRoles().size === 0) { <p class="field-hint">Sélectionnez au moins un rôle.</p> }
-      </div>
-    }
   </form>
   <div modal-footer class="flex gap-2">
     <button type="button" class="btn btn-secondary" (click)="newInternalOpen.set(false)">Annuler</button>

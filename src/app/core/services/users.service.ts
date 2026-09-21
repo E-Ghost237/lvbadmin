@@ -21,7 +21,7 @@ export interface InternalAccountCreated {
   roles: string[];
 }
 
-/** UC-ADM-02/04 — /v1/admin/users, /v1/admin/partners (Identity module). */
+/** UC-ADM-02/04 — /v1/admin/users (Identity module). Partner administration lives in `PartnersService`. */
 @Injectable({ providedIn: 'root' })
 export class UsersService {
   private readonly http = inject(HttpClient);
@@ -50,12 +50,6 @@ export class UsersService {
 
   delete(uuid: string, motif: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/admin/users/${uuid}`, { body: { motif } });
-  }
-
-  validatePartner(uuid: string, encoursAutoriseXaf: number): Observable<{ message: string }> {
-    return this.http.post<{ message: string }>(`${this.baseUrl}/admin/partners/${uuid}/validate`, { encours_autorise_xaf: encoursAutoriseXaf }, {
-      context: withIdempotencyKey(newIdempotencyKey()),
-    });
   }
 
   createInternal(req: CreateInternalAccountRequest): Observable<InternalAccountCreated> {

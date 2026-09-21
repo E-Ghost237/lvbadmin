@@ -109,3 +109,24 @@ export type ReconciliationItemStatus = 'OUVERT' | 'QUALIFIE';
 export type ReconciliationResolutionAction = 'REMBOURSEMENT' | 'REGULARISATION' | 'ENQUETE';
 
 export type Locale = 'fr' | 'en';
+
+/**
+ * Partner module (LVB-CDC-PART-2026-V1.0 §7, RG-PRT-002/003). A partner is a
+ * specialization of an ENTREPRISE client, created explicitly by an admin —
+ * it does not exist for every ENTREPRISE client automatically.
+ *
+ * Allowed transitions (RG-PRT-003): EN_ATTENTE_VALIDATION → VALIDE|SUSPENDU ;
+ * VALIDE → ACTIF ; ACTIF ↔ SUSPENDU ; ACTIF|SUSPENDU → DESACTIVE ;
+ * DESACTIVE → ARCHIVE. Any other transition is rejected server-side.
+ * VALIDE is only reachable through the dedicated validate endpoint, never
+ * through the generic status-change one (backend throws ERR-4038).
+ */
+export type PartnerStatus = 'EN_ATTENTE_VALIDATION' | 'VALIDE' | 'ACTIF' | 'SUSPENDU' | 'DESACTIVE' | 'ARCHIVE';
+
+export type PartnerRole = 'RESPONSABLE_PARTENAIRE' | 'OPERATEUR_PARTENAIRE' | 'LECTEUR_PARTENAIRE';
+
+export type PartnerDocumentType = 'RCCM' | 'FISCAL' | 'ID_RESPONSABLE' | 'CONTRAT_LVB' | 'AUTRE';
+
+export type PartnerDocumentStatus = 'EN_ATTENTE' | 'VALIDE' | 'REJETE' | 'EXPIRE';
+
+export type PartnerChangeStatus = 'EN_ATTENTE' | 'APPROUVEE' | 'REJETEE';
