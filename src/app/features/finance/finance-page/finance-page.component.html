@@ -10,10 +10,10 @@
 <div class="mt-5">
   @if (activeTab() === 'withdrawals') {
     <div class="flex items-center justify-between mb-3">
-      <select class="select w-auto" [value]="withdrawalStatusFilter()" (change)="onWithdrawalStatusFilterChange($any($event.target).value)">
-        <option value="">Tous les statuts</option>
-        @for (s of withdrawalStatuses; track s) { <option [value]="s">{{ s }}</option> }
-      </select>
+      <app-select
+        class="w-auto min-w-48" [options]="withdrawalStatusOptions()" placeholder="Tous les statuts" ariaLabel="Filtrer par statut"
+        [value]="withdrawalStatusFilter()" (valueChange)="onWithdrawalStatusFilterChange($event)"
+      />
     </div>
 
     @if (forbiddenWithdrawals()) {
@@ -40,10 +40,10 @@
 
   @if (activeTab() === 'reconciliation') {
     <div class="flex items-center justify-between mb-3">
-      <select class="select w-auto" [value]="periodStatusFilter()" (change)="onPeriodStatusFilterChange($any($event.target).value)">
-        <option value="">Tous les statuts</option>
-        @for (s of reconciliationStatuses; track s) { <option [value]="s">{{ s === 'OUVERTE' ? 'Ouverte' : 'Clôturée' }}</option> }
-      </select>
+      <app-select
+        class="w-auto min-w-48" [options]="reconciliationStatusOptions()" placeholder="Tous les statuts" ariaLabel="Filtrer par statut"
+        [value]="periodStatusFilter()" (valueChange)="onPeriodStatusFilterChange($event)"
+      />
     </div>
 
     @if (forbiddenPeriods()) {
@@ -98,11 +98,7 @@
                 @if (resolvingItem()?.uuid === item.uuid) {
                   <form [formGroup]="resolveForm" class="flex flex-col gap-2 mt-2.5 pt-2.5" style="border-top: 1px solid var(--border)">
                     <app-field label="Action" [control]="resolveForm.controls.action" required>
-                      <select class="select" formControlName="action">
-                        <option value="REMBOURSEMENT">Remboursement</option>
-                        <option value="REGULARISATION">Régularisation</option>
-                        <option value="ENQUETE">Enquête</option>
-                      </select>
+                      <app-select [options]="resolutionActionOptions" formControlName="action" />
                     </app-field>
                     <app-field label="Motif" [control]="resolveForm.controls.reason" required hint="Minimum 10 caractères.">
                       <textarea class="textarea" rows="2" formControlName="reason"></textarea>

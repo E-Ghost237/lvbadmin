@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { PartnersService } from '../../../core/services/partners.service';
@@ -11,7 +11,8 @@ import { e164Phone } from '../../../core/utils/validators';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
   BreadcrumbsComponent, ColumnDef, DataTableComponent, ForbiddenStateComponent, FormFieldComponent, ModalComponent,
-  SearchInputComponent, StatusBadgeComponent, TableCellDefDirective, ToastService, ToggleComponent,
+  SearchInputComponent, SelectComponent, SelectOption, StatusBadgeComponent, TableCellDefDirective, ToastService,
+  ToggleComponent,
 } from '../../../shared/ui';
 
 const PARTNER_STATUS_VALUES: PartnerStatus[] = [
@@ -23,7 +24,7 @@ const PARTNER_STATUS_VALUES: PartnerStatus[] = [
   selector: 'app-partners-page',
   imports: [
     ReactiveFormsModule, BreadcrumbsComponent, ForbiddenStateComponent, StatusBadgeComponent, SearchInputComponent,
-    ModalComponent, FormFieldComponent, DataTableComponent, TableCellDefDirective, ToggleComponent,
+    ModalComponent, FormFieldComponent, DataTableComponent, TableCellDefDirective, ToggleComponent, SelectComponent,
   ],
   templateUrl: './partners-page.component.html',
 })
@@ -36,6 +37,8 @@ export class PartnersPageComponent {
   protected readonly i18n = inject(I18nService);
 
   protected readonly statusValues = PARTNER_STATUS_VALUES;
+  protected readonly statusOptions = computed<SelectOption[]>(() =>
+    this.statusValues.map((s) => ({ value: s, label: this.i18n.t('status.partner.' + s) })));
 
   protected readonly columns: ColumnDef<Partner>[] = [
     { key: 'nom_commercial', label: 'Partenaire' },

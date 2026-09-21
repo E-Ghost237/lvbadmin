@@ -138,14 +138,10 @@
             }
           </ng-template>
           <ng-template appCell="role" let-row>
-            <select
-              class="select w-auto" [value]="row.role" [disabled]="changingMemberRole() === row.uuid"
-              (change)="onMemberRoleChange(row, $any($event.target).value)"
-            >
-              @for (r of roleValues; track r) {
-                <option [value]="r">{{ roleLabel[r] }}</option>
-              }
-            </select>
+            <app-select
+              class="w-auto min-w-40" [options]="roleOptions" [allowClear]="false" [value]="row.role"
+              [disabled]="changingMemberRole() === row.uuid" (valueChange)="onMemberRoleChange(row, $event)"
+            />
           </ng-template>
           <ng-template appCell="actif" let-row>
             <span [style.color]="row.actif ? 'var(--status-good)' : 'var(--status-critical)'">{{ row.actif ? 'Actif' : 'Inactif' }}</span>
@@ -196,12 +192,7 @@
       <input class="input" formControlName="site_web" placeholder="https://…" />
     </app-field>
     <app-field label="Catégorie" [control]="editForm.controls.categorie_uuid" [showOptional]="true">
-      <select class="select" formControlName="categorie_uuid">
-        <option value="">Sans catégorie</option>
-        @for (c of categories(); track c.uuid) {
-          <option [value]="c.uuid">{{ c.nom }}</option>
-        }
-      </select>
+      <app-select [options]="categoryOptions()" placeholder="Sans catégorie" formControlName="categorie_uuid" />
     </app-field>
     <app-field label="Téléphone du responsable" [control]="editForm.controls.responsable_telephone" required>
       <input class="input" formControlName="responsable_telephone" placeholder="+237600000001" />
@@ -230,18 +221,7 @@
 
 <app-modal [open]="inviteOpen()" title="Inviter un membre" (closed)="inviteOpen.set(false)">
   <form [formGroup]="inviteForm" class="flex flex-col gap-3">
-    <div class="flex rounded-(--radius-sm) overflow-hidden w-fit" style="border: 1px solid var(--border-strong)">
-      <button
-        type="button" class="px-3 py-1.5 text-xs font-medium" (click)="setInviteContactType('email')"
-        [style.background]="inviteContactType() === 'email' ? 'var(--brand)' : 'transparent'"
-        [style.color]="inviteContactType() === 'email' ? 'white' : 'var(--text-secondary)'"
-      >Email</button>
-      <button
-        type="button" class="px-3 py-1.5 text-xs font-medium" (click)="setInviteContactType('telephone')"
-        [style.background]="inviteContactType() === 'telephone' ? 'var(--brand)' : 'transparent'"
-        [style.color]="inviteContactType() === 'telephone' ? 'white' : 'var(--text-secondary)'"
-      >Téléphone</button>
-    </div>
+    <app-segmented-control [options]="inviteContactOptions" [value]="inviteContactType()" (valueChange)="setInviteContactType($event)" />
     @if (inviteContactType() === 'email') {
       <app-field label="Email" [control]="inviteForm.controls.email" required>
         <input type="email" class="input" formControlName="email" />
@@ -252,11 +232,7 @@
       </app-field>
     }
     <app-field label="Rôle" [control]="inviteForm.controls.role" required>
-      <select class="select" formControlName="role">
-        @for (r of roleValues; track r) {
-          <option [value]="r">{{ roleLabel[r] }}</option>
-        }
-      </select>
+      <app-select [options]="roleOptions" [allowClear]="false" formControlName="role" />
     </app-field>
     <p class="field-hint">L’invitation expire après 72 heures. Le destinataire doit déjà disposer d’un compte actif correspondant.</p>
   </form>

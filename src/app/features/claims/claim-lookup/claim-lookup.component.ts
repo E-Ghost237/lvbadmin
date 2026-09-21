@@ -5,11 +5,18 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ArbitrationDecision, ArbitrationDossier, ClaimsService } from '../../../core/services/claims.service';
 import { ProblemDetails } from '../../../core/models';
 import { formatDateTime, formatXaf } from '../../../core/utils/formatters';
-import { AlertBannerComponent, BreadcrumbsComponent, FormFieldComponent, ToastService } from '../../../shared/ui';
+import {
+  AlertBannerComponent, BreadcrumbsComponent, FormFieldComponent, SelectComponent, SelectOption, ToastService,
+} from '../../../shared/ui';
+
+const DECISION_OPTIONS: SelectOption[] = [
+  { value: 'CLIENT_RESPONSABLE', label: 'Client responsable' }, { value: 'LIVREUR_RESPONSABLE', label: 'Livreur responsable' },
+  { value: 'PARTAGEE', label: 'Responsabilité partagée' }, { value: 'AUCUNE_FAUTE', label: 'Aucune faute' },
+];
 
 @Component({
   selector: 'app-claim-lookup',
-  imports: [JsonPipe, ReactiveFormsModule, BreadcrumbsComponent, FormFieldComponent, AlertBannerComponent],
+  imports: [JsonPipe, ReactiveFormsModule, BreadcrumbsComponent, FormFieldComponent, AlertBannerComponent, SelectComponent],
   templateUrl: './claim-lookup.component.html',
 })
 export class ClaimLookupComponent {
@@ -18,6 +25,8 @@ export class ClaimLookupComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
+
+  protected readonly decisionOptions = DECISION_OPTIONS;
 
   protected readonly uuid = signal(this.route.snapshot.queryParamMap.get('uuid') ?? '');
   protected readonly loading = signal(false);

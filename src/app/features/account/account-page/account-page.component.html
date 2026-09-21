@@ -21,7 +21,7 @@
         <app-field label="Nom" [control]="profileForm.controls.nom"><input class="input" formControlName="nom" /></app-field>
       </div>
       <app-field label="Langue" [control]="profileForm.controls.langue">
-        <select class="select" formControlName="langue"><option value="">Ne pas modifier</option><option value="fr">Français</option><option value="en">English</option></select>
+        <app-select [options]="languageOptions" [allowClear]="false" formControlName="langue" />
       </app-field>
       <button type="button" class="btn btn-primary btn-sm self-start" [disabled]="savingProfile()" (click)="saveProfile()">Enregistrer</button>
     </form>

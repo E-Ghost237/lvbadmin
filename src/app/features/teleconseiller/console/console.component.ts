@@ -1,5 +1,5 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   AgentActivitySummary, ComplaintCategory, ConsoleOrderCreated, ConsoleOrderDetail, ConsoleSearchResult,
@@ -10,11 +10,25 @@ import { e164Phone } from '../../../core/utils/validators';
 import { formatDateTime, formatXaf, humanizeSlug } from '../../../core/utils/formatters';
 import {
   BreadcrumbsComponent, FormFieldComponent, LocationPickerComponent, ModalComponent, SearchInputComponent,
-  TabDef, TabsComponent, ToastService,
+  SegmentedControlComponent, SegmentOption, SelectComponent, SelectOption, TabDef, TabsComponent, ToastService,
 } from '../../../shared/ui';
 
 type WizardStep = 1 | 2 | 3;
 type PointTarget = 'pickup' | 'dropoff';
+
+const VILLE_OPTIONS: SelectOption[] = [{ value: 'Douala', label: 'Douala' }, { value: 'Yaoundé', label: 'Yaoundé' }];
+const URGENCE_OPTIONS: SelectOption[] = [
+  { value: 'STANDARD', label: 'Standard' }, { value: 'EXPRESS', label: 'Express' }, { value: 'PLANIFIE', label: 'Planifié' },
+];
+const PAYMENT_OPTIONS: SelectOption[] = [
+  { value: 'MTN_MOMO', label: 'MTN Mobile Money' }, { value: 'ORANGE_MONEY', label: 'Orange Money' },
+  { value: 'CARTE', label: 'Carte' }, { value: 'COD', label: 'Paiement à la livraison' },
+];
+const COMPLAINT_CATEGORY_OPTIONS: SelectOption[] = [
+  { value: 'RETARD', label: 'Retard' }, { value: 'COLIS_ENDOMMAGE', label: 'Colis endommagé' },
+  { value: 'COLIS_PERDU', label: 'Colis perdu' }, { value: 'COMPORTEMENT', label: 'Comportement' },
+  { value: 'ERREUR_FACTURATION', label: 'Erreur de facturation' },
+];
 
 /** Curated labels for the deterministic pricing engine's decomposition lines (RG-010→016); falls back to a humanized key for any line the backend adds before a label exists here. */
 const DECOMPOSITION_LABELS: Record<string, string> = {
@@ -35,7 +49,7 @@ const DECOMPOSITION_LABELS: Record<string, string> = {
   selector: 'app-console',
   imports: [
     DecimalPipe, ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent,
-    LocationPickerComponent, SearchInputComponent, ModalComponent,
+    LocationPickerComponent, SearchInputComponent, ModalComponent, SegmentedControlComponent, SelectComponent,
   ],
   templateUrl: './console.component.html',
 })
@@ -44,6 +58,11 @@ export class ConsoleComponent {
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
+
+  protected readonly villeOptions = VILLE_OPTIONS;
+  protected readonly urgenceOptions = URGENCE_OPTIONS;
+  protected readonly paymentOptions = PAYMENT_OPTIONS;
+  protected readonly complaintCategoryOptions = COMPLAINT_CATEGORY_OPTIONS;
 
   protected readonly tabs: TabDef[] = [
     { id: 'wizard', label: 'Nouvelle commande' },
@@ -76,6 +95,10 @@ export class ConsoleComponent {
   protected readonly activePointTarget = signal<PointTarget>('pickup');
   protected readonly pickupPoint = signal<GeoPoint | null>(null);
   protected readonly dropoffPoint = signal<GeoPoint | null>(null);
+  protected readonly pointTargetOptions = computed<SegmentOption[]>(() => [
+    { value: 'pickup', label: `Ramassage ${this.pickupPoint() ? '✓' : ''}`.trim() },
+    { value: 'dropoff', label: `Livraison ${this.dropoffPoint() ? '✓' : ''}`.trim() },
+  ]);
   protected readonly quoting = signal(false);
   protected readonly quote = signal<QuoteCreated | null>(null);
   protected readonly quoteError = signal('');
@@ -146,6 +169,10 @@ export class ConsoleComponent {
   onMapPoint(point: GeoPoint): void {
     if (this.activePointTarget() === 'pickup') this.pickupPoint.set(point);
     else this.dropoffPoint.set(point);
+  }
+
+  setActivePointTarget(target: string): void {
+    this.activePointTarget.set(target as PointTarget);
   }
 
   requestQuote(): void {

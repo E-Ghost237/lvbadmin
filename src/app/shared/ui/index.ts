@@ -23,5 +23,7 @@ export * from './map-panel/map-panel.component';
 export * from './location-picker/location-picker.component';
 export * from './polygon-picker/polygon-picker.component';
 export * from './toggle/toggle.component';
+export * from './select/select.component';
+export * from './segmented-control/segmented-control.component';
 export * from './charts/sparkline.component';
 export * from './charts/bar-chart.component';

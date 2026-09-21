@@ -10,10 +10,7 @@
 <div class="mt-5">
   @if (activeTab() === 'grilles') {
     <div class="flex items-center justify-between mb-3">
-      <div class="flex rounded-(--radius-sm) overflow-hidden" style="border: 1px solid var(--border-strong)">
-        <button type="button" class="px-3 py-1.5 text-xs font-medium" [style.background]="gridCity() === 'Douala' ? 'var(--brand)' : 'transparent'" [style.color]="gridCity() === 'Douala' ? 'white' : 'var(--text-secondary)'" (click)="selectGridCity('Douala')">Douala</button>
-        <button type="button" class="px-3 py-1.5 text-xs font-medium" [style.background]="gridCity() === 'Yaoundé' ? 'var(--brand)' : 'transparent'" [style.color]="gridCity() === 'Yaoundé' ? 'white' : 'var(--text-secondary)'" (click)="selectGridCity('Yaoundé')">Yaoundé</button>
-      </div>
+      <app-segmented-control [options]="citySegmentOptions" [value]="gridCity()" ariaLabel="Ville" (valueChange)="selectGridCity($event)" />
     </div>
 
     @if (forbiddenGrids()) {
@@ -25,7 +22,7 @@
           <div class="grid grid-cols-2 gap-3">
             <app-field label="Nom" [control]="grilleForm.controls.nom" required><input class="input" formControlName="nom" placeholder="DOUALA_2026_R1" /></app-field>
             <app-field label="Ville" [control]="grilleForm.controls.ville" required>
-              <select class="select" formControlName="ville"><option value="Douala">Douala</option><option value="Yaoundé">Yaoundé</option></select>
+              <app-select [options]="citySelectOptions" [allowClear]="false" formControlName="ville" />
             </app-field>
           </div>
           <div class="grid grid-cols-2 gap-3">
@@ -68,10 +65,7 @@
 
   @if (activeTab() === 'zones') {
     <div class="flex items-center justify-between mb-3">
-      <div class="flex rounded-(--radius-sm) overflow-hidden" style="border: 1px solid var(--border-strong)">
-        <button type="button" class="px-3 py-1.5 text-xs font-medium" [style.background]="zoneVille() === 'Douala' ? 'var(--brand)' : 'transparent'" [style.color]="zoneVille() === 'Douala' ? 'white' : 'var(--text-secondary)'" (click)="selectVille('Douala')">Douala</button>
-        <button type="button" class="px-3 py-1.5 text-xs font-medium" [style.background]="zoneVille() === 'Yaoundé' ? 'var(--brand)' : 'transparent'" [style.color]="zoneVille() === 'Yaoundé' ? 'white' : 'var(--text-secondary)'" (click)="selectVille('Yaoundé')">Yaoundé</button>
-      </div>
+      <app-segmented-control [options]="citySegmentOptions" [value]="zoneVille()" ariaLabel="Ville" (valueChange)="selectVille($event)" />
       <button type="button" class="btn btn-primary btn-sm" (click)="openZoneForm()">+ Nouvelle zone</button>
     </div>
 
@@ -82,10 +76,7 @@
         <form [formGroup]="zoneForm" (ngSubmit)="createZone()" class="card p-5 flex flex-col gap-3">
           <app-field label="Nom" [control]="zoneForm.controls.nom" required><input class="input" formControlName="nom" /></app-field>
           <app-field label="Type" [control]="zoneForm.controls.type" required>
-            <select class="select" formControlName="type">
-              <option value="COUVERTURE">Couverture</option><option value="INTERDITE">Interdite</option>
-              <option value="MAJORATION">Majoration</option><option value="DIFFICILE">Difficile</option>
-            </select>
+            <app-select [options]="zoneTypeOptions" [allowClear]="false" formControlName="type" />
           </app-field>
           <div class="grid grid-cols-2 gap-3">
             <app-field label="Supplément fixe (XAF)" [control]="zoneForm.controls.supplement_fixe"><input type="number" min="0" class="input" formControlName="supplement_fixe" /></app-field>

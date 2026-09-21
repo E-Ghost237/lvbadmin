@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { AdminOrderListItem, DispatchService, OrdersService } from '../../../core/services/orders.service';
 import { AdminDriverSummary, DriversService } from '../../../core/services/drivers.service';
 import { OrderChannel, OrderStatus, ORDER_STATUS_VALUES, PaymentMethod, ProblemDetails } from '../../../core/models';
@@ -6,8 +6,13 @@ import { formatDateTime, formatXaf } from '../../../core/utils/formatters';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
   BreadcrumbsComponent, ColumnDef, DataTableComponent, ForbiddenStateComponent, ModalComponent, SearchInputComponent,
-  StatusBadgeComponent, TableCellDefDirective, ToastService,
+  SegmentedControlComponent, SegmentOption, SelectComponent, SelectOption, StatusBadgeComponent, TableCellDefDirective,
+  ToastService,
 } from '../../../shared/ui';
+
+const CITY_OPTIONS: SegmentOption[] = [
+  { value: '', label: 'Toutes villes' }, { value: 'Douala', label: 'Douala' }, { value: 'Yaoundé', label: 'Yaoundé' },
+];
 
 const CHANNEL_LABELS: Record<OrderChannel, string> = {
   APP_CLIENT: 'Appli client', TELECONSEILLER: 'Téléconseiller', API_PARTENAIRE: 'API partenaire', WEB: 'Web',
@@ -24,7 +29,7 @@ const UNASSIGNED_STATUSES: OrderStatus[] = ['EN_ATTENTE_AFFECTATION', 'EN_ATTENT
   selector: 'app-orders-page',
   imports: [
     BreadcrumbsComponent, ForbiddenStateComponent, StatusBadgeComponent, SearchInputComponent, ModalComponent,
-    DataTableComponent, TableCellDefDirective,
+    DataTableComponent, TableCellDefDirective, SegmentedControlComponent, SelectComponent,
   ],
   templateUrl: './orders-page.component.html',
 })
@@ -39,6 +44,9 @@ export class OrdersPageComponent {
   protected readonly paymentLabel = PAYMENT_LABELS;
   protected readonly statusValues = ORDER_STATUS_VALUES;
   protected readonly unassignedStatuses = UNASSIGNED_STATUSES;
+  protected readonly cityOptions = CITY_OPTIONS;
+  protected readonly statusOptions = computed<SelectOption[]>(() =>
+    this.statusValues.map((s) => ({ value: s, label: this.i18n.t('status.order.' + s) })));
 
   protected readonly columns: ColumnDef<AdminOrderListItem>[] = [
     { key: 'destinataire', label: 'Destinataire' },
@@ -60,7 +68,7 @@ export class OrdersPageComponent {
   protected readonly nextCursor = signal<string | null>(null);
 
   protected readonly search = signal('');
-  protected readonly cityFilter = signal<'' | 'Douala' | 'Yaoundé'>('');
+  protected readonly cityFilter = signal('');
   protected readonly statusFilter = signal<OrderStatus | ''>('');
   protected readonly unassignedOnly = signal(false);
 
@@ -98,7 +106,7 @@ export class OrdersPageComponent {
     this.fetch();
   }
 
-  selectCity(city: '' | 'Douala' | 'Yaoundé'): void {
+  selectCity(city: string): void {
     this.cityFilter.set(city);
     this.fetch();
   }

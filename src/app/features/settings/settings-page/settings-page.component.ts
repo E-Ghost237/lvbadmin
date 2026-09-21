@@ -3,17 +3,29 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Parametre, ParametreType, SettingSummary, SettingsService } from '../../../core/services/settings.service';
 import { ProblemDetails } from '../../../core/models';
 import { formatDateTime } from '../../../core/utils/formatters';
-import { AlertBannerComponent, BreadcrumbsComponent, ForbiddenStateComponent, FormFieldComponent, ToastService } from '../../../shared/ui';
+import {
+  AlertBannerComponent, BreadcrumbsComponent, ForbiddenStateComponent, FormFieldComponent, SelectComponent,
+  SelectOption, ToastService,
+} from '../../../shared/ui';
+
+const PARAMETRE_TYPE_OPTIONS: SelectOption[] = [
+  { value: 'string', label: 'Texte' }, { value: 'integer', label: 'Entier' }, { value: 'decimal', label: 'Décimal' },
+  { value: 'boolean', label: 'Booléen' }, { value: 'json', label: 'JSON' },
+];
 
 @Component({
   selector: 'app-settings-page',
-  imports: [ReactiveFormsModule, BreadcrumbsComponent, FormFieldComponent, AlertBannerComponent, ForbiddenStateComponent],
+  imports: [
+    ReactiveFormsModule, BreadcrumbsComponent, FormFieldComponent, AlertBannerComponent, ForbiddenStateComponent,
+    SelectComponent,
+  ],
   templateUrl: './settings-page.component.html',
 })
 export class SettingsPageComponent {
   private readonly settings = inject(SettingsService);
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
+  protected readonly parametreTypeOptions = PARAMETRE_TYPE_OPTIONS;
 
   protected readonly key = signal('');
   protected readonly loading = signal(false);

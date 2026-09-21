@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import {
   AdminWithdrawal, FinanceService, ReconciliationDetail, ReconciliationItem, ReconciliationPeriod,
@@ -7,9 +7,11 @@ import {
   ProblemDetails, ReconciliationResolutionAction, ReconciliationStatus, WithdrawalStatus,
 } from '../../../core/models';
 import { formatDateTime, formatPercent, formatXaf, humanizeSlug } from '../../../core/utils/formatters';
+import { I18nService } from '../../../core/i18n/i18n.service';
 import {
   BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, FormFieldComponent,
-  ModalComponent, StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService,
+  ModalComponent, SelectComponent, SelectOption, StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent,
+  ToastService,
 } from '../../../shared/ui';
 
 const WITHDRAWAL_STATUSES: WithdrawalStatus[] = ['EN_ATTENTE', 'EN_COURS', 'PAYE', 'REJETE', 'ECHEC'];
@@ -22,13 +24,15 @@ const GAP_KIND_LABELS: Record<string, string> = {
 const RESOLUTION_ACTION_LABELS: Record<ReconciliationResolutionAction, string> = {
   REMBOURSEMENT: 'Remboursement', REGULARISATION: 'Régularisation', ENQUETE: 'Enquête',
 };
+const RESOLUTION_ACTION_OPTIONS: SelectOption[] = (Object.keys(RESOLUTION_ACTION_LABELS) as ReconciliationResolutionAction[])
+  .map((value) => ({ value, label: RESOLUTION_ACTION_LABELS[value] }));
 
 /** UC-ADM-15/16 — /v1/admin/withdrawals + /v1/admin/reconciliation (Ledger module). */
 @Component({
   selector: 'app-finance-page',
   imports: [
     ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, DataTableComponent, TableCellDefDirective,
-    StatusBadgeComponent, ModalComponent, FormFieldComponent, ForbiddenStateComponent,
+    StatusBadgeComponent, ModalComponent, FormFieldComponent, ForbiddenStateComponent, SelectComponent,
   ],
   templateUrl: './finance-page.component.html',
 })
@@ -37,11 +41,17 @@ export class FinancePageComponent {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
+  protected readonly i18n = inject(I18nService);
 
   protected readonly tabs: TabDef[] = [{ id: 'withdrawals', label: 'Retraits' }, { id: 'reconciliation', label: 'Rapprochement' }];
   protected readonly activeTab = signal('withdrawals');
   protected readonly withdrawalStatuses = WITHDRAWAL_STATUSES;
   protected readonly reconciliationStatuses = RECONCILIATION_STATUSES;
+  protected readonly resolutionActionOptions = RESOLUTION_ACTION_OPTIONS;
+  protected readonly withdrawalStatusOptions = computed<SelectOption[]>(() =>
+    this.withdrawalStatuses.map((s) => ({ value: s, label: this.i18n.t('status.withdrawal.' + s) })));
+  protected readonly reconciliationStatusOptions = computed<SelectOption[]>(() =>
+    this.reconciliationStatuses.map((s) => ({ value: s, label: this.i18n.t('status.reconciliation.' + s) })));
   gapKindLabel(nature: string): string {
     return GAP_KIND_LABELS[nature] ?? humanizeSlug(nature);
   }

@@ -4,13 +4,18 @@ import { CreateZoneRequest, PricingGridStatus, PricingGridSummary, PricingServic
 import { GeoPoint, ProblemDetails } from '../../../core/models';
 import { formatXaf } from '../../../core/utils/formatters';
 import {
-  BreadcrumbsComponent, ConfirmService, ForbiddenStateComponent, FormFieldComponent, PolygonPickerComponent, TabDef,
-  TabsComponent, ToastService,
+  BreadcrumbsComponent, ConfirmService, ForbiddenStateComponent, FormFieldComponent, PolygonPickerComponent,
+  SegmentedControlComponent, SegmentOption, SelectComponent, SelectOption, TabDef, TabsComponent, ToastService,
 } from '../../../shared/ui';
 
 const ZONE_TYPE_LABELS: Record<ZoneType, string> = {
   COUVERTURE: 'Couverture', INTERDITE: 'Interdite', MAJORATION: 'Majoration', DIFFICILE: 'Difficile',
 };
+const ZONE_TYPE_OPTIONS: SelectOption[] = (Object.keys(ZONE_TYPE_LABELS) as ZoneType[])
+  .map((value) => ({ value, label: ZONE_TYPE_LABELS[value] }));
+
+const CITY_SEGMENT_OPTIONS: SegmentOption[] = [{ value: 'Douala', label: 'Douala' }, { value: 'Yaoundé', label: 'Yaoundé' }];
+const CITY_SELECT_OPTIONS: SelectOption[] = [{ value: 'Douala', label: 'Douala' }, { value: 'Yaoundé', label: 'Yaoundé' }];
 
 const GRID_STATUS_LABELS: Record<PricingGridStatus, string> = {
   BROUILLON: 'Brouillon', ACTIVE: 'Active', ARCHIVEE: 'Archivée',
@@ -21,7 +26,10 @@ const GRID_STATUS_COLORS: Record<PricingGridStatus, string> = {
 
 @Component({
   selector: 'app-pricing-page',
-  imports: [ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, PolygonPickerComponent, ForbiddenStateComponent],
+  imports: [
+    ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, PolygonPickerComponent,
+    ForbiddenStateComponent, SegmentedControlComponent, SelectComponent,
+  ],
   templateUrl: './pricing-page.component.html',
 })
 export class PricingPageComponent {
@@ -33,6 +41,9 @@ export class PricingPageComponent {
   protected readonly tabs: TabDef[] = [{ id: 'grilles', label: 'Grilles tarifaires' }, { id: 'zones', label: 'Zones' }];
   protected readonly activeTab = signal('grilles');
   protected readonly zoneTypeLabel = ZONE_TYPE_LABELS;
+  protected readonly zoneTypeOptions = ZONE_TYPE_OPTIONS;
+  protected readonly citySegmentOptions = CITY_SEGMENT_OPTIONS;
+  protected readonly citySelectOptions = CITY_SELECT_OPTIONS;
   protected readonly gridStatusLabel = GRID_STATUS_LABELS;
   protected readonly gridStatusColor = GRID_STATUS_COLORS;
 
@@ -53,13 +64,13 @@ export class PricingPageComponent {
   });
   protected readonly creatingGrille = signal(false);
 
-  protected readonly gridCity = signal<'Douala' | 'Yaoundé'>('Douala');
+  protected readonly gridCity = signal('Douala');
   protected readonly grids = signal<PricingGridSummary[]>([]);
   protected readonly loadingGrids = signal(true);
   protected readonly forbiddenGrids = signal(false);
   protected readonly activatingUuid = signal<string | null>(null);
 
-  selectGridCity(v: 'Douala' | 'Yaoundé'): void {
+  selectGridCity(v: string): void {
     this.gridCity.set(v);
     this.fetchGrids();
   }
@@ -119,7 +130,7 @@ export class PricingPageComponent {
   }
 
   // --- Zones ------------------------------------------------------------
-  protected readonly zoneVille = signal<'Douala' | 'Yaoundé'>('Douala');
+  protected readonly zoneVille = signal('Douala');
   protected readonly zones = signal<Zone[]>([]);
   protected readonly loadingZones = signal(true);
   protected readonly forbiddenZones = signal(false);
@@ -143,7 +154,7 @@ export class PricingPageComponent {
     this.activeTab.set(id);
   }
 
-  selectVille(v: 'Douala' | 'Yaoundé'): void {
+  selectVille(v: string): void {
     this.zoneVille.set(v);
     this.fetchZones();
   }

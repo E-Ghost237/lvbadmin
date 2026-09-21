@@ -60,11 +60,7 @@
   @if (!proposedSanction()) {
     <form [formGroup]="sanctionForm" class="flex flex-col gap-3">
       <app-field label="Type" [control]="sanctionForm.controls.type" required>
-        <select class="select" formControlName="type">
-          <option value="AVERTISSEMENT">Avertissement</option>
-          <option value="SUSPENSION_TEMPORAIRE">Suspension temporaire</option>
-          <option value="DESACTIVATION">Désactivation</option>
-        </select>
+        <app-select [options]="sanctionTypeOptions" [allowClear]="false" formControlName="type" />
       </app-field>
       <app-field label="Motif" [control]="sanctionForm.controls.motif" required hint="Minimum 10 caractères.">
         <textarea class="textarea" formControlName="motif" rows="3"></textarea>

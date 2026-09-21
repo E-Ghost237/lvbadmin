@@ -6,18 +6,27 @@ import { DriversService, DriverQuality, SanctionType } from '../../../core/servi
 import { AdminUserDetail, ProblemDetails } from '../../../core/models';
 import { formatDate, formatDateTime, formatPercent } from '../../../core/utils/formatters';
 import {
-  AlertBannerComponent, BreadcrumbsComponent, ConfirmService, FormFieldComponent, ModalComponent,
-  StatusBadgeComponent, ToastService,
+  AlertBannerComponent, BreadcrumbsComponent, ConfirmService, FormFieldComponent, ModalComponent, SelectComponent,
+  SelectOption, StatusBadgeComponent, ToastService,
 } from '../../../shared/ui';
+
+const SANCTION_TYPE_OPTIONS: SelectOption[] = [
+  { value: 'AVERTISSEMENT', label: 'Avertissement' }, { value: 'SUSPENSION_TEMPORAIRE', label: 'Suspension temporaire' },
+  { value: 'DESACTIVATION', label: 'Désactivation' },
+];
 
 @Component({
   selector: 'app-driver-detail',
-  imports: [DecimalPipe, ReactiveFormsModule, BreadcrumbsComponent, StatusBadgeComponent, AlertBannerComponent, ModalComponent, FormFieldComponent],
+  imports: [
+    DecimalPipe, ReactiveFormsModule, BreadcrumbsComponent, StatusBadgeComponent, AlertBannerComponent, ModalComponent,
+    FormFieldComponent, SelectComponent,
+  ],
   templateUrl: './driver-detail.component.html',
 })
 export class DriverDetailComponent {
   private readonly driversService = inject(DriversService);
   private readonly route = inject(ActivatedRoute);
+  protected readonly sanctionTypeOptions = SANCTION_TYPE_OPTIONS;
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);

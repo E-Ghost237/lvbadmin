@@ -105,14 +105,9 @@
 <app-modal [open]="!!assignTarget()" title="Affecter un rôle" [subtitle]="assignTarget()?.nom ?? ''" (closed)="assignTarget.set(null)">
   @if (loadingCatalog()) {
     <div class="skeleton h-20"></div>
-  } @else if (catalog(); as c) {
+  } @else {
     <label class="field-label">Rôle</label>
-    <select class="select" [value]="assignRole()" (change)="onAssignRoleChange($any($event.target).value)">
-      <option value="" disabled>Sélectionner un rôle</option>
-      @for (role of c.roles; track role.id) {
-        <option [value]="role.name">{{ role.name }}</option>
-      }
-    </select>
+    <app-select [options]="roleOptions()" placeholder="Sélectionner un rôle" [allowClear]="false" [value]="assignRole()" (valueChange)="onAssignRoleChange($event)" />
   }
   <div modal-footer class="flex gap-2">
     <button type="button" class="btn btn-secondary" (click)="assignTarget.set(null)">Annuler</button>
@@ -154,16 +149,11 @@
       <input type="email" class="input" formControlName="email" placeholder="prenom.nom@lvb.cm" />
     </app-field>
     <app-field label="Langue" [control]="newInternalForm.controls.langue" required>
-      <select class="select" formControlName="langue"><option value="fr">Français</option><option value="en">English</option></select>
+      <app-select [options]="languageOptions" [allowClear]="false" formControlName="langue" />
     </app-field>
-    @if (catalog(); as c) {
+    @if (catalog()) {
       <app-field label="Rôle" [control]="newInternalForm.controls.role" required>
-        <select class="select" formControlName="role">
-          <option value="" disabled>Sélectionner un rôle</option>
-          @for (role of c.roles; track role.id) {
-            <option [value]="role.name">{{ role.name }}</option>
-          }
-        </select>
+        <app-select [options]="roleOptions()" placeholder="Sélectionner un rôle" [allowClear]="false" formControlName="role" />
       </app-field>
     } @else {
       <div></div>

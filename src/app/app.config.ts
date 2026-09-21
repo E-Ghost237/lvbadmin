@@ -16,8 +16,8 @@ export const appConfig: ApplicationConfig = {
     // Wired for when Http*Service implementations replace the mock layer (§9 API spec).
     provideHttpClient(withFetch(), withInterceptors([
       requestContextInterceptor,
-      authInterceptor,
       errorNormalizationInterceptor,
+      authInterceptor,
     ])),
   ]
 };

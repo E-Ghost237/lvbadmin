@@ -49,12 +49,10 @@
       <form [formGroup]="exportForm" (ngSubmit)="requestExport()" class="card p-5 flex flex-col gap-3">
         <p class="text-sm font-medium">Nouvel export</p>
         <app-field label="Ressource" [control]="exportForm.controls.ressource" required>
-          <select class="select" formControlName="ressource">
-            <option value="commandes">Commandes</option><option value="paiements">Paiements</option><option value="livreurs">Livreurs</option>
-          </select>
+          <app-select [options]="resourceOptions" [allowClear]="false" formControlName="ressource" />
         </app-field>
         <app-field label="Format" [control]="exportForm.controls.format" required>
-          <select class="select" formControlName="format"><option value="csv">CSV</option><option value="xlsx">XLSX</option></select>
+          <app-select [options]="formatOptions" [allowClear]="false" formControlName="format" />
         </app-field>
         <button type="submit" class="btn btn-primary self-start" [disabled]="requestingExport()">Demander l’export</button>
         <p class="text-[11px]" style="color: var(--text-muted)">Génération asynchrone — lien de téléchargement valable jusqu’à 24 h.</p>

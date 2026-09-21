@@ -1,5 +1,5 @@
 import { SlicePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { UsersService } from '../../../core/services/users.service';
 import { RolesService } from '../../../core/services/roles.service';
@@ -9,14 +9,18 @@ import { e164Phone, matchControls, passwordPolicy } from '../../../core/utils/va
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
   BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, FormFieldComponent,
-  ModalComponent, SearchInputComponent, StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService,
+  ModalComponent, SearchInputComponent, SelectComponent, SelectOption, StatusBadgeComponent, TabDef,
+  TableCellDefDirective, TabsComponent, ToastService,
 } from '../../../shared/ui';
+
+const LANGUAGE_OPTIONS: SelectOption[] = [{ value: 'fr', label: 'Français' }, { value: 'en', label: 'English' }];
 
 @Component({
   selector: 'app-users-page',
   imports: [
     SlicePipe, ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, DataTableComponent, SearchInputComponent,
     StatusBadgeComponent, ForbiddenStateComponent, TableCellDefDirective, ModalComponent, FormFieldComponent,
+    SelectComponent,
   ],
   templateUrl: './users-page.component.html',
 })
@@ -80,8 +84,12 @@ export class UsersPageComponent {
   protected readonly assignRole = signal('');
   protected readonly assigning = signal(false);
 
+  protected readonly languageOptions = LANGUAGE_OPTIONS;
+
   // --- Roles & permissions ------------------------------------------------
   protected readonly catalog = signal<RbacCatalog | null>(null);
+  protected readonly roleOptions = computed<SelectOption[]>(() =>
+    (this.catalog()?.roles ?? []).map((r) => ({ value: r.name, label: r.name })));
   protected readonly loadingCatalog = signal(true);
   protected readonly forbiddenCatalog = signal(false);
   protected readonly newRoleOpen = signal(false);

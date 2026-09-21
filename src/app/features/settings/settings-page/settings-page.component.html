@@ -26,10 +26,7 @@
         <form [formGroup]="editForm" class="card p-5 flex flex-col gap-3">
           <app-field label="Valeur" [control]="editForm.controls.valeur" required><input class="input" formControlName="valeur" /></app-field>
           <app-field label="Type" [control]="editForm.controls.type" required>
-            <select class="select" formControlName="type">
-              <option value="string">Texte</option><option value="integer">Entier</option><option value="decimal">Décimal</option>
-              <option value="boolean">Booléen</option><option value="json">JSON</option>
-            </select>
+            <app-select [options]="parametreTypeOptions" [allowClear]="false" formControlName="type" />
           </app-field>
           <app-field label="Description" [control]="editForm.controls.description"><input class="input" formControlName="description" /></app-field>
           <button type="button" class="btn btn-primary self-start" [disabled]="saving()" (click)="save()">Créer</button>
@@ -41,10 +38,7 @@
           <p class="text-sm font-medium font-mono">{{ p.cle }}</p>
           <app-field label="Valeur" [control]="editForm.controls.valeur" required><input class="input" formControlName="valeur" /></app-field>
           <app-field label="Type" [control]="editForm.controls.type" required>
-            <select class="select" formControlName="type">
-              <option value="string">Texte</option><option value="integer">Entier</option><option value="decimal">Décimal</option>
-              <option value="boolean">Booléen</option><option value="json">JSON</option>
-            </select>
+            <app-select [options]="parametreTypeOptions" [allowClear]="false" formControlName="type" />
           </app-field>
           <app-field label="Description" [control]="editForm.controls.description"><input class="input" formControlName="description" /></app-field>
           <button type="button" class="btn btn-primary self-start" [disabled]="saving()" (click)="save()">Enregistrer</button>

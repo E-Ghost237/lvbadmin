@@ -13,18 +13,12 @@
       <app-search-input placeholder="UUID, nom ou téléphone du destinataire…" (searchChange)="onSearch($event)" />
     </div>
 
-    <div class="flex rounded-(--radius-sm) overflow-hidden" style="border: 1px solid var(--border-strong)">
-      <button type="button" class="px-3 py-1.5 text-xs font-medium" [style.background]="cityFilter() === '' ? 'var(--brand)' : 'transparent'" [style.color]="cityFilter() === '' ? 'white' : 'var(--text-secondary)'" (click)="selectCity('')">Toutes villes</button>
-      <button type="button" class="px-3 py-1.5 text-xs font-medium" [style.background]="cityFilter() === 'Douala' ? 'var(--brand)' : 'transparent'" [style.color]="cityFilter() === 'Douala' ? 'white' : 'var(--text-secondary)'" (click)="selectCity('Douala')">Douala</button>
-      <button type="button" class="px-3 py-1.5 text-xs font-medium" [style.background]="cityFilter() === 'Yaoundé' ? 'var(--brand)' : 'transparent'" [style.color]="cityFilter() === 'Yaoundé' ? 'white' : 'var(--text-secondary)'" (click)="selectCity('Yaoundé')">Yaoundé</button>
-    </div>
+    <app-segmented-control [options]="cityOptions" [value]="cityFilter()" ariaLabel="Filtrer par ville" (valueChange)="selectCity($event)" />
 
-    <select class="select w-auto" [disabled]="unassignedOnly()" [value]="statusFilter()" (change)="onStatusFilterChange($any($event.target).value)">
-      <option value="">Tous les statuts</option>
-      @for (s of statusValues; track s) {
-        <option [value]="s">{{ i18n.t('status.order.' + s) }}</option>
-      }
-    </select>
+    <app-select
+      class="w-auto min-w-48" [options]="statusOptions()" placeholder="Tous les statuts" [disabled]="unassignedOnly()"
+      ariaLabel="Filtrer par statut" [value]="statusFilter()" (valueChange)="onStatusFilterChange($event)"
+    />
 
     <label class="flex items-center gap-2 text-xs font-medium">
       <input type="checkbox" class="checkbox" [checked]="unassignedOnly()" (change)="toggleUnassignedOnly()" />

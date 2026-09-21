@@ -97,12 +97,7 @@
         <p class="text-sm font-semibold mb-3">Rendre une décision</p>
         <form [formGroup]="decisionForm" class="flex flex-col gap-3">
           <app-field label="Décision" [control]="decisionForm.controls.decision" required>
-            <select class="select" formControlName="decision">
-              <option value="CLIENT_RESPONSABLE">Client responsable</option>
-              <option value="LIVREUR_RESPONSABLE">Livreur responsable</option>
-              <option value="PARTAGEE">Responsabilité partagée</option>
-              <option value="AUCUNE_FAUTE">Aucune faute</option>
-            </select>
+            <app-select [options]="decisionOptions" [allowClear]="false" formControlName="decision" />
           </app-field>
           <app-field label="Motif" [control]="decisionForm.controls.motif_decision" required hint="Minimum 10 caractères.">
             <textarea class="textarea" formControlName="motif_decision" rows="4"></textarea>

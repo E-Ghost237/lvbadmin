@@ -9,12 +9,10 @@
   <app-forbidden-state detail="Votre compte n’a pas la permission partners.view." />
 } @else {
   <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-    <select class="select w-auto" [value]="statusFilter()" (change)="onStatusFilterChange($any($event.target).value)">
-      <option value="">Tous les statuts</option>
-      @for (s of statusValues; track s) {
-        <option [value]="s">{{ i18n.t('status.partner.' + s) }}</option>
-      }
-    </select>
+    <app-select
+      class="w-auto min-w-48" [options]="statusOptions()" placeholder="Tous les statuts"
+      ariaLabel="Filtrer par statut" [value]="statusFilter()" (valueChange)="onStatusFilterChange($event)"
+    />
 
     <div class="flex items-center gap-2">
       <button type="button" class="btn btn-secondary btn-sm" (click)="openCategories()">Gérer les catégories</button>

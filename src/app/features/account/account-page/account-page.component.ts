@@ -6,18 +6,26 @@ import { AccountService, ConsentType } from '../../../core/services/account.serv
 import { DeviceSessionSummary, ProblemDetails } from '../../../core/models';
 import { formatDateTime, humanizeSlug } from '../../../core/utils/formatters';
 import {
-  AlertBannerComponent, BreadcrumbsComponent, ConfirmService, FormFieldComponent, TabDef, TabsComponent,
-  ToggleComponent, ToastService,
+  AlertBannerComponent, BreadcrumbsComponent, ConfirmService, FormFieldComponent, SelectComponent, SelectOption,
+  TabDef, TabsComponent, ToggleComponent, ToastService,
 } from '../../../shared/ui';
+
+const LANGUAGE_OPTIONS: SelectOption[] = [
+  { value: '', label: 'Ne pas modifier' }, { value: 'fr', label: 'Français' }, { value: 'en', label: 'English' },
+];
 
 @Component({
   selector: 'app-account-page',
-  imports: [KeyValuePipe, ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, ToggleComponent, AlertBannerComponent],
+  imports: [
+    KeyValuePipe, ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, ToggleComponent,
+    AlertBannerComponent, SelectComponent,
+  ],
   templateUrl: './account-page.component.html',
 })
 export class AccountPageComponent {
   private readonly auth = inject(AuthService);
   private readonly account = inject(AccountService);
+  protected readonly languageOptions = LANGUAGE_OPTIONS;
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);

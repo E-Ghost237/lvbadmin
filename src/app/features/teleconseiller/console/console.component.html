@@ -57,10 +57,10 @@
           <form [formGroup]="trajetForm" class="card p-5 flex flex-col gap-4">
             <div class="grid grid-cols-2 gap-3">
               <app-field label="Ville" [control]="trajetForm.controls.ville" required>
-                <select class="select" formControlName="ville"><option value="Douala">Douala</option><option value="Yaoundé">Yaoundé</option></select>
+                <app-select [options]="villeOptions" [allowClear]="false" formControlName="ville" />
               </app-field>
               <app-field label="Urgence" [control]="trajetForm.controls.urgence" required>
-                <select class="select" formControlName="urgence"><option value="STANDARD">Standard</option><option value="EXPRESS">Express</option><option value="PLANIFIE">Planifié</option></select>
+                <app-select [options]="urgenceOptions" [allowClear]="false" formControlName="urgence" />
               </app-field>
             </div>
             <app-field label="Poids (kg)" [control]="trajetForm.controls.poids_kg" required>
@@ -81,13 +81,8 @@
           </form>
 
           <div class="card p-4 flex flex-col">
-            <div class="flex rounded-(--radius-sm) overflow-hidden mb-3" style="border: 1px solid var(--border-strong)">
-              <button type="button" class="flex-1 px-3 py-1.5 text-xs font-medium" [style.background]="activePointTarget() === 'pickup' ? 'var(--brand)' : 'transparent'" [style.color]="activePointTarget() === 'pickup' ? 'white' : 'var(--text-secondary)'" (click)="activePointTarget.set('pickup')">
-                Ramassage {{ pickupPoint() ? '✓' : '' }}
-              </button>
-              <button type="button" class="flex-1 px-3 py-1.5 text-xs font-medium" [style.background]="activePointTarget() === 'dropoff' ? 'var(--brand)' : 'transparent'" [style.color]="activePointTarget() === 'dropoff' ? 'white' : 'var(--text-secondary)'" (click)="activePointTarget.set('dropoff')">
-                Livraison {{ dropoffPoint() ? '✓' : '' }}
-              </button>
+            <div class="mb-3">
+              <app-segmented-control [options]="pointTargetOptions()" [value]="activePointTarget()" [fullWidth]="true" ariaLabel="Point à placer" (valueChange)="setActivePointTarget($event)" />
             </div>
             <app-location-picker [value]="activePointTarget() === 'pickup' ? pickupPoint() : dropoffPoint()" (valueChange)="onMapPoint($event)" class="block h-85 sm:h-105 xl:h-120 2xl:h-150" />
           </div>
@@ -100,10 +95,7 @@
             <app-field label="Nom du destinataire" [control]="deliveryForm.controls.destinataire_nom" required><input class="input" formControlName="destinataire_nom" /></app-field>
             <app-field label="Téléphone du destinataire" [control]="deliveryForm.controls.destinataire_telephone" required><input class="input" formControlName="destinataire_telephone" placeholder="+237600000001" /></app-field>
             <app-field label="Mode de paiement" [control]="deliveryForm.controls.mode_paiement" required>
-              <select class="select" formControlName="mode_paiement">
-                <option value="MTN_MOMO">MTN Mobile Money</option><option value="ORANGE_MONEY">Orange Money</option>
-                <option value="CARTE">Carte</option><option value="COD">Paiement à la livraison</option>
-              </select>
+              <app-select [options]="paymentOptions" [allowClear]="false" formControlName="mode_paiement" />
             </app-field>
             <app-field label="Instructions ramassage" [control]="deliveryForm.controls.instructions_ramassage"><textarea class="textarea" formControlName="instructions_ramassage" rows="2"></textarea></app-field>
             <app-field label="Instructions livraison" [control]="deliveryForm.controls.instructions_livraison"><textarea class="textarea" formControlName="instructions_livraison" rows="2"></textarea></app-field>
@@ -254,11 +246,7 @@
 <app-modal [open]="complaintOpen()" title="Ouvrir une réclamation" (closed)="complaintOpen.set(false)">
   <form [formGroup]="complaintForm" class="flex flex-col gap-3">
     <app-field label="Catégorie" [control]="complaintForm.controls.categorie" required>
-      <select class="select" formControlName="categorie">
-        <option value="RETARD">Retard</option><option value="COLIS_ENDOMMAGE">Colis endommagé</option>
-        <option value="COLIS_PERDU">Colis perdu</option><option value="COMPORTEMENT">Comportement</option>
-        <option value="ERREUR_FACTURATION">Erreur de facturation</option>
-      </select>
+      <app-select [options]="complaintCategoryOptions" [allowClear]="false" formControlName="categorie" />
     </app-field>
     <app-field label="Description" [control]="complaintForm.controls.description" required>
       <textarea class="textarea" formControlName="description" rows="3"></textarea>

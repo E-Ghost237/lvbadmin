@@ -11,7 +11,8 @@ import { formatDate, formatDateTime, humanizeSlug } from '../../../core/utils/fo
 import { e164Phone } from '../../../core/utils/validators';
 import {
   BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, FormFieldComponent, ModalComponent,
-  StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService,
+  SegmentedControlComponent, SegmentOption, SelectComponent, SelectOption, StatusBadgeComponent, TabDef,
+  TableCellDefDirective, TabsComponent, ToastService,
 } from '../../../shared/ui';
 
 interface StatusTransition {
@@ -36,6 +37,9 @@ const PARTNER_ROLE_LABELS: Record<PartnerRole, string> = {
   RESPONSABLE_PARTENAIRE: 'Responsable', OPERATEUR_PARTENAIRE: 'Opérateur', LECTEUR_PARTENAIRE: 'Lecteur',
 };
 const PARTNER_ROLE_VALUES: PartnerRole[] = ['RESPONSABLE_PARTENAIRE', 'OPERATEUR_PARTENAIRE', 'LECTEUR_PARTENAIRE'];
+const PARTNER_ROLE_OPTIONS: SelectOption[] = PARTNER_ROLE_VALUES.map((value) => ({ value, label: PARTNER_ROLE_LABELS[value] }));
+
+const INVITE_CONTACT_OPTIONS: SegmentOption[] = [{ value: 'email', label: 'Email' }, { value: 'telephone', label: 'Téléphone' }];
 
 /** RG-PRT-003 — every transition other than validation (its own dedicated endpoint). */
 const STATUS_TRANSITIONS: Record<PartnerStatus, StatusTransition[]> = {
@@ -58,7 +62,7 @@ const STATUS_TRANSITIONS: Record<PartnerStatus, StatusTransition[]> = {
   selector: 'app-partner-detail',
   imports: [
     JsonPipe, ReactiveFormsModule, BreadcrumbsComponent, StatusBadgeComponent, ModalComponent, FormFieldComponent,
-    TabsComponent, DataTableComponent, TableCellDefDirective,
+    TabsComponent, DataTableComponent, TableCellDefDirective, SelectComponent, SegmentedControlComponent,
   ],
   templateUrl: './partner-detail.component.html',
 })
@@ -73,6 +77,8 @@ export class PartnerDetailComponent {
   protected readonly loading = signal(true);
   protected readonly partner = signal<Partner | null>(null);
   protected readonly categories = signal<PartnerCategory[]>([]);
+  protected readonly categoryOptions = computed<SelectOption[]>(() =>
+    this.categories().map((c) => ({ value: c.uuid, label: c.nom })));
 
   protected readonly transitions = computed(() => STATUS_TRANSITIONS[this.partner()?.statut_partenaire ?? 'ARCHIVE'] ?? []);
   protected readonly changingStatus = signal(false);
@@ -341,6 +347,8 @@ export class PartnerDetailComponent {
 
   protected readonly roleLabel = PARTNER_ROLE_LABELS;
   protected readonly roleValues = PARTNER_ROLE_VALUES;
+  protected readonly roleOptions = PARTNER_ROLE_OPTIONS;
+  protected readonly inviteContactOptions = INVITE_CONTACT_OPTIONS;
   protected readonly memberColumns: ColumnDef<PartnerMember>[] = [
     { key: 'nom', label: 'Membre' },
     { key: 'role', label: 'Rôle' },
@@ -417,8 +425,8 @@ export class PartnerDetailComponent {
     this.inviteOpen.set(true);
   }
 
-  setInviteContactType(type: 'email' | 'telephone'): void {
-    this.inviteContactType.set(type);
+  setInviteContactType(type: string): void {
+    this.inviteContactType.set(type as 'email' | 'telephone');
   }
 
   submitInvite(): void {

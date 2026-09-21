@@ -4,16 +4,24 @@ import { KpiDashboard, KpiMeasurement, SupervisionService } from '../../../core/
 import { AdminExportStatus, ExportFormat, ExportResource, ReportsService } from '../../../core/services/reports.service';
 import { ProblemDetails } from '../../../core/models';
 import { formatDateTime } from '../../../core/utils/formatters';
-import { BreadcrumbsComponent, FormFieldComponent, ForbiddenStateComponent, TabDef, TabsComponent, ToastService } from '../../../shared/ui';
+import {
+  BreadcrumbsComponent, FormFieldComponent, ForbiddenStateComponent, SelectComponent, SelectOption, TabDef,
+  TabsComponent, ToastService,
+} from '../../../shared/ui';
 
 const STATUS_TONE: Record<KpiMeasurement['status'], string> = {
   OK: 'var(--status-good)', MEASURED: 'var(--status-good)', WARNING: 'var(--status-warning)',
   ALERT: 'var(--status-critical)', NO_DATA: 'var(--text-muted)',
 };
 
+const RESOURCE_OPTIONS: SelectOption[] = [
+  { value: 'commandes', label: 'Commandes' }, { value: 'paiements', label: 'Paiements' }, { value: 'livreurs', label: 'Livreurs' },
+];
+const FORMAT_OPTIONS: SelectOption[] = [{ value: 'csv', label: 'CSV' }, { value: 'xlsx', label: 'XLSX' }];
+
 @Component({
   selector: 'app-reports-page',
-  imports: [ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, ForbiddenStateComponent],
+  imports: [ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, ForbiddenStateComponent, SelectComponent],
   templateUrl: './reports-page.component.html',
 })
 export class ReportsPageComponent {
@@ -45,6 +53,8 @@ export class ReportsPageComponent {
   });
 
   // --- Exports --------------------------------------------------------
+  protected readonly resourceOptions = RESOURCE_OPTIONS;
+  protected readonly formatOptions = FORMAT_OPTIONS;
   protected readonly exportForm = this.fb.nonNullable.group({
     ressource: ['commandes' as ExportResource, [Validators.required]],
     format: ['csv' as ExportFormat, [Validators.required]],
