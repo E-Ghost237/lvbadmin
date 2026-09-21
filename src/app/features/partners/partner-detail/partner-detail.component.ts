@@ -2,11 +2,15 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { PartnersService } from '../../../core/services/partners.service';
-import { AdminUpdatePartnerRequest, Partner, PartnerCategory, PartnerStatus, ProblemDetails } from '../../../core/models';
+import {
+  AdminUpdatePartnerRequest, Partner, PartnerCategory, PartnerDocument, PartnerDocumentType, PartnerStatus,
+  ProblemDetails,
+} from '../../../core/models';
 import { formatDate, formatDateTime } from '../../../core/utils/formatters';
 import { e164Phone } from '../../../core/utils/validators';
 import {
-  BreadcrumbsComponent, ConfirmService, FormFieldComponent, ModalComponent, StatusBadgeComponent, ToastService,
+  BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, FormFieldComponent, ModalComponent,
+  StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService,
 } from '../../../shared/ui';
 
 interface StatusTransition {
@@ -14,6 +18,11 @@ interface StatusTransition {
   label: string;
   danger: boolean;
 }
+
+const DOCUMENT_TYPE_LABELS: Record<PartnerDocumentType, string> = {
+  RCCM: 'RCCM', FISCAL: 'Attestation fiscale', ID_RESPONSABLE: 'Pièce d’identité du responsable',
+  CONTRAT_LVB: 'Contrat LVB', AUTRE: 'Autre justificatif',
+};
 
 /** RG-PRT-003 — every transition other than validation (its own dedicated endpoint). */
 const STATUS_TRANSITIONS: Record<PartnerStatus, StatusTransition[]> = {
@@ -34,7 +43,10 @@ const STATUS_TRANSITIONS: Record<PartnerStatus, StatusTransition[]> = {
 /** UC-PRT-01/02, UC-ADM-PRT-01/02 — GET/PATCH /v1/admin/partners/{uuid}, .../status, .../validate. */
 @Component({
   selector: 'app-partner-detail',
-  imports: [ReactiveFormsModule, BreadcrumbsComponent, StatusBadgeComponent, ModalComponent, FormFieldComponent],
+  imports: [
+    ReactiveFormsModule, BreadcrumbsComponent, StatusBadgeComponent, ModalComponent, FormFieldComponent, TabsComponent,
+    DataTableComponent, TableCellDefDirective,
+  ],
   templateUrl: './partner-detail.component.html',
 })
 export class PartnerDetailComponent {
@@ -52,9 +64,17 @@ export class PartnerDetailComponent {
   protected readonly transitions = computed(() => STATUS_TRANSITIONS[this.partner()?.statut_partenaire ?? 'ARCHIVE'] ?? []);
   protected readonly changingStatus = signal(false);
 
+  protected readonly tabs: TabDef[] = [{ id: 'profil', label: 'Profil' }, { id: 'documents', label: 'Documents' }];
+  protected readonly activeTab = signal('profil');
+
   constructor() {
     this.fetch();
     this.partners.listCategories().subscribe({ next: (page) => this.categories.set(page.items), error: () => {} });
+  }
+
+  selectTab(id: string): void {
+    this.activeTab.set(id);
+    if (id === 'documents' && this.documents().length === 0) this.fetchDocuments();
   }
 
   fetch(): void {
@@ -180,5 +200,75 @@ export class PartnerDetailComponent {
 
   dateTime(iso: string | null): string {
     return formatDateTime(iso);
+  }
+
+  // --- Documents (PRT-M02) ---------------------------------------------
+
+  protected readonly documentColumns: ColumnDef<PartnerDocument>[] = [
+    { key: 'type_document', label: 'Type', cell: (r) => DOCUMENT_TYPE_LABELS[r.type_document] },
+    { key: 'version', label: 'Version', align: 'right' },
+    { key: 'statut_verification', label: 'Statut' },
+    { key: 'expire_le', label: 'Expire le', cell: (r) => formatDate(r.expire_le) },
+    { key: 'cree_le', label: 'Déposé le', cell: (r) => formatDate(r.cree_le) },
+    { key: 'actions', label: '' },
+  ];
+  protected readonly trackByDocumentUuid = (row: PartnerDocument) => row.uuid;
+
+  typeLabel(row: PartnerDocument): string {
+    return DOCUMENT_TYPE_LABELS[row.type_document];
+  }
+
+  protected readonly documents = signal<PartnerDocument[]>([]);
+  protected readonly loadingDocuments = signal(true);
+  protected readonly documentsCursor = signal<string | null>(null);
+  protected readonly reviewingDocument = signal<string | null>(null);
+
+  fetchDocuments(cursor?: string): void {
+    this.loadingDocuments.set(true);
+    this.partners.listDocuments(this.uuid, { cursor, limit: 20 }).subscribe({
+      next: (page) => {
+        this.loadingDocuments.set(false);
+        this.documents.set(cursor ? [...this.documents(), ...page.items] : page.items);
+        this.documentsCursor.set(page.next_cursor);
+      },
+      error: (err: ProblemDetails) => {
+        this.loadingDocuments.set(false);
+        this.toast.error('Chargement impossible', err.detail);
+      },
+    });
+  }
+
+  downloadDocument(doc: PartnerDocument): void {
+    this.partners.downloadDocumentUrl(this.uuid, doc.uuid).subscribe({
+      next: (res) => window.open(res.url, '_blank', 'noopener'),
+      error: (err: ProblemDetails) => this.toast.error('Échec du téléchargement', err.detail),
+    });
+  }
+
+  validateDocument(doc: PartnerDocument): void {
+    this.decideDocument(doc, true);
+  }
+
+  async rejectDocument(doc: PartnerDocument): Promise<void> {
+    const motif = await this.confirm.askReason({
+      title: 'Rejeter ce document ?', label: 'Motif du rejet', minLength: 3, danger: true, confirmLabel: 'Rejeter',
+    });
+    if (!motif) return;
+    this.decideDocument(doc, false, motif);
+  }
+
+  private decideDocument(doc: PartnerDocument, accepte: boolean, motif?: string): void {
+    this.reviewingDocument.set(doc.uuid);
+    this.partners.reviewDocument(this.uuid, doc.uuid, accepte, motif).subscribe({
+      next: () => {
+        this.reviewingDocument.set(null);
+        this.toast.success(accepte ? 'Document validé' : 'Document rejeté');
+        this.fetchDocuments();
+      },
+      error: (err: ProblemDetails) => {
+        this.reviewingDocument.set(null);
+        this.toast.error('Échec', err.detail);
+      },
+    });
   }
 }

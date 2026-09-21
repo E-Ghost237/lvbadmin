@@ -23,36 +23,69 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <div class="card p-5">
-      <p class="text-sm font-semibold mb-3">Profil</p>
-      <div class="grid grid-cols-2 gap-3 text-sm">
-        <div><p class="text-xs" style="color: var(--text-muted)">Secteur d’activité</p><p>{{ p.secteur_activite || '—' }}</p></div>
-        <div><p class="text-xs" style="color: var(--text-muted)">Catégorie</p><p>{{ p.categorie?.nom || '—' }}</p></div>
-        <div><p class="text-xs" style="color: var(--text-muted)">Email</p><p>{{ p.email || '—' }}</p></div>
-        <div><p class="text-xs" style="color: var(--text-muted)">Site web</p><p>{{ p.site_web || '—' }}</p></div>
-        <div class="col-span-2"><p class="text-xs" style="color: var(--text-muted)">Adresse</p><p>{{ p.adresse_physique }}</p></div>
-        <div><p class="text-xs" style="color: var(--text-muted)">RCCM</p><p>{{ p.rccm || '—' }}</p></div>
-        <div><p class="text-xs" style="color: var(--text-muted)">Raison sociale</p><p>{{ p.raison_sociale || '—' }}</p></div>
-        <div><p class="text-xs" style="color: var(--text-muted)">N° contribuable</p><p>{{ p.numero_contribuable || '—' }}</p></div>
-      </div>
-      <p class="text-xs mt-3" style="color: var(--text-muted)">Raison sociale, numéro contribuable, RCCM et nom du responsable ne se modifient que par demande de changement approuvée (écran à venir).</p>
-    </div>
+  <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
-    <div class="card p-5">
-      <p class="text-sm font-semibold mb-3">Responsable & statut</p>
-      <div class="grid grid-cols-2 gap-3 text-sm">
-        <div><p class="text-xs" style="color: var(--text-muted)">Nom</p><p>{{ p.responsable_nom }}</p></div>
-        <div><p class="text-xs" style="color: var(--text-muted)">Téléphone</p><p>{{ p.responsable_telephone }}</p></div>
-        <div class="col-span-2"><p class="text-xs" style="color: var(--text-muted)">Email</p><p>{{ p.responsable_email || '—' }}</p></div>
-        <div><p class="text-xs" style="color: var(--text-muted)">Créé le</p><p>{{ date(p.cree_le) }}</p></div>
-        <div><p class="text-xs" style="color: var(--text-muted)">Validé le</p><p>{{ date(p.valide_le) }}</p></div>
-        @if (p.archive_le) {
-          <div><p class="text-xs" style="color: var(--text-muted)">Archivé le</p><p>{{ date(p.archive_le) }}</p></div>
-        }
-        <div><p class="text-xs" style="color: var(--text-muted)">Dernière modification</p><p>{{ dateTime(p.modifie_le) }}</p></div>
+  <div class="mt-5">
+    @if (activeTab() === 'profil') {
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="card p-5">
+          <p class="text-sm font-semibold mb-3">Profil</p>
+          <div class="grid grid-cols-2 gap-3 text-sm">
+            <div><p class="text-xs" style="color: var(--text-muted)">Secteur d’activité</p><p>{{ p.secteur_activite || '—' }}</p></div>
+            <div><p class="text-xs" style="color: var(--text-muted)">Catégorie</p><p>{{ p.categorie?.nom || '—' }}</p></div>
+            <div><p class="text-xs" style="color: var(--text-muted)">Email</p><p>{{ p.email || '—' }}</p></div>
+            <div><p class="text-xs" style="color: var(--text-muted)">Site web</p><p>{{ p.site_web || '—' }}</p></div>
+            <div class="col-span-2"><p class="text-xs" style="color: var(--text-muted)">Adresse</p><p>{{ p.adresse_physique }}</p></div>
+            <div><p class="text-xs" style="color: var(--text-muted)">RCCM</p><p>{{ p.rccm || '—' }}</p></div>
+            <div><p class="text-xs" style="color: var(--text-muted)">Raison sociale</p><p>{{ p.raison_sociale || '—' }}</p></div>
+            <div><p class="text-xs" style="color: var(--text-muted)">N° contribuable</p><p>{{ p.numero_contribuable || '—' }}</p></div>
+          </div>
+          <p class="text-xs mt-3" style="color: var(--text-muted)">Raison sociale, numéro contribuable, RCCM et nom du responsable ne se modifient que par demande de changement approuvée (écran à venir).</p>
+        </div>
+
+        <div class="card p-5">
+          <p class="text-sm font-semibold mb-3">Responsable & statut</p>
+          <div class="grid grid-cols-2 gap-3 text-sm">
+            <div><p class="text-xs" style="color: var(--text-muted)">Nom</p><p>{{ p.responsable_nom }}</p></div>
+            <div><p class="text-xs" style="color: var(--text-muted)">Téléphone</p><p>{{ p.responsable_telephone }}</p></div>
+            <div class="col-span-2"><p class="text-xs" style="color: var(--text-muted)">Email</p><p>{{ p.responsable_email || '—' }}</p></div>
+            <div><p class="text-xs" style="color: var(--text-muted)">Créé le</p><p>{{ date(p.cree_le) }}</p></div>
+            <div><p class="text-xs" style="color: var(--text-muted)">Validé le</p><p>{{ date(p.valide_le) }}</p></div>
+            @if (p.archive_le) {
+              <div><p class="text-xs" style="color: var(--text-muted)">Archivé le</p><p>{{ date(p.archive_le) }}</p></div>
+            }
+            <div><p class="text-xs" style="color: var(--text-muted)">Dernière modification</p><p>{{ dateTime(p.modifie_le) }}</p></div>
+          </div>
+        </div>
       </div>
-    </div>
+    }
+
+    @if (activeTab() === 'documents') {
+      <div class="card">
+        <app-data-table
+          [columns]="documentColumns" [rows]="documents()" [loading]="loadingDocuments() && documents().length === 0"
+          [trackBy]="trackByDocumentUuid" emptyTitle="Aucun document" emptyHint="Le partenaire n’a encore déposé aucun justificatif."
+        >
+          <ng-template appCell="type_document" let-row>
+            <p class="text-sm font-medium">{{ typeLabel(row) }}</p>
+            @if (row.motif_rejet) { <p class="text-xs mt-0.5" style="color: var(--status-critical)">{{ row.motif_rejet }}</p> }
+          </ng-template>
+          <ng-template appCell="statut_verification" let-row><app-status-badge domain="partnerDocument" [status]="row.statut_verification" /></ng-template>
+          <ng-template appCell="actions" let-row>
+            <div class="flex gap-1.5 justify-end">
+              <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="downloadDocument(row)">Télécharger</button>
+              @if (row.statut_verification === 'EN_ATTENTE') {
+                <button type="button" class="btn btn-primary btn-sm !py-1" [disabled]="reviewingDocument() === row.uuid" (click)="validateDocument(row)">Valider</button>
+                <button type="button" class="btn btn-danger-ghost btn-sm !py-1" [disabled]="reviewingDocument() === row.uuid" (click)="rejectDocument(row)">Rejeter</button>
+              }
+            </div>
+          </ng-template>
+        </app-data-table>
+      </div>
+      @if (documentsCursor()) {
+        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingDocuments()" (click)="fetchDocuments(documentsCursor()!)">Charger plus</button>
+      }
+    }
   </div>
 }
 
