@@ -189,6 +189,18 @@ export const FR: Record<string, string> = {
   'status.reconciliationItem.OUVERT': 'Ouvert',
   'status.reconciliationItem.QUALIFIE': 'Qualifié',
 
+  'status.partner.EN_ATTENTE_VALIDATION': 'En attente de validation',
+  'status.partner.VALIDE': 'Validé',
+  'status.partner.ACTIF': 'Actif',
+  'status.partner.SUSPENDU': 'Suspendu',
+  'status.partner.DESACTIVE': 'Désactivé',
+  'status.partner.ARCHIVE': 'Archivé',
+
+  'status.partnerDocument.EN_ATTENTE': 'En attente de vérification',
+  'status.partnerDocument.VALIDE': 'Validé',
+  'status.partnerDocument.REJETE': 'Rejeté',
+  'status.partnerDocument.EXPIRE': 'Expiré',
+
   'gravity.FAIBLE': 'Faible',
   'gravity.MOYENNE': 'Moyenne',
   'gravity.HAUTE': 'Haute',

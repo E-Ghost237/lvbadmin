@@ -5,6 +5,119 @@
   <p class="text-sm mt-0.5" style="color: var(--text-muted)">Dossiers, validation, équipes et suivi des comptes partenaires.</p>
 </div>
 
-<div class="card p-6 text-sm" style="color: var(--text-muted)">
-  Liste, création, validation et suivi des partenaires en cours de câblage.
-</div>
+@if (forbidden()) {
+  <app-forbidden-state detail="Votre compte n’a pas la permission partners.view." />
+} @else {
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <select class="select w-auto" [value]="statusFilter()" (change)="onStatusFilterChange($any($event.target).value)">
+      <option value="">Tous les statuts</option>
+      @for (s of statusValues; track s) {
+        <option [value]="s">{{ i18n.t('status.partner.' + s) }}</option>
+      }
+    </select>
+
+    <button type="button" class="btn btn-primary btn-sm" (click)="openNewPartner()">+ Nouveau partenaire</button>
+  </div>
+
+  <div class="card">
+    <app-data-table [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [trackBy]="trackByUuid">
+      <ng-template appCell="nom_commercial" let-row>
+        <p class="text-sm font-medium">{{ row.nom_commercial }}</p>
+        <p class="text-xs" style="color: var(--text-muted)">{{ row.telephone }}</p>
+      </ng-template>
+      <ng-template appCell="responsable_nom" let-row>
+        <p class="text-sm">{{ row.responsable_nom }}</p>
+        <p class="text-xs" style="color: var(--text-muted)">{{ row.responsable_telephone }}</p>
+      </ng-template>
+      <ng-template appCell="statut_partenaire" let-row><app-status-badge domain="partner" [status]="row.statut_partenaire" /></ng-template>
+      <ng-template appCell="actions" let-row>
+        @if (row.statut_partenaire === 'EN_ATTENTE_VALIDATION') {
+          <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openValidate(row)">Valider</button>
+        }
+      </ng-template>
+    </app-data-table>
+  </div>
+  @if (nextCursor()) {
+    <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loading()" (click)="fetch(nextCursor()!)">Charger plus</button>
+  }
+}
+
+<app-modal [open]="newPartnerOpen()" title="Nouveau partenaire" size="lg" (closed)="newPartnerOpen.set(false)">
+  <div class="flex flex-col gap-4">
+    <div>
+      <p class="field-label">Client Entreprise à rattacher <span class="text-(--status-critical)" aria-hidden="true">*</span></p>
+      @if (selectedOwner(); as owner) {
+        <div class="flex items-center justify-between rounded-(--radius-sm) px-3 py-2.5" style="background: var(--brand-50)">
+          <div>
+            <p class="text-sm font-medium">{{ owner.prenom }} {{ owner.nom }}</p>
+            <p class="text-xs" style="color: var(--text-muted)">{{ owner.telephone }}</p>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="clearOwner()">Changer</button>
+        </div>
+      } @else {
+        <app-search-input placeholder="Nom, téléphone…" (searchChange)="searchOwners($event)" />
+        <div class="flex flex-col gap-1 mt-2 max-h-40 overflow-y-auto thin-scroll">
+          @for (c of ownerCandidates(); track c.uuid) {
+            <button type="button" class="text-left rounded-(--radius-sm) px-2.5 py-2 text-sm hover:bg-(--surface-2)" (click)="selectOwner(c)">
+              {{ c.prenom }} {{ c.nom }} <span style="color: var(--text-muted)">· {{ c.telephone }}</span>
+            </button>
+          } @empty {
+            @if (ownerQuery().trim() && !loadingOwners()) {
+              <p class="text-xs text-center py-3" style="color: var(--text-muted)">Aucun client Entreprise trouvé.</p>
+            }
+          }
+        </div>
+      }
+    </div>
+
+    <form [formGroup]="newPartnerForm" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <app-field label="Nom commercial" [control]="newPartnerForm.controls.nom_commercial" required>
+        <input class="input" formControlName="nom_commercial" />
+      </app-field>
+      <app-field label="Téléphone" [control]="newPartnerForm.controls.telephone" required>
+        <input class="input" formControlName="telephone" placeholder="+237600000001" />
+      </app-field>
+      <app-field label="Email" [control]="newPartnerForm.controls.email" [showOptional]="true">
+        <input type="email" class="input" formControlName="email" />
+      </app-field>
+      <app-field label="Secteur d’activité" [control]="newPartnerForm.controls.secteur_activite" [showOptional]="true">
+        <input class="input" formControlName="secteur_activite" />
+      </app-field>
+      <app-field label="Adresse" [control]="newPartnerForm.controls.adresse_physique" required>
+        <input class="input" formControlName="adresse_physique" />
+      </app-field>
+      <app-field label="Ville" [control]="newPartnerForm.controls.ville" required>
+        <input class="input" formControlName="ville" />
+      </app-field>
+      <app-field label="RCCM" [control]="newPartnerForm.controls.rccm" [showOptional]="true">
+        <input class="input" formControlName="rccm" />
+      </app-field>
+      <div></div>
+      <app-field label="Nom du responsable" [control]="newPartnerForm.controls.responsable_nom" required>
+        <input class="input" formControlName="responsable_nom" />
+      </app-field>
+      <app-field label="Téléphone du responsable" [control]="newPartnerForm.controls.responsable_telephone" required>
+        <input class="input" formControlName="responsable_telephone" placeholder="+237600000001" />
+      </app-field>
+      <app-field label="Email du responsable" [control]="newPartnerForm.controls.responsable_email" [showOptional]="true">
+        <input type="email" class="input" formControlName="responsable_email" />
+      </app-field>
+    </form>
+  </div>
+  <div modal-footer class="flex gap-2">
+    <button type="button" class="btn btn-secondary" (click)="newPartnerOpen.set(false)">Annuler</button>
+    <button type="button" class="btn btn-primary" [disabled]="creatingPartner() || !selectedOwner()" (click)="createPartner()">Créer le dossier</button>
+  </div>
+</app-modal>
+
+<app-modal [open]="!!validateTarget()" title="Valider le partenaire" [subtitle]="validateTarget()?.nom_commercial ?? ''" (closed)="validateTarget.set(null)">
+  <form [formGroup]="validateForm" class="flex flex-col gap-3">
+    <app-field label="Plafond d’encours autorisé (XAF)" [control]="validateForm.controls.encours_autorise_xaf" required>
+      <input type="number" min="0" class="input" formControlName="encours_autorise_xaf" />
+    </app-field>
+  </form>
+  <div modal-footer class="flex gap-2">
+    <button type="button" class="btn btn-secondary" (click)="validateTarget.set(null)">Annuler</button>
+    <button type="button" class="btn btn-primary" [disabled]="validating()" (click)="confirmValidate()">Valider</button>
+  </div>
+</app-modal>
