@@ -201,6 +201,10 @@ export const EN: Record<string, string> = {
   'status.partnerDocument.REJETE': 'Rejected',
   'status.partnerDocument.EXPIRE': 'Expired',
 
+  'status.partnerChange.EN_ATTENTE': 'Pending',
+  'status.partnerChange.APPROUVEE': 'Approved',
+  'status.partnerChange.REJETEE': 'Rejected',
+
   'gravity.FAIBLE': 'Low',
   'gravity.MOYENNE': 'Medium',
   'gravity.HAUTE': 'High',

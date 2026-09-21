@@ -54,22 +54,26 @@ const PARTNER_DOCUMENT_TONE: Record<string, StatusTone> = {
   EN_ATTENTE: 'warning', VALIDE: 'good', REJETE: 'critical', EXPIRE: 'neutral',
 };
 
+const PARTNER_CHANGE_TONE: Record<string, StatusTone> = {
+  EN_ATTENTE: 'warning', APPROUVEE: 'good', REJETEE: 'critical',
+};
+
 export type StatusDomain =
   | 'order' | 'driverOp' | 'account' | 'claim' | 'transaction' | 'withdrawal' | 'gravity'
-  | 'reconciliation' | 'reconciliationItem' | 'partner' | 'partnerDocument';
+  | 'reconciliation' | 'reconciliationItem' | 'partner' | 'partnerDocument' | 'partnerChange';
 
 const DOMAIN_MAPS: Record<StatusDomain, Record<string, StatusTone>> = {
   order: ORDER_TONE, driverOp: DRIVER_OP_TONE, account: ACCOUNT_TONE, claim: CLAIM_TONE,
   transaction: TRANSACTION_TONE, withdrawal: WITHDRAWAL_TONE, gravity: GRAVITY_TONE,
   reconciliation: RECONCILIATION_TONE, reconciliationItem: RECONCILIATION_ITEM_TONE,
-  partner: PARTNER_TONE, partnerDocument: PARTNER_DOCUMENT_TONE,
+  partner: PARTNER_TONE, partnerDocument: PARTNER_DOCUMENT_TONE, partnerChange: PARTNER_CHANGE_TONE,
 };
 
 const I18N_KEY_PREFIX: Record<StatusDomain, string> = {
   order: 'status.order', driverOp: 'status.driverOp', account: 'status.account', claim: 'status.claim',
   transaction: 'status.transaction', withdrawal: 'status.withdrawal', gravity: 'gravity',
   reconciliation: 'status.reconciliation', reconciliationItem: 'status.reconciliationItem',
-  partner: 'status.partner', partnerDocument: 'status.partnerDocument',
+  partner: 'status.partner', partnerDocument: 'status.partnerDocument', partnerChange: 'status.partnerChange',
 };
 
 export function toneFor(domain: StatusDomain, status: string): StatusTone {

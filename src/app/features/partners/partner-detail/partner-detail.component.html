@@ -86,6 +86,42 @@
         <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingDocuments()" (click)="fetchDocuments(documentsCursor()!)">Charger plus</button>
       }
     }
+
+    @if (activeTab() === 'changes') {
+      @if (loadingChanges()) {
+        <div class="flex flex-col gap-2"><div class="skeleton h-24"></div><div class="skeleton h-24"></div></div>
+      } @else if (changeRequests().length === 0) {
+        <p class="text-sm text-center py-8" style="color: var(--text-muted)">Aucune demande de modification.</p>
+      } @else {
+        <div class="flex flex-col gap-3">
+          @for (change of changeRequests(); track change.uuid) {
+            <div class="card p-4">
+              <div class="flex items-center justify-between mb-3">
+                <p class="text-xs" style="color: var(--text-muted)">Demandé le {{ date(change.cree_le) }}</p>
+                <app-status-badge domain="partnerChange" [status]="change.statut" />
+              </div>
+              <div class="flex flex-col gap-2">
+                @for (f of changedFields(change); track f.label) {
+                  <div class="text-sm">
+                    <p class="text-xs font-medium" style="color: var(--text-muted)">{{ f.label }}</p>
+                    <p><span style="color: var(--text-muted)">{{ f.before }}</span> → <span class="font-medium">{{ f.after }}</span></p>
+                  </div>
+                }
+              </div>
+              @if (change.decide_le) {
+                <p class="text-xs mt-3" style="color: var(--text-muted)">Décidé le {{ date(change.decide_le) }}</p>
+                @if (change.motif) { <p class="text-xs" style="color: var(--text-muted)">Motif : {{ change.motif }}</p> }
+              } @else {
+                <div class="flex gap-2 mt-3">
+                  <button type="button" class="btn btn-primary btn-sm" [disabled]="decidingChange() === change.uuid" (click)="decideChange(change, true)">Approuver</button>
+                  <button type="button" class="btn btn-danger-ghost btn-sm" [disabled]="decidingChange() === change.uuid" (click)="decideChange(change, false)">Rejeter</button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    }
   </div>
 }
 

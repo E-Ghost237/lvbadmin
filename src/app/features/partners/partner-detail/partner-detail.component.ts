@@ -3,8 +3,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { PartnersService } from '../../../core/services/partners.service';
 import {
-  AdminUpdatePartnerRequest, Partner, PartnerCategory, PartnerDocument, PartnerDocumentType, PartnerStatus,
-  ProblemDetails,
+  AdminUpdatePartnerRequest, Partner, PartnerCategory, PartnerChangeRequest, PartnerDocument, PartnerDocumentType,
+  PartnerStatus, ProblemDetails,
 } from '../../../core/models';
 import { formatDate, formatDateTime } from '../../../core/utils/formatters';
 import { e164Phone } from '../../../core/utils/validators';
@@ -22,6 +22,12 @@ interface StatusTransition {
 const DOCUMENT_TYPE_LABELS: Record<PartnerDocumentType, string> = {
   RCCM: 'RCCM', FISCAL: 'Attestation fiscale', ID_RESPONSABLE: 'Pièce d’identité du responsable',
   CONTRAT_LVB: 'Contrat LVB', AUTRE: 'Autre justificatif',
+};
+
+/** RG-PRT-005 "SENSITIVE" set — the only fields a change-request can touch. */
+const SENSITIVE_FIELD_LABELS: Record<string, string> = {
+  raison_sociale: 'Raison sociale', numero_contribuable: 'Numéro contribuable',
+  rccm: 'RCCM', responsable_nom: 'Nom du responsable',
 };
 
 /** RG-PRT-003 — every transition other than validation (its own dedicated endpoint). */
@@ -64,7 +70,9 @@ export class PartnerDetailComponent {
   protected readonly transitions = computed(() => STATUS_TRANSITIONS[this.partner()?.statut_partenaire ?? 'ARCHIVE'] ?? []);
   protected readonly changingStatus = signal(false);
 
-  protected readonly tabs: TabDef[] = [{ id: 'profil', label: 'Profil' }, { id: 'documents', label: 'Documents' }];
+  protected readonly tabs: TabDef[] = [
+    { id: 'profil', label: 'Profil' }, { id: 'documents', label: 'Documents' }, { id: 'changes', label: 'Demandes de modification' },
+  ];
   protected readonly activeTab = signal('profil');
 
   constructor() {
@@ -75,6 +83,7 @@ export class PartnerDetailComponent {
   selectTab(id: string): void {
     this.activeTab.set(id);
     if (id === 'documents' && this.documents().length === 0) this.fetchDocuments();
+    if (id === 'changes' && this.changeRequests().length === 0) this.fetchChangeRequests();
   }
 
   fetch(): void {
@@ -267,6 +276,52 @@ export class PartnerDetailComponent {
       },
       error: (err: ProblemDetails) => {
         this.reviewingDocument.set(null);
+        this.toast.error('Échec', err.detail);
+      },
+    });
+  }
+
+  // --- Sensitive-field change requests (RG-PRT-005) --------------------
+
+  protected readonly changeRequests = signal<PartnerChangeRequest[]>([]);
+  protected readonly loadingChanges = signal(true);
+  protected readonly decidingChange = signal<string | null>(null);
+
+  fetchChangeRequests(): void {
+    this.loadingChanges.set(true);
+    this.partners.listChangeRequests(this.uuid).subscribe({
+      next: (res) => { this.loadingChanges.set(false); this.changeRequests.set(res.items); },
+      error: (err: ProblemDetails) => { this.loadingChanges.set(false); this.toast.error('Chargement impossible', err.detail); },
+    });
+  }
+
+  changedFields(change: PartnerChangeRequest): { label: string; before: string; after: string }[] {
+    return Object.entries(change.valeurs_apres)
+      .filter((entry): entry is [string, string] => entry[1] !== undefined)
+      .map(([field, after]) => ({
+        label: SENSITIVE_FIELD_LABELS[field] ?? field,
+        before: String(change.valeurs_avant[field] ?? '—'),
+        after,
+      }));
+  }
+
+  async decideChange(change: PartnerChangeRequest, accepte: boolean): Promise<void> {
+    const motif = await this.confirm.askReason({
+      title: accepte ? 'Approuver cette demande ?' : 'Rejeter cette demande ?',
+      label: accepte ? 'Motif de la décision' : 'Motif du rejet', minLength: 3, danger: !accepte,
+      confirmLabel: accepte ? 'Approuver' : 'Rejeter',
+    });
+    if (!motif) return;
+    this.decidingChange.set(change.uuid);
+    this.partners.decideChangeRequest(this.uuid, change.uuid, accepte, motif).subscribe({
+      next: () => {
+        this.decidingChange.set(null);
+        this.toast.success(accepte ? 'Modification approuvée' : 'Modification rejetée');
+        this.fetchChangeRequests();
+        if (accepte) this.fetch();
+      },
+      error: (err: ProblemDetails) => {
+        this.decidingChange.set(null);
         this.toast.error('Échec', err.detail);
       },
     });
