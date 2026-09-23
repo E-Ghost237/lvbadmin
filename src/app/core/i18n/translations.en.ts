@@ -9,6 +9,7 @@ export const EN: Record<string, string> = {
   'partner.app.tagline': 'La Vie est Belle — Partner Portal',
   'partner.auth.login.subtitle': 'Restricted to LVB partners',
   'partner.nav.dashboard': 'Dashboard',
+  'partner.nav.profile': 'Profile',
 
   'nav.dashboard': 'Live ops',
   'nav.orders': 'Orders',

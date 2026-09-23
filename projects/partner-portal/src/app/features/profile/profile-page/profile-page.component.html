@@ -1,0 +1,158 @@
+<app-breadcrumbs [crumbs]="[{ label: 'Profil' }]" />
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">Profil de l’organisation</h1>
+  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Coordonnées, documents et équipe de votre organisation partenaire.</p>
+</div>
+
+<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
+
+<div class="mt-5">
+  @if (activeTab() === 'profile') {
+    @if (forbiddenProfile()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission profile.read." />
+    } @else if (loadingProfile()) {
+      <div class="skeleton h-64"></div>
+    } @else if (profile(); as p) {
+      <div class="grid grid-cols-1 lg:grid-cols-[minmax(360px,480px)_1fr] gap-4 items-start">
+        <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" class="card p-5 flex flex-col gap-3">
+          <p class="text-sm font-medium mb-1">Coordonnées</p>
+          <app-field label="Nom commercial" [control]="profileForm.controls.nom_commercial" required><input class="input" formControlName="nom_commercial" /></app-field>
+          <div class="grid grid-cols-2 gap-3">
+            <app-field label="Téléphone" [control]="profileForm.controls.telephone" required><input class="input" formControlName="telephone" /></app-field>
+            <app-field label="Email" [control]="profileForm.controls.email"><input type="email" class="input" formControlName="email" /></app-field>
+          </div>
+          <app-field label="Adresse" [control]="profileForm.controls.adresse_physique" required><input class="input" formControlName="adresse_physique" /></app-field>
+          <div class="grid grid-cols-2 gap-3">
+            <app-field label="Ville" [control]="profileForm.controls.ville" required><input class="input" formControlName="ville" /></app-field>
+            <app-field label="Secteur d’activité" [control]="profileForm.controls.secteur_activite"><input class="input" formControlName="secteur_activite" /></app-field>
+          </div>
+          <app-field label="Zones desservies" [control]="profileForm.controls.zones_desservies" hint="Séparées par des virgules"><input class="input" formControlName="zones_desservies" /></app-field>
+          <app-field label="Site web" [control]="profileForm.controls.site_web"><input class="input" formControlName="site_web" placeholder="https://…" /></app-field>
+          <app-field label="URL du logo" [control]="profileForm.controls.logo_url"><input class="input" formControlName="logo_url" placeholder="https://…" /></app-field>
+          <div class="grid grid-cols-2 gap-3">
+            <app-field label="Téléphone du responsable" [control]="profileForm.controls.responsable_telephone" required><input class="input" formControlName="responsable_telephone" /></app-field>
+            <app-field label="Email du responsable" [control]="profileForm.controls.responsable_email"><input type="email" class="input" formControlName="responsable_email" /></app-field>
+          </div>
+          <button type="submit" class="btn btn-primary self-start" [disabled]="savingProfile()">Enregistrer</button>
+        </form>
+
+        <div class="flex flex-col gap-4">
+          <div class="card p-5">
+            <div class="flex items-center justify-between mb-3">
+              <p class="text-sm font-medium">Informations légales</p>
+              @if (!showChangeForm()) {
+                <button type="button" class="btn btn-secondary btn-sm" (click)="openChangeForm()">Demander une modification</button>
+              }
+            </div>
+            @if (!showChangeForm()) {
+              <div class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                <div><span class="field-label">Raison sociale</span><p>{{ p.raison_sociale ?? '—' }}</p></div>
+                <div><span class="field-label">N° contribuable</span><p>{{ p.numero_contribuable ?? '—' }}</p></div>
+                <div><span class="field-label">RCCM</span><p>{{ p.rccm ?? '—' }}</p></div>
+                <div><span class="field-label">Nom du responsable</span><p>{{ p.responsable_nom }}</p></div>
+              </div>
+              <p class="field-hint mt-3">Ces champs sont sensibles — toute modification passe par validation d’un administrateur.</p>
+            } @else {
+              <form [formGroup]="changeForm" (ngSubmit)="submitChangeRequest()" class="flex flex-col gap-3">
+                <app-field label="Raison sociale" [control]="changeForm.controls.raison_sociale"><input class="input" formControlName="raison_sociale" /></app-field>
+                <app-field label="N° contribuable" [control]="changeForm.controls.numero_contribuable"><input class="input" formControlName="numero_contribuable" /></app-field>
+                <app-field label="RCCM" [control]="changeForm.controls.rccm"><input class="input" formControlName="rccm" /></app-field>
+                <app-field label="Nom du responsable" [control]="changeForm.controls.responsable_nom"><input class="input" formControlName="responsable_nom" /></app-field>
+                <div class="flex gap-2">
+                  <button type="button" class="btn btn-ghost btn-sm" [disabled]="submittingChange()" (click)="showChangeForm.set(false)">Annuler</button>
+                  <button type="submit" class="btn btn-primary btn-sm" [disabled]="submittingChange()">Envoyer la demande</button>
+                </div>
+              </form>
+            }
+          </div>
+
+          @if (changeRequests().length > 0) {
+            <div class="card p-5">
+              <p class="text-sm font-medium mb-3">Demandes de modification</p>
+              <div class="flex flex-col gap-2">
+                @for (cr of changeRequests(); track cr.uuid) {
+                  <div class="flex items-center justify-between text-sm py-1.5" style="border-bottom: 1px solid var(--border)">
+                    <div>
+                      <p>{{ (cr.valeurs_apres | keyvalue)?.[0]?.key ?? 'Modification' }}</p>
+                      <p class="text-xs" style="color: var(--text-muted)">{{ dateTime(cr.cree_le) }}</p>
+                    </div>
+                    <app-status-badge domain="partnerChange" [status]="cr.statut" />
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+
+  @if (activeTab() === 'documents') {
+    @if (forbiddenDocuments()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission documents.read." />
+    } @else {
+      <div class="card p-5 mb-4 max-w-lg">
+        <p class="text-sm font-medium mb-3">Déposer un document</p>
+        <div class="flex flex-col gap-3">
+          <app-select [options]="documentTypeOptions" placeholder="Type de document" [value]="uploadType()" (valueChange)="onUploadTypeChange($event)" />
+          <app-file-drop (fileSelected)="onUploadFileSelected($event)" />
+          <div>
+            <label class="field-label">Date d’expiration (optionnel)</label>
+            <input type="date" class="input" [value]="uploadExpiry()" (input)="onUploadExpiryInput($any($event.target).value)" />
+          </div>
+          <button type="button" class="btn btn-primary btn-sm self-start" [disabled]="uploading() || !uploadType()" (click)="submitUpload()">Déposer</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <app-data-table
+          [columns]="documentColumns" [rows]="documents()" [loading]="loadingDocuments() && documents().length === 0"
+          [trackBy]="trackByDocumentUuid" emptyTitle="Aucun document" emptyHint="Aucun document déposé pour l’instant."
+        >
+          <ng-template appCell="statut_verification" let-row><app-status-badge domain="partnerDocument" [status]="row.statut_verification" /></ng-template>
+          <ng-template appCell="actions" let-row>
+            <button type="button" class="btn btn-secondary btn-sm !py-1" [disabled]="downloadingDocument() === row.uuid" (click)="downloadDocument(row)">Télécharger</button>
+          </ng-template>
+        </app-data-table>
+      </div>
+      @if (documentsCursor()) {
+        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingDocuments()" (click)="fetchDocuments(documentsCursor()!)">Charger plus</button>
+      }
+    }
+  }
+
+  @if (activeTab() === 'team') {
+    @if (forbiddenMembers()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission users.read." />
+    } @else {
+      <div class="card p-4 mb-4 max-w-lg">
+        <p class="text-sm font-medium mb-3">Inviter un membre</p>
+        <div class="flex items-center gap-2">
+          <input class="input flex-1" placeholder="Email ou téléphone" [value]="inviteContact()" (input)="onInviteContactInput($any($event.target).value)" />
+          <app-select class="w-44 shrink-0" [options]="roleOptions" [allowClear]="false" [value]="inviteRole()" (valueChange)="onInviteRoleChange($event)" />
+          <button type="button" class="btn btn-primary btn-sm shrink-0" [disabled]="inviting() || !inviteContact().trim()" (click)="submitInvite()">Inviter</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <app-data-table
+          [columns]="memberColumns" [rows]="members()" [loading]="loadingMembers() && members().length === 0"
+          [trackBy]="trackByMemberUuid" emptyTitle="Aucun membre" emptyHint="Aucun membre dans l’équipe."
+        >
+          <ng-template appCell="role" let-row>
+            <app-select
+              class="w-auto min-w-40" [options]="roleOptions" [allowClear]="false" [value]="row.role"
+              [disabled]="updatingMember() === row.uuid || !row.actif" (valueChange)="changeMemberRole(row, $event)"
+            />
+          </ng-template>
+          <ng-template appCell="actions" let-row>
+            @if (row.actif) {
+              <button type="button" class="btn btn-danger-ghost btn-sm !py-1" [disabled]="updatingMember() === row.uuid" (click)="revokeMember(row)">Révoquer</button>
+            }
+          </ng-template>
+        </app-data-table>
+      </div>
+    }
+  }
+</div>
