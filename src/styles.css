@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
+@import "@angular/cdk/overlay-prebuilt.css";
 
 /* ---------------------------------------------------------------------
  * Design tokens — LVB brand identity (dominant #004AAD, accent #80CC28).
@@ -321,3 +322,14 @@ h1, h2, h3, h4, h5, h6 {
  * something every call site has to remember.
  */
 [modal-footer] { display: flex; align-items: center; gap: 0.5rem; }
+
+/*
+ * app-select portals its open dropdown panel through the CDK overlay
+ * container (a single element appended once to <body>) so it's never
+ * clipped by a scrollable ancestor — e.g. app-modal's own overflow-y-auto
+ * content area. The prebuilt CDK overlay CSS ships a lower default
+ * z-index than app-modal's (2000), so without this override a select
+ * opened *inside* an open modal would portal correctly but still render
+ * behind the modal itself.
+ */
+.cdk-overlay-container { z-index: 2100; }

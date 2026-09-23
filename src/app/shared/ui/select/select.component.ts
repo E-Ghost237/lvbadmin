@@ -1,19 +1,32 @@
 import {
-  ChangeDetectionStrategy, Component, ElementRef, HostListener, booleanAttribute, computed, effect, forwardRef, inject,
-  input, output, signal, untracked,
+  ChangeDetectionStrategy, Component, ElementRef, booleanAttribute, computed, effect, forwardRef, inject, input,
+  output, signal, untracked, viewChild,
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { ConnectionPositionPair, OverlayModule } from '@angular/cdk/overlay';
 
 export interface SelectOption {
   value: string;
   label: string;
 }
 
+const PANEL_POSITIONS: ConnectionPositionPair[] = [
+  new ConnectionPositionPair({ originX: 'start', originY: 'bottom' }, { overlayX: 'start', overlayY: 'top' }, 0, 4),
+  new ConnectionPositionPair({ originX: 'start', originY: 'top' }, { overlayX: 'start', overlayY: 'bottom' }, 0, -4),
+];
+
 /**
  * Fully custom single-select — native `<select>` renders its open options
  * list with the OS/browser's own UI, which no app CSS can restyle, so it
  * always looks out of place next to the rest of the design system. This
  * draws both the closed trigger and the open panel itself.
+ *
+ * The open panel is portaled through the CDK overlay container (a single
+ * element appended once to `<body>`, see `.cdk-overlay-container` in
+ * styles.css) rather than `position: absolute` inside this component's own
+ * wrapper — otherwise any scrollable ancestor (most notably `app-modal`'s
+ * own `overflow-y-auto` content area) would silently clip the panel
+ * whenever it needed more room than was left in the visible area.
  *
  * Drop-in for either usage style already in the app:
  *   <app-select [options]="opts" formControlName="role" placeholder="…" />
@@ -23,10 +36,12 @@ export interface SelectOption {
   selector: 'app-select',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
+  imports: [OverlayModule],
   providers: [{ provide: NG_VALUE_ACCESSOR, useExisting: forwardRef(() => SelectComponent), multi: true }],
   template: `
     <div class="relative">
       <button
+        #trigger cdkOverlayOrigin #origin="cdkOverlayOrigin"
         type="button" class="select flex items-center justify-between gap-2 text-left cursor-pointer"
         role="combobox" aria-haspopup="listbox" [attr.aria-expanded]="open()" [attr.aria-label]="ariaLabel() || null"
         [disabled]="disabled()" (click)="toggle()" (keydown)="onTriggerKeydown($event)"
@@ -41,10 +56,14 @@ export interface SelectOption {
         ><path d="m6 9 6 6 6-6" /></svg>
       </button>
 
-      @if (open()) {
+      <ng-template
+        cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origin" [cdkConnectedOverlayOpen]="open()"
+        [cdkConnectedOverlayWidth]="panelWidth()" [cdkConnectedOverlayPositions]="positions"
+        (overlayOutsideClick)="onOverlayOutsideClick($event)" (detach)="open.set(false)"
+      >
         <ul
           role="listbox" [attr.aria-activedescendant]="activeId()"
-          class="absolute z-40 mt-1.5 w-full max-h-64 overflow-y-auto thin-scroll py-1 rounded-(--radius-sm)"
+          class="max-h-64 overflow-y-auto thin-scroll py-1 rounded-(--radius-sm)"
           style="background: var(--surface-1); border: 1px solid var(--border-strong); box-shadow: var(--shadow-md)"
         >
           @if (placeholder() && allowClear()) {
@@ -73,16 +92,18 @@ export interface SelectOption {
             <li class="px-3 py-2 text-sm" style="color: var(--text-muted)">Aucune option.</li>
           }
         </ul>
-      }
+      </ng-template>
     </div>
   `,
 })
 export class SelectComponent implements ControlValueAccessor {
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly triggerRef = viewChild<ElementRef<HTMLButtonElement>>('trigger');
   private static nextId = 0;
   private readonly instanceId = `app-select-${SelectComponent.nextId++}`;
 
   protected readonly i18nSelectPlaceholder = 'Sélectionner…';
+  protected readonly positions = PANEL_POSITIONS;
 
   readonly options = input.required<SelectOption[]>();
   readonly placeholder = input<string>('');
@@ -95,6 +116,7 @@ export class SelectComponent implements ControlValueAccessor {
   readonly disabledInput = input(false, { alias: 'disabled', transform: booleanAttribute });
 
   protected readonly open = signal(false);
+  protected readonly panelWidth = signal(0);
   protected readonly highlightedIndex = signal(-1);
   private readonly cvaDisabled = signal(false);
   protected readonly disabled = computed(() => this.disabledInput() || this.cvaDisabled());
@@ -134,17 +156,17 @@ export class SelectComponent implements ControlValueAccessor {
 
   toggle(): void {
     if (this.disabled()) return;
-    this.open.update((v) => !v);
-    if (!this.open()) this.onTouched?.();
+    const next = !this.open();
+    if (next) this.panelWidth.set(this.triggerRef()?.nativeElement.offsetWidth ?? this.host.nativeElement.offsetWidth);
+    this.open.set(next);
+    if (!next) this.onTouched?.();
   }
 
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent): void {
-    if (!this.open()) return;
-    if (!this.host.nativeElement.contains(event.target as Node)) {
-      this.open.set(false);
-      this.onTouched?.();
-    }
+  onOverlayOutsideClick(event: MouseEvent): void {
+    // The trigger button's own (click) already toggles — treat a click back on it as "handled there", not as an outside click that would immediately re-close what toggle() just opened.
+    if (this.triggerRef()?.nativeElement.contains(event.target as Node)) return;
+    this.open.set(false);
+    this.onTouched?.();
   }
 
   onTriggerKeydown(event: KeyboardEvent): void {
@@ -153,7 +175,7 @@ export class SelectComponent implements ControlValueAccessor {
     if (!this.open()) {
       if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(event.key)) {
         event.preventDefault();
-        this.open.set(true);
+        this.toggle();
       }
       return;
     }
