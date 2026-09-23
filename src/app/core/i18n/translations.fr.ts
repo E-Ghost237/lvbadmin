@@ -2,6 +2,14 @@ export const FR: Record<string, string> = {
   'app.name': 'LVB Admin',
   'app.tagline': 'La Vie est Belle — Plateforme Administration',
 
+  // partner.* — reused by the separate Partner Web Dashboard app
+  // (projects/partner-portal), which shares this dictionary and
+  // I18nService via the @lvb/i18n path alias rather than forking either.
+  'partner.app.name': 'Portail Partenaire LVB',
+  'partner.app.tagline': 'La Vie est Belle — Portail Partenaire',
+  'partner.auth.login.subtitle': 'Accès réservé aux partenaires LVB',
+  'partner.nav.dashboard': 'Tableau de bord',
+
   'nav.dashboard': 'Supervision',
   'nav.orders': 'Commandes',
   'nav.teleconseiller': 'Console téléconseiller',

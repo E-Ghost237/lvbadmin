@@ -1,0 +1,93 @@
+<app-breadcrumbs [crumbs]="[{ label: 'Tableau de bord' }]" />
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">Tableau de bord</h1>
+  @if (dashboard(); as d) {
+    <p class="text-sm mt-0.5" style="color: var(--text-muted)">Période du {{ date(d.periode.from) }} au {{ date(d.periode.to) }}</p>
+  }
+</div>
+
+@if (forbidden()) {
+  <app-forbidden-state detail="Votre compte n’a pas la permission dashboard.read." />
+} @else if (loading()) {
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div>
+  </div>
+} @else if (dashboard(); as d) {
+  @if (d.alertes.length > 0) {
+    <div class="card p-4 mb-5">
+      <p class="text-sm font-medium mb-3">Alertes</p>
+      <div class="flex flex-col gap-2">
+        @for (alert of d.alertes; track $index) {
+          <div class="flex items-center gap-3 text-sm">
+            <span
+              class="h-1.5 w-1.5 rounded-full shrink-0"
+              [style.background]="alertDanger[alert.type] ? 'var(--status-critical)' : 'var(--status-warning)'"
+            ></span>
+            <span [style.color]="alertDanger[alert.type] ? 'var(--status-critical)' : 'var(--status-warning)'">{{ alertLabel[alert.type] }}</span>
+            <span style="color: var(--text-muted)">{{ alertDetail(alert) }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+    <app-stat-tile label="Commandes créées" [value]="d.commandes.creees" />
+    <app-stat-tile label="En cours" [value]="d.commandes.en_cours" />
+    <app-stat-tile label="Livrées" [value]="d.commandes.livrees" />
+    <app-stat-tile label="Annulées" [value]="d.commandes.annulees" />
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+    @if (d.commandes.taux_livraison_delai !== null) {
+      <app-stat-tile label="Taux de livraison dans les délais" [value]="d.commandes.taux_livraison_delai" unit="%" />
+    }
+    @if (d.qualite.note_moyenne !== null) {
+      <app-stat-tile label="Note moyenne" [value]="d.qualite.note_moyenne" />
+    }
+    <app-stat-tile label="Réclamations ouvertes" [value]="d.qualite.reclamations_ouvertes" />
+    @if (d.qualite.taux_reclamation !== null) {
+      <app-stat-tile label="Taux de réclamation" [value]="d.qualite.taux_reclamation" unit="%" />
+    }
+  </div>
+
+  @if (d.finance; as finance) {
+    <div class="card p-4 mb-5">
+      <p class="text-sm font-medium mb-3">Finance</p>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <app-stat-tile label="Total facturé" [value]="finance.total_facture_xaf" unit="XAF" />
+        <app-stat-tile label="Total payé" [value]="finance.total_paye_xaf" unit="XAF" />
+        <app-stat-tile label="Encaissé COD" [value]="finance.encaisse_cod_xaf" unit="XAF" />
+        <app-stat-tile label="Paiements échoués" [value]="finance.paiements_echoues" />
+      </div>
+    </div>
+  }
+
+  <div class="card p-4">
+    <p class="text-sm font-medium mb-3">Activité récente</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div>
+        <p class="text-xs mb-2" style="color: var(--text-muted)">Commandes par jour</p>
+        <div class="flex gap-4 text-sm">
+          @if (d.activite.volumes['j'] !== undefined) { <span>Aujourd’hui : <strong>{{ d.activite.volumes['j'] }}</strong></span> }
+          @if (d.activite.volumes['j_7'] !== undefined) { <span>J-7 : <strong>{{ d.activite.volumes['j_7'] }}</strong></span> }
+          @if (d.activite.volumes['j_30'] !== undefined) { <span>J-30 : <strong>{{ d.activite.volumes['j_30'] }}</strong></span> }
+        </div>
+      </div>
+      <div>
+        <p class="text-xs mb-2" style="color: var(--text-muted)">Principales villes</p>
+        <div class="flex flex-col gap-1">
+          @for (v of d.activite.principales_villes; track v.ville) {
+            <div class="flex items-center justify-between text-sm">
+              <span>{{ v.ville }}</span>
+              <span style="color: var(--text-muted)">{{ v.commandes }}</span>
+            </div>
+          } @empty {
+            <p class="text-xs" style="color: var(--text-muted)">Aucune donnée.</p>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}

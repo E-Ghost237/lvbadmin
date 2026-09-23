@@ -13,7 +13,18 @@
     "experimentalDecorators": true,
     "importHelpers": true,
     "target": "ES2022",
-    "module": "preserve"
+    "module": "preserve",
+    "baseUrl": ".",
+    "paths": {
+      "@lvb/ui": ["src/app/shared/ui/index.ts"],
+      "@lvb/ui/*": ["src/app/shared/ui/*"],
+      "@lvb/http/*": ["src/app/core/http/*"],
+      "@lvb/auth/*": ["src/app/core/auth/*"],
+      "@lvb/i18n/*": ["src/app/core/i18n/*"],
+      "@lvb/utils/*": ["src/app/core/utils/*"],
+      "@lvb/models/*": ["src/app/core/models/*"],
+      "@lvb/environments/*": ["src/environments/*"]
+    }
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
@@ -28,6 +39,12 @@
     },
     {
       "path": "./tsconfig.spec.json"
+    },
+    {
+      "path": "./projects/partner-portal/tsconfig.app.json"
+    },
+    {
+      "path": "./projects/partner-portal/tsconfig.spec.json"
     }
   ]
 }

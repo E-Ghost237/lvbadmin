@@ -1,0 +1,89 @@
+import { Component, inject, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
+import { AuthService } from '@lvb/auth/auth.service';
+import { I18nService } from '@lvb/i18n/i18n.service';
+import { ProblemDetails } from '@lvb/models/common.model';
+import { digitCode } from '@lvb/utils/validators';
+import { AlertBannerComponent } from '@lvb/ui/alert-banner/alert-banner.component';
+import { FormFieldComponent } from '@lvb/ui/field/form-field.component';
+
+type Step = 'CREDENTIALS' | 'MFA';
+
+@Component({
+  selector: 'app-login',
+  imports: [ReactiveFormsModule, RouterLink, FormFieldComponent, AlertBannerComponent],
+  templateUrl: './login.component.html',
+})
+export class LoginComponent {
+  private readonly fb = inject(FormBuilder);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  protected readonly i18n = inject(I18nService);
+
+  protected readonly step = signal<Step>('CREDENTIALS');
+  protected readonly submitting = signal(false);
+  protected readonly errorMessage = signal('');
+  protected readonly currentYear = new Date().getFullYear();
+
+  protected readonly credentialsForm = this.fb.nonNullable.group({
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', [Validators.required]],
+  });
+
+  protected readonly mfaForm = this.fb.nonNullable.group({
+    code: ['', [Validators.required, digitCode(6)]],
+  });
+
+  submitCredentials(): void {
+    if (this.credentialsForm.invalid) {
+      this.credentialsForm.markAllAsTouched();
+      return;
+    }
+    this.errorMessage.set('');
+    this.submitting.set(true);
+    const { email, password } = this.credentialsForm.getRawValue();
+    this.auth.login(email, password).subscribe({
+      next: () => {
+        this.submitting.set(false);
+        this.step.set('MFA');
+      },
+      error: (err: ProblemDetails) => {
+        this.submitting.set(false);
+        this.errorMessage.set(err.detail);
+      },
+    });
+  }
+
+  submitMfa(): void {
+    if (this.mfaForm.invalid) {
+      this.mfaForm.markAllAsTouched();
+      return;
+    }
+    this.errorMessage.set('');
+    this.submitting.set(true);
+    const email = this.credentialsForm.getRawValue().email;
+    this.auth.verifyMfa(email, this.mfaForm.getRawValue().code).subscribe({
+      next: () => {
+        this.submitting.set(false);
+        this.redirectAfterLogin();
+      },
+      error: (err: ProblemDetails) => {
+        this.submitting.set(false);
+        this.errorMessage.set(err.detail);
+      },
+    });
+  }
+
+  backToCredentials(): void {
+    this.step.set('CREDENTIALS');
+    this.mfaForm.reset();
+    this.errorMessage.set('');
+  }
+
+  private redirectAfterLogin(): void {
+    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+    this.router.navigateByUrl(returnUrl || '/');
+  }
+}
