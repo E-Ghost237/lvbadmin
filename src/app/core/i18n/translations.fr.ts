@@ -213,6 +213,20 @@ export const FR: Record<string, string> = {
   'status.marketplaceOffer.ARCHIVEE': 'Archivée',
   'status.marketplaceOffer.REJETEE': 'Rejetée',
 
+  'status.rentalVehicle.BROUILLON': 'Brouillon',
+  'status.rentalVehicle.ACTIF': 'Actif',
+  'status.rentalVehicle.INDISPONIBLE': 'Indisponible',
+  'status.rentalVehicle.EN_MAINTENANCE': 'En maintenance',
+  'status.rentalVehicle.SUSPENDU': 'Suspendu',
+  'status.rentalVehicle.ARCHIVE': 'Archivé',
+
+  'status.rentalDriver.EN_ATTENTE_VALIDATION': 'En attente de validation',
+  'status.rentalDriver.ACTIF': 'Actif',
+  'status.rentalDriver.INDISPONIBLE': 'Indisponible',
+  'status.rentalDriver.EN_CONGE': 'En congé',
+  'status.rentalDriver.SUSPENDU': 'Suspendu',
+  'status.rentalDriver.ARCHIVE': 'Archivé',
+
   'gravity.FAIBLE': 'Faible',
   'gravity.MOYENNE': 'Moyenne',
   'gravity.HAUTE': 'Haute',
@@ -229,6 +243,7 @@ export const FR: Record<string, string> = {
   'permission.drivers.kyc.review': 'Examiner les dossiers KYC livreurs',
   'permission.drivers.quality.manage': 'Gérer la qualité des livreurs',
   'permission.exports.manage': 'Gérer les exports',
+  'permission.fleet.manage': 'Gérer le parc de location',
   'permission.marketplace.manage': 'Gérer le marketplace',
   'permission.notifications.configure': 'Configurer les notifications',
   'permission.notifications.cost.view': 'Consulter le coût des notifications',

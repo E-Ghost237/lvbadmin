@@ -1,8 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
 import { MarketplaceService } from '../../../core/services/marketplace.service';
+import { RentalService } from '../../../core/services/rental.service';
 import {
-  MARKETPLACE_OFFER_STATUS_VALUES, MARKETPLACE_OFFER_TRANSITIONS, MarketplaceCategory, MarketplaceOffer,
-  MarketplaceOfferStatus, ProblemDetails,
+  DRIVER_STATUS_VALUES, Driver, DriverStatus, MARKETPLACE_OFFER_STATUS_VALUES, MARKETPLACE_OFFER_TRANSITIONS,
+  MarketplaceCategory, MarketplaceOffer, MarketplaceOfferStatus, ProblemDetails, VEHICLE_STATUS_VALUES, Vehicle,
+  VehicleStatus, RentalVehicleType,
 } from '../../../core/models';
 import { formatDate } from '../../../core/utils/formatters';
 import { I18nService } from '../../../core/i18n/i18n.service';
@@ -36,11 +38,16 @@ interface OfferAction {
 })
 export class MarketplacePageComponent {
   private readonly marketplace = inject(MarketplaceService);
+  private readonly rental = inject(RentalService);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   protected readonly i18n = inject(I18nService);
 
-  protected readonly tabs: TabDef[] = [{ id: 'offers', label: 'Offres' }, { id: 'categories', label: 'Catégories' }];
+  protected readonly tabs: TabDef[] = [
+    { id: 'offers', label: 'Offres' }, { id: 'categories', label: 'Catégories' },
+    { id: 'vehicles', label: 'Véhicules' }, { id: 'drivers', label: 'Chauffeurs' },
+    { id: 'vehicleTypes', label: 'Types de véhicule' },
+  ];
   protected readonly activeTab = signal('offers');
 
   protected readonly statusOptions: SelectOption[] = MARKETPLACE_OFFER_STATUS_VALUES.map((s) => ({
@@ -71,6 +78,7 @@ export class MarketplacePageComponent {
   selectTab(id: string): void {
     this.activeTab.set(id);
     if (id === 'categories' && this.categories().length === 0) this.fetchCategories();
+    if (id === 'vehicleTypes' && this.vehicleTypes().length === 0) this.fetchVehicleTypes();
   }
 
   fetchOffers(cursor?: string): void {
@@ -171,6 +179,218 @@ export class MarketplacePageComponent {
         this.newCategoryName.set('');
         this.toast.success('Catégorie créée');
         this.fetchCategories();
+      },
+      error: (err: ProblemDetails) => this.toast.error('Échec de la création', err.detail),
+    });
+  }
+
+  // --- Vehicles (RNT-M01) ------------------------------------------------
+  // Every vehicle/driver call requires a `partner_id` integer the admin has
+  // to already know (see RentalService docblock) — the tab starts with a
+  // lookup step rather than a flat cross-partner list.
+
+  protected readonly vehicleStatusOptions: SelectOption[] = VEHICLE_STATUS_VALUES.map((s) => ({
+    value: s, label: this.i18n.t('status.rentalVehicle.' + s),
+  }));
+  protected readonly vehicleColumns: ColumnDef<Vehicle>[] = [
+    { key: 'registration', label: 'Immatriculation' },
+    { key: 'brand', label: 'Marque / modèle', cell: (r) => `${r.brand} ${r.model}` },
+    { key: 'vehicle_type', label: 'Type' },
+    { key: 'status', label: 'Statut' },
+    { key: 'compliance_suspended', label: 'Conformité', cell: (r) => (r.compliance_suspended ? 'Suspendu' : 'OK') },
+  ];
+  protected readonly trackByVehicleUuid = (row: Vehicle) => row.uuid;
+
+  protected readonly vehiclePartnerIdInput = signal('');
+  protected readonly vehiclePartnerId = signal<number | null>(null);
+  protected readonly vehicles = signal<Vehicle[]>([]);
+  protected readonly loadingVehicles = signal(false);
+  protected readonly vehiclesCursor = signal<number | null>(null);
+  protected readonly vehicleStatusFilter = signal<VehicleStatus | ''>('');
+  protected readonly updatingVehicle = signal<string | null>(null);
+
+  onVehiclePartnerIdInput(value: string): void {
+    this.vehiclePartnerIdInput.set(value);
+  }
+
+  lookupVehiclePartner(): void {
+    const id = Number.parseInt(this.vehiclePartnerIdInput(), 10);
+    if (!Number.isFinite(id) || id <= 0) {
+      this.toast.error('Identifiant invalide', 'Saisissez un identifiant partenaire numérique valide.');
+      return;
+    }
+    this.vehiclePartnerId.set(id);
+    this.vehicles.set([]);
+    this.vehiclesCursor.set(null);
+    this.fetchVehicles();
+  }
+
+  fetchVehicles(cursor?: number): void {
+    const partnerId = this.vehiclePartnerId();
+    if (partnerId === null) return;
+    this.loadingVehicles.set(true);
+    this.rental.listVehicles(partnerId, { status: this.vehicleStatusFilter() || undefined, cursor, limit: 50 }).subscribe({
+      next: (page) => {
+        this.loadingVehicles.set(false);
+        this.vehicles.set(cursor ? [...this.vehicles(), ...page.items] : page.items);
+        this.vehiclesCursor.set(page.next_cursor);
+      },
+      error: (err: ProblemDetails) => {
+        this.loadingVehicles.set(false);
+        this.toast.error('Chargement impossible', err.detail);
+      },
+    });
+  }
+
+  onVehicleStatusFilterChange(value: string): void {
+    this.vehicleStatusFilter.set(value as VehicleStatus | '');
+    this.fetchVehicles();
+  }
+
+  async changeVehicleStatus(vehicle: Vehicle, status: string): Promise<void> {
+    const target = status as VehicleStatus;
+    if (target === vehicle.status) return;
+    const ok = await this.confirm.ask({
+      title: `Changer le statut de ${vehicle.registration} ?`,
+      message: `Nouveau statut : ${this.i18n.t('status.rentalVehicle.' + target)}`,
+      danger: target === 'SUSPENDU' || target === 'ARCHIVE',
+    });
+    if (!ok) return;
+    this.updatingVehicle.set(vehicle.uuid);
+    this.rental.updateVehicleStatus(this.vehiclePartnerId()!, vehicle.uuid, target).subscribe({
+      next: () => { this.updatingVehicle.set(null); this.toast.success('Statut mis à jour'); this.fetchVehicles(); },
+      error: (err: ProblemDetails) => { this.updatingVehicle.set(null); this.toast.error('Échec', err.detail); this.fetchVehicles(); },
+    });
+  }
+
+  // --- Drivers (RNT-M02) --------------------------------------------------
+
+  protected readonly driverStatusOptions: SelectOption[] = DRIVER_STATUS_VALUES.map((s) => ({
+    value: s, label: this.i18n.t('status.rentalDriver.' + s),
+  }));
+  protected readonly driverColumns: ColumnDef<Driver>[] = [
+    { key: 'name', label: 'Chauffeur', cell: (r) => `${r.first_name} ${r.last_name}` },
+    { key: 'phone', label: 'Téléphone' },
+    { key: 'license_categories', label: 'Permis', cell: (r) => r.license_categories.join(', ') },
+    { key: 'status', label: 'Statut' },
+    { key: 'compliance_suspended', label: 'Conformité', cell: (r) => (r.compliance_suspended ? 'Suspendu' : 'OK') },
+  ];
+  protected readonly trackByDriverUuid = (row: Driver) => row.uuid;
+
+  protected readonly driverPartnerIdInput = signal('');
+  protected readonly driverPartnerId = signal<number | null>(null);
+  protected readonly drivers = signal<Driver[]>([]);
+  protected readonly loadingDrivers = signal(false);
+  protected readonly driversCursor = signal<number | null>(null);
+  protected readonly driverStatusFilter = signal<DriverStatus | ''>('');
+  protected readonly updatingDriver = signal<string | null>(null);
+
+  onDriverPartnerIdInput(value: string): void {
+    this.driverPartnerIdInput.set(value);
+  }
+
+  lookupDriverPartner(): void {
+    const id = Number.parseInt(this.driverPartnerIdInput(), 10);
+    if (!Number.isFinite(id) || id <= 0) {
+      this.toast.error('Identifiant invalide', 'Saisissez un identifiant partenaire numérique valide.');
+      return;
+    }
+    this.driverPartnerId.set(id);
+    this.drivers.set([]);
+    this.driversCursor.set(null);
+    this.fetchDrivers();
+  }
+
+  fetchDrivers(cursor?: number): void {
+    const partnerId = this.driverPartnerId();
+    if (partnerId === null) return;
+    this.loadingDrivers.set(true);
+    this.rental.listDrivers(partnerId, { status: this.driverStatusFilter() || undefined, cursor, limit: 50 }).subscribe({
+      next: (page) => {
+        this.loadingDrivers.set(false);
+        this.drivers.set(cursor ? [...this.drivers(), ...page.items] : page.items);
+        this.driversCursor.set(page.next_cursor);
+      },
+      error: (err: ProblemDetails) => {
+        this.loadingDrivers.set(false);
+        this.toast.error('Chargement impossible', err.detail);
+      },
+    });
+  }
+
+  onDriverStatusFilterChange(value: string): void {
+    this.driverStatusFilter.set(value as DriverStatus | '');
+    this.fetchDrivers();
+  }
+
+  async changeDriverStatus(driver: Driver, status: string): Promise<void> {
+    const target = status as DriverStatus;
+    if (target === driver.status) return;
+    const ok = await this.confirm.ask({
+      title: `Changer le statut de ${driver.first_name} ${driver.last_name} ?`,
+      message: `Nouveau statut : ${this.i18n.t('status.rentalDriver.' + target)}`,
+      danger: target === 'SUSPENDU' || target === 'ARCHIVE',
+    });
+    if (!ok) return;
+    this.updatingDriver.set(driver.uuid);
+    this.rental.updateDriverStatus(this.driverPartnerId()!, driver.uuid, target).subscribe({
+      next: () => { this.updatingDriver.set(null); this.toast.success('Statut mis à jour'); this.fetchDrivers(); },
+      error: (err: ProblemDetails) => { this.updatingDriver.set(null); this.toast.error('Échec', err.detail); this.fetchDrivers(); },
+    });
+  }
+
+  // --- Vehicle types (reference data, not partner-scoped) -----------------
+
+  protected readonly vehicleTypes = signal<RentalVehicleType[]>([]);
+  protected readonly loadingVehicleTypes = signal(false);
+  protected readonly savingVehicleType = signal<string | null>(null);
+  protected readonly newVehicleTypeCode = signal('');
+  protected readonly newVehicleTypeLabel = signal('');
+
+  fetchVehicleTypes(): void {
+    this.loadingVehicleTypes.set(true);
+    this.rental.listVehicleTypes().subscribe({
+      next: (page) => { this.loadingVehicleTypes.set(false); this.vehicleTypes.set(page.items); },
+      error: (err: ProblemDetails) => { this.loadingVehicleTypes.set(false); this.toast.error('Chargement impossible', err.detail); },
+    });
+  }
+
+  renameVehicleType(type: RentalVehicleType, label: string): void {
+    const trimmed = label.trim();
+    if (!trimmed || trimmed === type.label) return;
+    this.savingVehicleType.set(type.code);
+    this.rental.saveVehicleType(type.code, trimmed, type.active).subscribe({
+      next: () => { this.savingVehicleType.set(null); this.toast.success('Type mis à jour'); this.fetchVehicleTypes(); },
+      error: (err: ProblemDetails) => { this.savingVehicleType.set(null); this.toast.error('Échec', err.detail); this.fetchVehicleTypes(); },
+    });
+  }
+
+  toggleVehicleTypeActive(type: RentalVehicleType): void {
+    this.savingVehicleType.set(type.code);
+    this.rental.saveVehicleType(type.code, type.label, !type.active).subscribe({
+      next: () => { this.savingVehicleType.set(null); this.fetchVehicleTypes(); },
+      error: (err: ProblemDetails) => { this.savingVehicleType.set(null); this.toast.error('Échec', err.detail); this.fetchVehicleTypes(); },
+    });
+  }
+
+  onNewVehicleTypeCodeInput(value: string): void {
+    this.newVehicleTypeCode.set(value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'));
+  }
+
+  onNewVehicleTypeLabelInput(value: string): void {
+    this.newVehicleTypeLabel.set(value);
+  }
+
+  createVehicleType(): void {
+    const code = this.newVehicleTypeCode().trim();
+    const label = this.newVehicleTypeLabel().trim();
+    if (!code || !label) return;
+    this.rental.saveVehicleType(code, label, true).subscribe({
+      next: () => {
+        this.newVehicleTypeCode.set('');
+        this.newVehicleTypeLabel.set('');
+        this.toast.success('Type créé');
+        this.fetchVehicleTypes();
       },
       error: (err: ProblemDetails) => this.toast.error('Échec de la création', err.detail),
     });

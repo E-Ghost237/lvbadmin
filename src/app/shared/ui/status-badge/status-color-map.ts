@@ -64,17 +64,29 @@ const MARKETPLACE_OFFER_TONE: Record<string, StatusTone> = {
   ARCHIVEE: 'neutral', REJETEE: 'critical',
 };
 
+/** §9.3 — a partner's rental vehicle (distinct from an LVB delivery order). */
+const RENTAL_VEHICLE_TONE: Record<string, StatusTone> = {
+  BROUILLON: 'neutral', ACTIF: 'good', INDISPONIBLE: 'warning', EN_MAINTENANCE: 'warning',
+  SUSPENDU: 'critical', ARCHIVE: 'neutral',
+};
+
+/** §10.2 — a partner's own rental driver (distinct from an LVB delivery driver / `driverOp`). */
+const RENTAL_DRIVER_TONE: Record<string, StatusTone> = {
+  EN_ATTENTE_VALIDATION: 'warning', ACTIF: 'good', INDISPONIBLE: 'warning', EN_CONGE: 'info',
+  SUSPENDU: 'critical', ARCHIVE: 'neutral',
+};
+
 export type StatusDomain =
   | 'order' | 'driverOp' | 'account' | 'claim' | 'transaction' | 'withdrawal' | 'gravity'
   | 'reconciliation' | 'reconciliationItem' | 'partner' | 'partnerDocument' | 'partnerChange'
-  | 'marketplaceOffer';
+  | 'marketplaceOffer' | 'rentalVehicle' | 'rentalDriver';
 
 const DOMAIN_MAPS: Record<StatusDomain, Record<string, StatusTone>> = {
   order: ORDER_TONE, driverOp: DRIVER_OP_TONE, account: ACCOUNT_TONE, claim: CLAIM_TONE,
   transaction: TRANSACTION_TONE, withdrawal: WITHDRAWAL_TONE, gravity: GRAVITY_TONE,
   reconciliation: RECONCILIATION_TONE, reconciliationItem: RECONCILIATION_ITEM_TONE,
   partner: PARTNER_TONE, partnerDocument: PARTNER_DOCUMENT_TONE, partnerChange: PARTNER_CHANGE_TONE,
-  marketplaceOffer: MARKETPLACE_OFFER_TONE,
+  marketplaceOffer: MARKETPLACE_OFFER_TONE, rentalVehicle: RENTAL_VEHICLE_TONE, rentalDriver: RENTAL_DRIVER_TONE,
 };
 
 const I18N_KEY_PREFIX: Record<StatusDomain, string> = {
@@ -82,7 +94,7 @@ const I18N_KEY_PREFIX: Record<StatusDomain, string> = {
   transaction: 'status.transaction', withdrawal: 'status.withdrawal', gravity: 'gravity',
   reconciliation: 'status.reconciliation', reconciliationItem: 'status.reconciliationItem',
   partner: 'status.partner', partnerDocument: 'status.partnerDocument', partnerChange: 'status.partnerChange',
-  marketplaceOffer: 'status.marketplaceOffer',
+  marketplaceOffer: 'status.marketplaceOffer', rentalVehicle: 'status.rentalVehicle', rentalDriver: 'status.rentalDriver',
 };
 
 export function toneFor(domain: StatusDomain, status: string): StatusTone {

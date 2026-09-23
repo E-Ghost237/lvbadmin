@@ -72,4 +72,116 @@
       </div>
     }
   }
+
+  @if (activeTab() === 'vehicles') {
+    <div class="card p-4 mb-4 max-w-lg">
+      <label class="field-label">Identifiant partenaire (marketplace)</label>
+      <div class="flex items-center gap-2">
+        <input
+          type="number" min="1" class="input" placeholder="ex. 42" [value]="vehiclePartnerIdInput()"
+          (input)="onVehiclePartnerIdInput($any($event.target).value)" (keydown.enter)="lookupVehiclePartner()"
+        />
+        <button type="button" class="btn btn-primary btn-sm shrink-0" (click)="lookupVehiclePartner()">Charger</button>
+      </div>
+      <p class="field-hint">Identifiant interne marketplace du partenaire (visible sur une ligne d’offre ou de réservation) — pas l’identifiant du dossier partenaire.</p>
+    </div>
+
+    @if (vehiclePartnerId() !== null) {
+      <div class="mb-4 max-w-xs">
+        <app-select [options]="vehicleStatusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="vehicleStatusFilter()" (valueChange)="onVehicleStatusFilterChange($event)" />
+      </div>
+
+      <div class="card">
+        <app-data-table
+          [columns]="vehicleColumns" [rows]="vehicles()" [loading]="loadingVehicles() && vehicles().length === 0"
+          [trackBy]="trackByVehicleUuid" emptyTitle="Aucun véhicule" emptyHint="Ce partenaire n’a aucun véhicule enregistré pour ce filtre."
+        >
+          <ng-template appCell="status" let-row>
+            <app-select
+              class="w-auto min-w-44" [options]="vehicleStatusOptions" [allowClear]="false" [value]="row.status"
+              [disabled]="updatingVehicle() === row.uuid" (valueChange)="changeVehicleStatus(row, $event)"
+            />
+          </ng-template>
+        </app-data-table>
+      </div>
+      @if (vehiclesCursor()) {
+        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingVehicles()" (click)="fetchVehicles(vehiclesCursor()!)">Charger plus</button>
+      }
+    }
+  }
+
+  @if (activeTab() === 'drivers') {
+    <div class="card p-4 mb-4 max-w-lg">
+      <label class="field-label">Identifiant partenaire (marketplace)</label>
+      <div class="flex items-center gap-2">
+        <input
+          type="number" min="1" class="input" placeholder="ex. 42" [value]="driverPartnerIdInput()"
+          (input)="onDriverPartnerIdInput($any($event.target).value)" (keydown.enter)="lookupDriverPartner()"
+        />
+        <button type="button" class="btn btn-primary btn-sm shrink-0" (click)="lookupDriverPartner()">Charger</button>
+      </div>
+      <p class="field-hint">Identifiant interne marketplace du partenaire (visible sur une ligne d’offre ou de réservation) — pas l’identifiant du dossier partenaire.</p>
+    </div>
+
+    @if (driverPartnerId() !== null) {
+      <div class="mb-4 max-w-xs">
+        <app-select [options]="driverStatusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="driverStatusFilter()" (valueChange)="onDriverStatusFilterChange($event)" />
+      </div>
+
+      <div class="card">
+        <app-data-table
+          [columns]="driverColumns" [rows]="drivers()" [loading]="loadingDrivers() && drivers().length === 0"
+          [trackBy]="trackByDriverUuid" emptyTitle="Aucun chauffeur" emptyHint="Ce partenaire n’a aucun chauffeur enregistré pour ce filtre."
+        >
+          <ng-template appCell="status" let-row>
+            <app-select
+              class="w-auto min-w-44" [options]="driverStatusOptions" [allowClear]="false" [value]="row.status"
+              [disabled]="updatingDriver() === row.uuid" (valueChange)="changeDriverStatus(row, $event)"
+            />
+          </ng-template>
+        </app-data-table>
+      </div>
+      @if (driversCursor()) {
+        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingDrivers()" (click)="fetchDrivers(driversCursor()!)">Charger plus</button>
+      }
+    }
+  }
+
+  @if (activeTab() === 'vehicleTypes') {
+    @if (loadingVehicleTypes()) {
+      <div class="skeleton h-32"></div>
+    } @else {
+      <div class="card p-5 max-w-lg">
+        <p class="text-sm font-medium mb-3">Types de véhicule</p>
+        <div class="flex flex-col gap-2 max-h-96 overflow-y-auto thin-scroll">
+          @for (type of vehicleTypes(); track type.code) {
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono w-28 shrink-0 truncate" [title]="type.code" style="color: var(--text-muted)">{{ type.code }}</span>
+              <input
+                class="input flex-1" [value]="type.label" [disabled]="savingVehicleType() === type.code"
+                (change)="renameVehicleType(type, $any($event.target).value)"
+              />
+              <app-toggle
+                [checked]="type.active" [disabled]="savingVehicleType() === type.code" [label]="'Type actif : ' + type.label"
+                (checkedChange)="toggleVehicleTypeActive(type)"
+              />
+            </div>
+          } @empty {
+            <p class="text-xs text-center py-3" style="color: var(--text-muted)">Aucun type de véhicule.</p>
+          }
+        </div>
+        <div class="flex items-center gap-2 mt-3 pt-3" style="border-top: 1px solid var(--border)">
+          <input
+            class="input w-32 font-mono uppercase" placeholder="CODE" [value]="newVehicleTypeCode()"
+            (input)="onNewVehicleTypeCodeInput($any($event.target).value)"
+          />
+          <input
+            class="input flex-1" placeholder="Libellé…" [value]="newVehicleTypeLabel()"
+            (input)="onNewVehicleTypeLabelInput($any($event.target).value)"
+          />
+          <button type="button" class="btn btn-secondary btn-sm shrink-0" [disabled]="!newVehicleTypeCode().trim() || !newVehicleTypeLabel().trim()" (click)="createVehicleType()">Ajouter</button>
+        </div>
+      </div>
+    }
+  }
 </div>
