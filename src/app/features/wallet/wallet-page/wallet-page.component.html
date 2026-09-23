@@ -1,0 +1,203 @@
+<app-breadcrumbs [crumbs]="[{ label: 'Portefeuille partenaires' }]" />
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">Portefeuille partenaires</h1>
+  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Retraits, réconciliation et ajustements du portefeuille des partenaires (LVB-CDC-MKT-RENT-2026-V1.0).</p>
+</div>
+
+<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
+
+<div class="mt-5">
+  @if (activeTab() === 'withdrawals') {
+    @if (forbiddenWithdrawals()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission partner-wallet.view." />
+    } @else {
+      <div class="mb-4 max-w-xs">
+        <app-select [options]="withdrawalStatusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="withdrawalStatusFilter()" (valueChange)="onWithdrawalStatusFilterChange($event)" />
+      </div>
+
+      <div class="card">
+        <app-data-table
+          [columns]="withdrawalColumns" [rows]="withdrawals()" [loading]="loadingWithdrawals() && withdrawals().length === 0"
+          [trackBy]="trackByWithdrawalUuid" emptyTitle="Aucun retrait" emptyHint="Aucun retrait ne correspond à ce filtre."
+        >
+          <ng-template appCell="payout_account_uuid" let-row>
+            <div class="flex items-center gap-2">
+              <span class="font-mono text-xs">{{ row.payout_account_uuid.slice(0, 8) }}…</span>
+              <button
+                type="button" class="btn btn-ghost btn-sm !py-0.5 !px-1.5 text-xs" [disabled]="verifyingAccount() === row.uuid"
+                (click)="verifyPayoutAccount(row)"
+              >Vérifier</button>
+            </div>
+          </ng-template>
+          <ng-template appCell="status" let-row><app-status-badge domain="partnerWithdrawal" [status]="row.status" /></ng-template>
+          <ng-template appCell="actions" let-row>
+            <div class="flex gap-1.5 justify-end flex-wrap">
+              @for (action of actionsFor(row); track action.action) {
+                <button
+                  type="button" class="btn btn-sm !py-1" [class]="action.danger ? 'btn-danger-ghost' : 'btn-secondary'"
+                  [disabled]="decidingWithdrawal() === row.uuid" (click)="applyWithdrawalAction(row, action)"
+                >{{ action.label }}</button>
+              }
+            </div>
+          </ng-template>
+        </app-data-table>
+      </div>
+    }
+  }
+
+  @if (activeTab() === 'reconciliation') {
+    <div class="card p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <p class="text-sm font-medium">Rapport de réconciliation</p>
+          <p class="text-xs mt-0.5" style="color: var(--text-muted)">Calculé en direct à partir du grand livre à chaque exécution — aucun historique n’est conservé.</p>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm shrink-0" [disabled]="loadingReconciliation()" (click)="runReconciliation()">Lancer la réconciliation</button>
+      </div>
+
+      @if (loadingReconciliation()) {
+        <div class="skeleton h-32"></div>
+      } @else if (reconciliation(); as r) {
+        <div class="flex items-center gap-3 mb-4">
+          @if (r.balanced) {
+            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style="color: var(--status-good); background: var(--status-good-bg)">
+              <span class="h-1.5 w-1.5 rounded-full" style="background: var(--status-good)"></span>Équilibré
+            </span>
+          } @else {
+            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style="color: var(--status-critical); background: var(--status-critical-bg)">
+              <span class="h-1.5 w-1.5 rounded-full" style="background: var(--status-critical)"></span>Écarts détectés
+            </span>
+          }
+          <span class="text-xs ml-auto" style="color: var(--text-muted)">Généré le {{ dateTime(r.generated_at) }}</span>
+        </div>
+
+        @if (r.unbalanced_journals.length > 0) {
+          <div class="mb-4">
+            <p class="text-xs font-medium mb-1.5">Journaux déséquilibrés ({{ r.unbalanced_journals.length }})</p>
+            <p class="text-xs font-mono" style="color: var(--text-muted)">{{ r.unbalanced_journals.join(', ') }}</p>
+          </div>
+        }
+
+        @if (r.missing_payout_journals.length > 0) {
+          <div class="mb-4">
+            <p class="text-xs font-medium mb-1.5">Retraits payés sans journal correspondant ({{ r.missing_payout_journals.length }})</p>
+            <div class="flex flex-col gap-1">
+              @for (uuid of r.missing_payout_journals; track uuid) {
+                <p class="text-xs font-mono" style="color: var(--text-muted)">{{ uuid }}</p>
+              }
+            </div>
+          </div>
+        }
+
+        @if (r.settlement_mismatches.length > 0) {
+          <div class="mb-4">
+            <p class="text-xs font-medium mb-1.5">Écarts de règlement ({{ r.settlement_mismatches.length }})</p>
+            <div class="flex flex-col gap-1 max-h-48 overflow-y-auto thin-scroll">
+              @for (m of r.settlement_mismatches; track m.booking_uuid) {
+                <p class="text-xs">
+                  <span class="font-mono" style="color: var(--text-muted)">{{ m.booking_uuid.slice(0, 8) }}…</span>
+                  attendu {{ xaf(m.expected_xaf) }}, constaté {{ xaf(m.actual_xaf) }}
+                </p>
+              }
+            </div>
+          </div>
+        }
+
+        <div>
+          <p class="text-xs font-medium mb-1.5">Règlements ({{ r.settlements.length }})</p>
+          <div class="flex flex-col gap-1 max-h-64 overflow-y-auto thin-scroll">
+            @for (s of r.settlements; track s.booking_uuid) {
+              <div class="text-xs flex items-center gap-2 py-1" style="border-bottom: 1px solid var(--border)">
+                <span class="font-mono w-24 shrink-0 truncate" style="color: var(--text-muted)">{{ s.booking_uuid.slice(0, 8) }}…</span>
+                <span class="w-20 shrink-0">{{ s.bucket }}</span>
+                <span>{{ xaf(s.amount_xaf) }}</span>
+                <span style="color: var(--text-muted)">(commission {{ xaf(s.commission_xaf) }}, frais {{ xaf(s.payment_fee_xaf) }})</span>
+                <span class="ml-auto font-medium">net {{ xaf(s.partner_income_xaf) }}</span>
+              </div>
+            } @empty {
+              <p class="text-xs text-center py-3" style="color: var(--text-muted)">Aucun règlement.</p>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (activeTab() === 'adjustments') {
+    <div class="card p-5 max-w-lg">
+      <p class="text-sm font-medium mb-3">Ajustement manuel du portefeuille</p>
+
+      <label class="field-label">Partenaire (UUID)</label>
+      <div class="flex items-center gap-2">
+        <input
+          class="input flex-1" placeholder="uuid du partenaire" [value]="adjustPartnerUuidInput()"
+          (input)="onAdjustPartnerUuidInput($any($event.target).value)" (keydown.enter)="lookupAdjustPartner()"
+        />
+        <button type="button" class="btn btn-secondary btn-sm shrink-0" [disabled]="loadingAdjustPartner()" (click)="lookupAdjustPartner()">Charger</button>
+      </div>
+
+      @if (adjustPartner(); as p) {
+        <p class="text-xs mt-2" style="color: var(--status-good)">{{ p.nom_commercial }}</p>
+
+        <div class="flex flex-col gap-3 mt-4 pt-4" style="border-top: 1px solid var(--border)">
+          <div>
+            <label class="field-label">Type</label>
+            <app-select [options]="adjustmentKindOptions" [allowClear]="false" [value]="adjustKind()" (valueChange)="onAdjustKindChange($event)" />
+          </div>
+          <div>
+            <label class="field-label">Montant (XAF) — positif pour créditer, négatif pour débiter</label>
+            <input type="number" class="input" placeholder="ex. -5000" [value]="adjustAmountInput()" (input)="onAdjustAmountInput($any($event.target).value)" />
+            @if (adjustAmountInput() && adjustAmountInvalid()) {
+              <p class="field-hint" style="color: var(--status-critical)">
+                @if (adjustKind() === 'penalty') { Une pénalité doit être un montant négatif. } @else { Montant invalide. }
+              </p>
+            }
+          </div>
+          <div>
+            <label class="field-label">Motif</label>
+            <textarea class="input" rows="3" maxlength="1000" [value]="adjustReason()" (input)="onAdjustReasonInput($any($event.target).value)"></textarea>
+          </div>
+          <button
+            type="button" class="btn btn-primary btn-sm self-start" [disabled]="submittingAdjustment() || adjustAmountInvalid() || !adjustReason().trim()"
+            (click)="submitAdjustment()"
+          >Appliquer l’ajustement</button>
+        </div>
+
+        @if (adjustResult(); as summary) {
+          <div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mt-4 pt-4" style="border-top: 1px solid var(--border)">
+            <div><span class="field-label">Disponible</span><p>{{ xaf(summary.solde_disponible) }}</p></div>
+            <div><span class="field-label">En attente</span><p>{{ xaf(summary.solde_en_attente) }}</p></div>
+            <div><span class="field-label">Bloqué</span><p>{{ xaf(summary.solde_bloque) }}</p></div>
+            <div><span class="field-label">Retraits en cours</span><p>{{ xaf(summary.retraits_en_cours) }}</p></div>
+            <div><span class="field-label">Total gagné</span><p>{{ xaf(summary.total_gagne) }}</p></div>
+            <div><span class="field-label">Total retiré</span><p>{{ xaf(summary.total_retire) }}</p></div>
+          </div>
+        }
+      }
+    </div>
+  }
+</div>
+
+<app-modal [open]="confirmingWithdrawal() !== null" title="Confirmer le paiement" [subtitle]="confirmingWithdrawal()?.uuid ?? ''" [hasFooter]="false" (closed)="closeConfirmForm()">
+  @if (confirmingWithdrawal(); as row) {
+    <p class="text-sm mb-3">{{ xaf(row.amount_xaf) }} — compte {{ row.payout_account_uuid }}</p>
+    <div class="flex flex-col gap-3">
+      <div>
+        <label class="field-label">Référence opérateur</label>
+        <input class="input" placeholder="référence de l’opération Mobile Money / banque" [value]="confirmOperatorReference()" (input)="onConfirmOperatorReferenceInput($any($event.target).value)" />
+      </div>
+      <div>
+        <label class="field-label">Motif</label>
+        <textarea class="input" rows="3" maxlength="500" [value]="confirmReason()" (input)="onConfirmReasonInput($any($event.target).value)"></textarea>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button type="button" class="btn btn-ghost btn-sm" [disabled]="submittingConfirm()" (click)="closeConfirmForm()">Annuler</button>
+        <button
+          type="button" class="btn btn-primary btn-sm" [disabled]="submittingConfirm() || !confirmReason().trim() || !confirmOperatorReference().trim()"
+          (click)="submitConfirmWithdrawal()"
+        >Valider</button>
+      </div>
+    </div>
+  }
+</app-modal>

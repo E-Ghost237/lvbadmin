@@ -55,6 +55,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/marketplace/marketplace.routes').then((m) => m.MARKETPLACE_ROUTES),
       },
       {
+        path: 'wallet',
+        loadChildren: () => import('./features/wallet/wallet.routes').then((m) => m.WALLET_ROUTES),
+      },
+      {
         path: 'claims',
         loadChildren: () => import('./features/claims/claims.routes').then((m) => m.CLAIMS_ROUTES),
       },

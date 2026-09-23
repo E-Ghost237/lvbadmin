@@ -94,10 +94,17 @@ const BOOKING_DISPUTE_TONE: Record<string, StatusTone> = {
   OPEN: 'serious', RESOLVED: 'good',
 };
 
+/** WithdrawalStateMachine (PartnerLedger, LVB-CDC-MKT-RENT-2026-V1.0) — distinct from the base Finance `withdrawal` enum/tone map. */
+const PARTNER_WITHDRAWAL_TONE: Record<string, StatusTone> = {
+  DEMANDEE: 'warning', EN_VALIDATION: 'warning', APPROUVEE: 'info', EN_PAIEMENT: 'info',
+  PAYEE: 'good', REJETEE: 'critical', ANNULEE: 'neutral', ECHEC_PAIEMENT: 'critical',
+};
+
 export type StatusDomain =
   | 'order' | 'driverOp' | 'account' | 'claim' | 'transaction' | 'withdrawal' | 'gravity'
   | 'reconciliation' | 'reconciliationItem' | 'partner' | 'partnerDocument' | 'partnerChange'
-  | 'marketplaceOffer' | 'rentalVehicle' | 'rentalDriver' | 'booking' | 'bookingPayment' | 'bookingDispute';
+  | 'marketplaceOffer' | 'rentalVehicle' | 'rentalDriver' | 'booking' | 'bookingPayment' | 'bookingDispute'
+  | 'partnerWithdrawal';
 
 const DOMAIN_MAPS: Record<StatusDomain, Record<string, StatusTone>> = {
   order: ORDER_TONE, driverOp: DRIVER_OP_TONE, account: ACCOUNT_TONE, claim: CLAIM_TONE,
@@ -106,6 +113,7 @@ const DOMAIN_MAPS: Record<StatusDomain, Record<string, StatusTone>> = {
   partner: PARTNER_TONE, partnerDocument: PARTNER_DOCUMENT_TONE, partnerChange: PARTNER_CHANGE_TONE,
   marketplaceOffer: MARKETPLACE_OFFER_TONE, rentalVehicle: RENTAL_VEHICLE_TONE, rentalDriver: RENTAL_DRIVER_TONE,
   booking: BOOKING_TONE, bookingPayment: BOOKING_PAYMENT_TONE, bookingDispute: BOOKING_DISPUTE_TONE,
+  partnerWithdrawal: PARTNER_WITHDRAWAL_TONE,
 };
 
 const I18N_KEY_PREFIX: Record<StatusDomain, string> = {
@@ -115,6 +123,7 @@ const I18N_KEY_PREFIX: Record<StatusDomain, string> = {
   partner: 'status.partner', partnerDocument: 'status.partnerDocument', partnerChange: 'status.partnerChange',
   marketplaceOffer: 'status.marketplaceOffer', rentalVehicle: 'status.rentalVehicle', rentalDriver: 'status.rentalDriver',
   booking: 'status.booking', bookingPayment: 'status.bookingPayment', bookingDispute: 'status.bookingDispute',
+  partnerWithdrawal: 'status.partnerWithdrawal',
 };
 
 export function toneFor(domain: StatusDomain, status: string): StatusTone {

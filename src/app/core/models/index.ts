@@ -5,3 +5,4 @@ export * from './partner.model';
 export * from './marketplace.model';
 export * from './rental.model';
 export * from './booking.model';
+export * from './wallet.model';

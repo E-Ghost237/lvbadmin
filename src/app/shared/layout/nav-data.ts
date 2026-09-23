@@ -1,7 +1,7 @@
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import {
   faBoxOpen, faChartColumn, faClipboardList, faGaugeHigh, faGear, faHandshake, faHeadset, faMotorcycle,
-  faSackDollar, faScaleBalanced, faStore, faTags, faUsersGear,
+  faSackDollar, faScaleBalanced, faStore, faTags, faUsersGear, faWallet,
 } from '@fortawesome/free-solid-svg-icons';
 
 export interface NavItem {
@@ -35,6 +35,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Tarification & zones', labelKey: 'nav.pricing', path: '/pricing', icon: faTags },
   { label: 'Partenaires', labelKey: 'nav.partners', path: '/partners', icon: faHandshake },
   { label: 'Marketplace', labelKey: 'nav.marketplace', path: '/marketplace', icon: faStore },
+  { label: 'Portefeuille partenaires', labelKey: 'nav.wallet', path: '/wallet', icon: faWallet },
   { label: 'Finance', labelKey: 'nav.finance', path: '/finance', icon: faSackDollar },
   { label: 'Réclamations & litiges', labelKey: 'nav.claims', path: '/claims', icon: faScaleBalanced },
   { label: 'Rapports & KPI', labelKey: 'nav.reports', path: '/reports', icon: faChartColumn },
