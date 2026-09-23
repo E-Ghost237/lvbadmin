@@ -1,0 +1,86 @@
+<app-breadcrumbs [crumbs]="[{ label: 'Réservations' }]" />
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">Réservations</h1>
+  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Réservations reçues sur vos offres marketplace (LVB-CDC-MKT-RENT-2026-V1.0).</p>
+</div>
+
+@if (forbidden()) {
+  <app-forbidden-state detail="Votre compte n’a pas la permission booking.read." />
+} @else {
+  <div class="mb-4 max-w-xs">
+    <app-select [options]="statusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="statusFilter()" (valueChange)="onStatusFilterChange($event)" />
+  </div>
+
+  <div class="card">
+    <app-data-table
+      [columns]="columns" [rows]="bookings()" [loading]="loading() && bookings().length === 0"
+      [trackBy]="trackByUuid" emptyTitle="Aucune réservation" emptyHint="Aucune réservation ne correspond à ce filtre."
+    >
+      <ng-template appCell="status" let-row><app-status-badge domain="booking" [status]="row.status" /></ng-template>
+      <ng-template appCell="actions" let-row>
+        <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openDetail(row.uuid)">Détails</button>
+      </ng-template>
+    </app-data-table>
+  </div>
+  @if (cursor()) {
+    <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loading()" (click)="fetch(cursor()!)">Charger plus</button>
+  }
+}
+
+<app-modal [open]="detail() !== null || loadingDetail()" title="Réservation" [subtitle]="detail()?.uuid ?? ''" size="lg" [hasFooter]="false" (closed)="closeDetail()">
+  @if (loadingDetail()) {
+    <div class="skeleton h-40"></div>
+  } @else if (detail(); as b) {
+    <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+      <div><span class="field-label">Statut</span><div class="mt-1"><app-status-badge domain="booking" [status]="b.status" /></div></div>
+      <div><span class="field-label">Paiement</span><div class="mt-1"><app-status-badge domain="bookingPayment" [status]="b.payment_status" /></div></div>
+      <div><span class="field-label">Début</span><p>{{ dateTime(b.starts_at) }}</p></div>
+      <div><span class="field-label">Fin</span><p>{{ dateTime(b.ends_at) }}</p></div>
+      <div><span class="field-label">Offre</span><p class="font-mono text-xs">{{ b.offer_uuid ?? '—' }}</p></div>
+      <div><span class="field-label">Véhicule</span><p class="font-mono text-xs">{{ b.vehicle_uuid ?? '—' }}</p></div>
+      <div><span class="field-label">Chauffeur demandé</span><p>{{ b.with_driver ? (b.driver_assigned ? 'Oui — affecté' : 'Oui — non affecté') : 'Non' }}</p></div>
+      <div><span class="field-label">Montant total</span><p>{{ xaf(b.total_amount) }}</p></div>
+      <div><span class="field-label">Commission</span><p>{{ xaf(b.commission_amount) }}</p></div>
+      @if (b.dispute_status) {
+        <div><span class="field-label">Litige</span><div class="mt-1"><app-status-badge domain="bookingDispute" [status]="b.dispute_status" /></div></div>
+      }
+    </div>
+
+    <div class="flex gap-2 flex-wrap mt-5 pt-4" style="border-top: 1px solid var(--border)">
+      @for (action of actionsFor(b); track action.action) {
+        <button
+          type="button" class="btn btn-sm" [class]="action.danger ? 'btn-danger-ghost' : 'btn-secondary'"
+          [disabled]="updating() === b.uuid" (click)="applyAction(b, action)"
+        >{{ action.label }}</button>
+      }
+    </div>
+
+    @if (showAssignDriverForm()) {
+      <div class="card p-4 mt-3" style="border: 1px solid var(--border)">
+        <p class="text-sm font-medium mb-3">Affecter un chauffeur</p>
+        <div class="flex flex-col gap-3">
+          <app-select [options]="driverOptions()" placeholder="Choisir un chauffeur actif" [allowClear]="false" [value]="assignDriverUuid()" (valueChange)="onAssignDriverChange($event)" />
+          <div class="flex justify-end gap-2">
+            <button type="button" class="btn btn-ghost btn-sm" (click)="cancelAssignDriverForm()">Annuler</button>
+            <button type="button" class="btn btn-primary btn-sm" [disabled]="!assignDriverUuid()" (click)="submitAssignDriver()">Affecter</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (b.history && b.history.length > 0) {
+      <div class="mt-5 pt-4" style="border-top: 1px solid var(--border)">
+        <p class="text-sm font-medium mb-3">Historique</p>
+        <div class="flex flex-col gap-2 max-h-64 overflow-y-auto thin-scroll">
+          @for (entry of b.history; track entry.uuid) {
+            <div class="text-xs flex items-start gap-2">
+              <span style="color: var(--text-muted)" class="shrink-0 w-32">{{ dateTime(entry.created_at) }}</span>
+              <span>{{ entry.from_status ?? '—' }} → {{ entry.to_status }}@if (entry.reason) { — {{ entry.reason }} }</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+</app-modal>

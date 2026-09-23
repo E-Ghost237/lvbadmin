@@ -36,6 +36,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/marketplace/marketplace.routes').then((m) => m.MARKETPLACE_ROUTES),
       },
       {
+        path: 'bookings',
+        loadChildren: () => import('./features/bookings/bookings.routes').then((m) => m.BOOKINGS_ROUTES),
+      },
+      {
         path: '**',
         loadComponent: () => import('./features/errors/status-page.component').then((m) => m.StatusPageComponent),
       },

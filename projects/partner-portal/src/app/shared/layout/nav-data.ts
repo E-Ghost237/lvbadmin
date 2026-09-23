@@ -1,5 +1,5 @@
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
-import { faBuilding, faGaugeHigh, faStore, faTruck } from '@fortawesome/free-solid-svg-icons';
+import { faBuilding, faCalendarCheck, faGaugeHigh, faStore, faTruck } from '@fortawesome/free-solid-svg-icons';
 
 export interface NavItem {
   label: string;
@@ -23,4 +23,5 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Profil', labelKey: 'partner.nav.profile', path: '/profile', icon: faBuilding },
   { label: 'Flotte', labelKey: 'partner.nav.fleet', path: '/fleet', icon: faTruck },
   { label: 'Marketplace', labelKey: 'partner.nav.marketplace', path: '/marketplace', icon: faStore },
+  { label: 'Réservations', labelKey: 'partner.nav.bookings', path: '/bookings', icon: faCalendarCheck },
 ];
