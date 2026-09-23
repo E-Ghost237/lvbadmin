@@ -45,8 +45,8 @@ const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
       </nav>
 
       <div class="p-3 shrink-0" style="border-top: 1px solid var(--sidebar-border)">
-        <div
-          class="flex items-center gap-2.5 rounded-(--radius-sm) py-2 account-link"
+        <a
+          routerLink="/account" class="flex items-center gap-2.5 rounded-(--radius-sm) py-2 transition-colors account-link"
           [class.px-2]="!collapsed()" [class.justify-center]="collapsed()"
           [attr.title]="collapsed() ? userEmail() : null" [attr.aria-label]="collapsed() ? userEmail() : null"
         >
@@ -56,9 +56,10 @@ const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
           @if (!collapsed()) {
             <div class="min-w-0 flex-1">
               <p class="text-xs font-medium truncate" style="color: var(--sidebar-text-active)">{{ userEmail() }}</p>
+              <p class="text-[11px] truncate" style="color: var(--sidebar-text)">Mon compte</p>
             </div>
           }
-        </div>
+        </a>
 
         @if (allowCollapse()) {
           <button
@@ -81,6 +82,7 @@ const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
       .nav-link:hover { background: var(--sidebar-bg-elevated); color: var(--sidebar-text-active); }
       .active-nav-link { background: var(--sidebar-active-bg); color: var(--sidebar-text-active); }
       .account-link { background: var(--sidebar-bg-elevated); }
+      .account-link:hover { background: var(--brand); }
       .collapse-toggle { color: var(--sidebar-text); }
       .collapse-toggle:hover { background: var(--sidebar-bg-elevated); color: var(--sidebar-text-active); }
     </style>

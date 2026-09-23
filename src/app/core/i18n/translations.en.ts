@@ -14,6 +14,7 @@ export const EN: Record<string, string> = {
   'partner.nav.marketplace': 'Marketplace',
   'partner.nav.bookings': 'Bookings',
   'partner.nav.wallet': 'Wallet',
+  'partner.nav.orders': 'Orders',
 
   'nav.dashboard': 'Live ops',
   'nav.orders': 'Orders',

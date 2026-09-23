@@ -44,6 +44,14 @@ export const routes: Routes = [
         loadChildren: () => import('./features/wallet/wallet.routes').then((m) => m.WALLET_ROUTES),
       },
       {
+        path: 'orders',
+        loadChildren: () => import('./features/orders/orders.routes').then((m) => m.ORDERS_ROUTES),
+      },
+      {
+        path: 'account',
+        loadChildren: () => import('./features/account/account.routes').then((m) => m.ACCOUNT_ROUTES),
+      },
+      {
         path: '**',
         loadComponent: () => import('./features/errors/status-page.component').then((m) => m.StatusPageComponent),
       },

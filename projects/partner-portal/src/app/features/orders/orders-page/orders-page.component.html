@@ -1,0 +1,113 @@
+<app-breadcrumbs [crumbs]="[{ label: 'Commandes' }]" />
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">Commandes & Finance</h1>
+  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Vos livraisons en tant que client LVB et le résumé financier associé.</p>
+</div>
+
+<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
+
+<div class="mt-5">
+  @if (activeTab() === 'orders') {
+    @if (forbiddenOrders()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission orders.read." />
+    } @else {
+      <div class="flex gap-3 mb-4">
+        <div class="max-w-xs flex-1">
+          <app-select [options]="statusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="statusFilter()" (valueChange)="onStatusFilterChange($event)" />
+        </div>
+        <div class="max-w-xs flex-1">
+          <app-select [options]="paymentMethodOptions" placeholder="Tous les modes de paiement" ariaLabel="Filtrer par paiement" [value]="paymentMethodFilter()" (valueChange)="onPaymentMethodFilterChange($event)" />
+        </div>
+      </div>
+
+      <div class="card">
+        <app-data-table
+          [columns]="columns" [rows]="orders()" [loading]="loadingOrders() && orders().length === 0"
+          [trackBy]="trackByUuid" emptyTitle="Aucune commande" emptyHint="Aucune commande ne correspond à ce filtre."
+        >
+          <ng-template appCell="statut" let-row><app-status-badge domain="order" [status]="row.statut" /></ng-template>
+          <ng-template appCell="actions" let-row>
+            <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openDetail(row.uuid)">Détails</button>
+          </ng-template>
+        </app-data-table>
+      </div>
+      @if (nextCursor()) {
+        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingOrders()" (click)="fetchOrders(nextCursor()!)">Charger plus</button>
+      }
+    }
+  }
+
+  @if (activeTab() === 'finance') {
+    @if (forbiddenFinance()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission finance.read." />
+    } @else if (loadingFinance()) {
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div>
+      </div>
+    } @else if (finance(); as f) {
+      <div class="flex justify-end mb-3">
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="exportingCsv()" (click)="exportFinanceCsv()">Exporter en CSV</button>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+        <app-stat-tile label="Total facturé" [value]="f.total_facture_xaf" unit="XAF" />
+        <app-stat-tile label="Total payé" [value]="f.total_paye_xaf" unit="XAF" />
+        <app-stat-tile label="Total remboursé" [value]="f.total_rembourse_xaf" unit="XAF" />
+        <app-stat-tile label="Net payé" [value]="f.net_paye_xaf" unit="XAF" />
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <app-stat-tile label="Paiements réussis" [value]="f.paiements_reussis" />
+        <app-stat-tile label="Paiements échoués" [value]="f.paiements_echoues" />
+        <app-stat-tile label="Encaissé COD" [value]="f.encaisse_cod_xaf" unit="XAF" />
+        <app-stat-tile label="Livraisons COD encaissées" [value]="f.livraisons_cod_encaissees" />
+      </div>
+    }
+  }
+</div>
+
+<app-modal [open]="detail() !== null || loadingDetail()" title="Commande" [subtitle]="detail()?.uuid ?? ''" size="lg" [hasFooter]="false" (closed)="closeDetail()">
+  @if (loadingDetail()) {
+    <div class="skeleton h-40"></div>
+  } @else if (detail(); as d) {
+    <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+      <div><span class="field-label">Statut</span><div class="mt-1"><app-status-badge domain="order" [status]="d.statut" /></div></div>
+      <div><span class="field-label">Ville</span><p>{{ d.ville }}</p></div>
+      <div><span class="field-label">Destinataire</span><p>{{ d.destinataire_nom }} — {{ d.destinataire_telephone }}</p></div>
+      <div><span class="field-label">Prix</span><p>{{ xaf(d.prix_final_xaf) }}</p></div>
+      <div><span class="field-label">Créée le</span><p>{{ dateTime(d.cree_le) }}</p></div>
+      <div><span class="field-label">Livrée le</span><p>{{ d.livree_le ? dateTime(d.livree_le) : '—' }}</p></div>
+    </div>
+
+    @if (d.recu_disponible) {
+      <button type="button" class="btn btn-secondary btn-sm mt-4" [disabled]="downloadingReceipt()" (click)="downloadReceipt(d)">Télécharger le reçu</button>
+    }
+
+    @if (d.suivi.length > 0) {
+      <div class="mt-5 pt-4" style="border-top: 1px solid var(--border)">
+        <p class="text-sm font-medium mb-3">Suivi</p>
+        <div class="flex flex-col gap-2">
+          @for (event of d.suivi; track $index) {
+            <div class="text-xs flex items-center gap-2">
+              <span style="color: var(--text-muted)" class="shrink-0 w-40">{{ dateTime(event.horodatage) }}</span>
+              <span>{{ event.statut }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    @if (d.reclamations.length > 0) {
+      <div class="mt-5 pt-4" style="border-top: 1px solid var(--border)">
+        <p class="text-sm font-medium mb-3">Réclamations</p>
+        <div class="flex flex-col gap-2">
+          @for (claim of d.reclamations; track claim.uuid) {
+            <div class="text-xs">
+              <span class="font-medium">{{ claim.categorie }}</span> — {{ claim.statut }}
+              <p style="color: var(--text-muted)">{{ claim.description }}</p>
+            </div>
+          }
+        </div>
+      </div>
+    }
+  }
+</app-modal>

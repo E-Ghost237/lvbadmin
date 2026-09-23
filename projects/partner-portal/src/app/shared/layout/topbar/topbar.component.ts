@@ -1,5 +1,5 @@
 import { Component, ElementRef, HostListener, computed, inject, output, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '@lvb/auth/auth.service';
 import { I18nService } from '@lvb/i18n/i18n.service';
 
@@ -7,6 +7,7 @@ type Theme = 'light' | 'dark' | 'system';
 
 @Component({
   selector: 'app-topbar',
+  imports: [RouterLink],
   template: `
     <header class="flex items-center gap-3 h-18 px-4 lg:px-6 shrink-0" style="background: var(--sidebar-bg)">
       <button type="button" class="lg:hidden btn btn-ghost btn-sm !px-1.5 topbar-icon-btn" (click)="openMobileMenu.emit()" aria-label="Ouvrir le menu">
@@ -36,6 +37,7 @@ type Theme = 'light' | 'dark' | 'system';
               <div class="px-4 py-3" style="border-bottom: 1px solid var(--border)">
                 <p class="text-sm font-medium truncate">{{ userEmail() }}</p>
               </div>
+              <a routerLink="/account" class="block px-4 py-2.5 text-sm hover:bg-(--surface-2)" (click)="profileOpen.set(false)">{{ i18n.t('nav.account') }}</a>
               <button type="button" class="w-full text-left px-4 py-2.5 text-sm hover:bg-(--surface-2)" style="color: var(--status-critical)" (click)="logout()">
                 {{ i18n.t('action.logout') }}
               </button>
