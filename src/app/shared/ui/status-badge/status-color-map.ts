@@ -58,15 +58,23 @@ const PARTNER_CHANGE_TONE: Record<string, StatusTone> = {
   EN_ATTENTE: 'warning', APPROUVEE: 'good', REJETEE: 'critical',
 };
 
+/** OfferPublication::TRANSITIONS (LVB-CDC-MKT-RENT-2026-V1.0 §7.3) — BROUILLON→EN_REVUE→PUBLIEE↔SUSPENDUE→ARCHIVEE, or REJETEE. */
+const MARKETPLACE_OFFER_TONE: Record<string, StatusTone> = {
+  BROUILLON: 'neutral', EN_REVUE: 'warning', PUBLIEE: 'good', SUSPENDUE: 'critical',
+  ARCHIVEE: 'neutral', REJETEE: 'critical',
+};
+
 export type StatusDomain =
   | 'order' | 'driverOp' | 'account' | 'claim' | 'transaction' | 'withdrawal' | 'gravity'
-  | 'reconciliation' | 'reconciliationItem' | 'partner' | 'partnerDocument' | 'partnerChange';
+  | 'reconciliation' | 'reconciliationItem' | 'partner' | 'partnerDocument' | 'partnerChange'
+  | 'marketplaceOffer';
 
 const DOMAIN_MAPS: Record<StatusDomain, Record<string, StatusTone>> = {
   order: ORDER_TONE, driverOp: DRIVER_OP_TONE, account: ACCOUNT_TONE, claim: CLAIM_TONE,
   transaction: TRANSACTION_TONE, withdrawal: WITHDRAWAL_TONE, gravity: GRAVITY_TONE,
   reconciliation: RECONCILIATION_TONE, reconciliationItem: RECONCILIATION_ITEM_TONE,
   partner: PARTNER_TONE, partnerDocument: PARTNER_DOCUMENT_TONE, partnerChange: PARTNER_CHANGE_TONE,
+  marketplaceOffer: MARKETPLACE_OFFER_TONE,
 };
 
 const I18N_KEY_PREFIX: Record<StatusDomain, string> = {
@@ -74,6 +82,7 @@ const I18N_KEY_PREFIX: Record<StatusDomain, string> = {
   transaction: 'status.transaction', withdrawal: 'status.withdrawal', gravity: 'gravity',
   reconciliation: 'status.reconciliation', reconciliationItem: 'status.reconciliationItem',
   partner: 'status.partner', partnerDocument: 'status.partnerDocument', partnerChange: 'status.partnerChange',
+  marketplaceOffer: 'status.marketplaceOffer',
 };
 
 export function toneFor(domain: StatusDomain, status: string): StatusTone {

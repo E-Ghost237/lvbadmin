@@ -1,0 +1,75 @@
+<app-breadcrumbs [crumbs]="[{ label: 'Marketplace' }]" />
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">Marketplace</h1>
+  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Catégories et modération des offres partenaires (LVB-CDC-MKT-RENT-2026-V1.0).</p>
+</div>
+
+<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
+
+<div class="mt-5">
+  @if (activeTab() === 'offers') {
+    @if (forbiddenOffers()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission marketplace.manage." />
+    } @else {
+      <div class="mb-4 max-w-xs">
+        <app-select [options]="statusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="offerStatusFilter()" (valueChange)="onOfferStatusFilterChange($event)" />
+      </div>
+
+      <div class="card">
+        <app-data-table
+          [columns]="offerColumns" [rows]="offers()" [loading]="loadingOffers() && offers().length === 0"
+          [trackBy]="trackByOfferUuid" emptyTitle="Aucune offre" emptyHint="Aucune offre ne correspond à ce filtre."
+        >
+          <ng-template appCell="status" let-row><app-status-badge domain="marketplaceOffer" [status]="row.status" /></ng-template>
+          <ng-template appCell="actions" let-row>
+            <div class="flex gap-1.5 justify-end flex-wrap">
+              @for (action of actionsFor(row); track action.target) {
+                <button
+                  type="button" class="btn btn-sm !py-1" [class]="action.danger ? 'btn-danger-ghost' : 'btn-secondary'"
+                  [disabled]="transitioning() === row.uuid" (click)="applyTransition(row, action)"
+                >{{ action.label }}</button>
+              }
+            </div>
+          </ng-template>
+        </app-data-table>
+      </div>
+      @if (offersCursor()) {
+        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingOffers()" (click)="fetchOffers(offersCursor()!)">Charger plus</button>
+      }
+    }
+  }
+
+  @if (activeTab() === 'categories') {
+    @if (loadingCategories()) {
+      <div class="skeleton h-32"></div>
+    } @else {
+      <div class="card p-5 max-w-md">
+        <p class="text-sm font-medium mb-3">Catégories</p>
+        <div class="flex flex-col gap-2 max-h-96 overflow-y-auto thin-scroll">
+          @for (category of categories(); track category.uuid) {
+            <div class="flex items-center gap-2">
+              <input
+                class="input flex-1" [value]="category.name" [disabled]="savingCategory() === category.uuid"
+                (change)="renameCategory(category, $any($event.target).value)"
+              />
+              <app-toggle
+                [checked]="category.active" [disabled]="savingCategory() === category.uuid" [label]="'Catégorie active : ' + category.name"
+                (checkedChange)="toggleCategoryActive(category)"
+              />
+            </div>
+          } @empty {
+            <p class="text-xs text-center py-3" style="color: var(--text-muted)">Aucune catégorie.</p>
+          }
+        </div>
+        <div class="flex items-center gap-2 mt-3 pt-3" style="border-top: 1px solid var(--border)">
+          <input
+            class="input flex-1" placeholder="Nouvelle catégorie…" [value]="newCategoryName()"
+            (input)="onNewCategoryNameInput($any($event.target).value)"
+          />
+          <button type="button" class="btn btn-secondary btn-sm" [disabled]="!newCategoryName().trim()" (click)="createCategory()">Ajouter</button>
+        </div>
+      </div>
+    }
+  }
+</div>
