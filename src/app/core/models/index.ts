@@ -6,3 +6,4 @@ export * from './marketplace.model';
 export * from './rental.model';
 export * from './booking.model';
 export * from './wallet.model';
+export * from './commission.model';

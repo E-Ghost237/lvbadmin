@@ -111,4 +111,53 @@
       </div>
     }
   }
+
+  @if (activeTab() === 'commissions') {
+    @if (forbiddenCommissions()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission pricing.manage." />
+    } @else {
+      <div class="grid grid-cols-1 lg:grid-cols-[minmax(340px,420px)_1fr] gap-4 items-start">
+        <form [formGroup]="commissionForm" (ngSubmit)="createCommission()" class="card p-5 flex flex-col gap-3">
+          <p class="text-sm font-medium mb-1">Nouvelle règle de commission</p>
+          <p class="text-xs -mt-2" style="color: var(--text-muted)">Les règles sont immuables : une correction crée une nouvelle version, elle ne modifie pas l’existante.</p>
+
+          <app-field label="Partenaire (UUID) — laisser vide pour une règle globale" [control]="commissionForm.controls.partner_uuid">
+            <div class="flex items-center gap-2">
+              <input class="input flex-1" formControlName="partner_uuid" placeholder="uuid du partenaire" (input)="onCommissionPartnerUuidInput()" />
+              <button type="button" class="btn btn-secondary btn-sm shrink-0" [disabled]="lookingUpCommissionPartner()" (click)="lookupCommissionPartner()">Vérifier</button>
+            </div>
+          </app-field>
+          @if (commissionPartnerName(); as name) {
+            <p class="text-xs -mt-2" style="color: var(--status-good)">{{ name }}</p>
+          }
+
+          <app-field label="Catégorie — laisser vide pour toutes les catégories" [control]="commissionForm.controls.category_uuid">
+            <app-select [options]="commissionCategoryOptions()" placeholder="Toutes catégories" formControlName="category_uuid" />
+          </app-field>
+
+          <app-field label="Taux (points de base, 0–10000)" [control]="commissionForm.controls.basis_points" required>
+            <input type="number" min="0" max="10000" class="input" formControlName="basis_points" />
+          </app-field>
+
+          <div class="grid grid-cols-2 gap-3">
+            <app-field label="Valide à partir du" [control]="commissionForm.controls.valid_from" required><input type="date" class="input" formControlName="valid_from" /></app-field>
+            <app-field label="Valide jusqu’au (optionnel)" [control]="commissionForm.controls.valid_to"><input type="date" class="input" formControlName="valid_to" /></app-field>
+          </div>
+
+          <app-field label="Motif" [control]="commissionForm.controls.reason" required>
+            <textarea class="input" rows="3" maxlength="1000" formControlName="reason"></textarea>
+          </app-field>
+
+          <button type="submit" class="btn btn-primary self-start" [disabled]="creatingCommission()">Créer la règle</button>
+        </form>
+
+        <div class="card">
+          <app-data-table
+            [columns]="commissionColumns" [rows]="commissionRules()" [loading]="loadingCommissions() && commissionRules().length === 0"
+            [trackBy]="trackByCommissionUuid" emptyTitle="Aucune règle" emptyHint="Aucune règle de commission n’a encore été créée."
+          />
+        </div>
+      </div>
+    }
+  }
 </div>

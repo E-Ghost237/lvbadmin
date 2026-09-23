@@ -289,6 +289,7 @@ export const FR: Record<string, string> = {
   'permission.partners.audit': 'Consulter l’audit partenaire',
   'permission.partner-wallet.view': 'Consulter le portefeuille partenaires',
   'permission.partner-wallet.manage': 'Gérer le portefeuille partenaires',
+  'permission.pricing.manage': 'Gérer les commissions partenaires',
   'permission.privacy.manage': 'Gérer la confidentialité des données',
   'permission.roles.manage': 'Gérer les rôles & permissions',
   'permission.supervision.alert.acknowledge': 'Acquitter les alertes de supervision',

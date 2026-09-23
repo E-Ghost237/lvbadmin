@@ -1,11 +1,15 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CreateZoneRequest, PricingGridStatus, PricingGridSummary, PricingService, Zone, ZoneType } from '../../../core/services/pricing.service';
-import { GeoPoint, ProblemDetails } from '../../../core/models';
-import { formatXaf } from '../../../core/utils/formatters';
+import { CommissionService } from '../../../core/services/commission.service';
+import { MarketplaceService } from '../../../core/services/marketplace.service';
+import { PartnersService } from '../../../core/services/partners.service';
+import { CreateCommissionRuleRequest, GeoPoint, MarketplaceCategory, PartnerCommissionRule, ProblemDetails } from '../../../core/models';
+import { formatDate, formatPercent, formatXaf } from '../../../core/utils/formatters';
 import {
-  BreadcrumbsComponent, ConfirmService, ForbiddenStateComponent, FormFieldComponent, PolygonPickerComponent,
-  SegmentedControlComponent, SegmentOption, SelectComponent, SelectOption, TabDef, TabsComponent, ToastService,
+  BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, FormFieldComponent,
+  PolygonPickerComponent, SegmentedControlComponent, SegmentOption, SelectComponent, SelectOption, TabDef,
+  TabsComponent, ToastService,
 } from '../../../shared/ui';
 
 const ZONE_TYPE_LABELS: Record<ZoneType, string> = {
@@ -28,17 +32,22 @@ const GRID_STATUS_COLORS: Record<PricingGridStatus, string> = {
   selector: 'app-pricing-page',
   imports: [
     ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, PolygonPickerComponent,
-    ForbiddenStateComponent, SegmentedControlComponent, SelectComponent,
+    ForbiddenStateComponent, SegmentedControlComponent, SelectComponent, DataTableComponent,
   ],
   templateUrl: './pricing-page.component.html',
 })
 export class PricingPageComponent {
   private readonly pricing = inject(PricingService);
+  private readonly commissionSvc = inject(CommissionService);
+  private readonly marketplace = inject(MarketplaceService);
+  private readonly partners = inject(PartnersService);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
 
-  protected readonly tabs: TabDef[] = [{ id: 'grilles', label: 'Grilles tarifaires' }, { id: 'zones', label: 'Zones' }];
+  protected readonly tabs: TabDef[] = [
+    { id: 'grilles', label: 'Grilles tarifaires' }, { id: 'zones', label: 'Zones' }, { id: 'commissions', label: 'Commissions' },
+  ];
   protected readonly activeTab = signal('grilles');
   protected readonly zoneTypeLabel = ZONE_TYPE_LABELS;
   protected readonly zoneTypeOptions = ZONE_TYPE_OPTIONS;
@@ -152,6 +161,10 @@ export class PricingPageComponent {
 
   selectTab(id: string): void {
     this.activeTab.set(id);
+    if (id === 'commissions' && this.commissionRules().length === 0 && !this.loadingCommissions()) {
+      this.fetchCommissions();
+      this.fetchCommissionCategories();
+    }
   }
 
   selectVille(v: string): void {
@@ -220,6 +233,119 @@ export class PricingPageComponent {
     this.pricing.deleteZone(zone.id).subscribe({
       next: () => { this.toast.success('Zone supprimée'); this.fetchZones(); },
       error: (err: ProblemDetails) => this.toast.error('Échec', err.detail),
+    });
+  }
+
+  // --- Commissions (PartnerLedger, RG-PWL-011) -----------------------------
+  // Rules are append-only/immutable — no edit/delete, only "create a new,
+  // higher-version rule for the same scope" (see CommissionService docblock).
+
+  protected readonly commissionForm = this.fb.nonNullable.group({
+    partner_uuid: [''],
+    category_uuid: [''],
+    basis_points: [1000, [Validators.required, Validators.min(0), Validators.max(10000)]],
+    valid_from: [PricingPageComponent.todayIso(), [Validators.required]],
+    valid_to: [''],
+    reason: ['', [Validators.required, Validators.maxLength(1000)]],
+  });
+  protected readonly creatingCommission = signal(false);
+  protected readonly commissionPartnerName = signal<string | null>(null);
+  protected readonly lookingUpCommissionPartner = signal(false);
+
+  protected readonly commissionCategories = signal<MarketplaceCategory[]>([]);
+  protected readonly commissionCategoryOptions = signal<SelectOption[]>([]);
+
+  protected readonly commissionRules = signal<PartnerCommissionRule[]>([]);
+  protected readonly loadingCommissions = signal(false);
+  protected readonly forbiddenCommissions = signal(false);
+
+  protected readonly commissionColumns: ColumnDef<PartnerCommissionRule>[] = [
+    { key: 'scope', label: 'Portée', cell: (r) => (r.partner_uuid ? `Partenaire ${r.partner_uuid.slice(0, 8)}…` : 'Global') },
+    { key: 'category_uuid', label: 'Catégorie', cell: (r) => this.categoryName(r.category_uuid) },
+    { key: 'basis_points', label: 'Taux', cell: (r) => formatPercent(r.basis_points / 100) },
+    { key: 'valid_from', label: 'Valide du', cell: (r) => formatDate(r.valid_from) },
+    { key: 'valid_to', label: 'Valide jusqu’au', cell: (r) => (r.valid_to ? formatDate(r.valid_to) : 'Sans fin') },
+    { key: 'version', label: 'Version' },
+    { key: 'reason', label: 'Motif' },
+  ];
+  protected readonly trackByCommissionUuid = (row: PartnerCommissionRule) => row.uuid;
+
+  private static todayIso(): string {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  categoryName(uuid: string | null): string {
+    if (!uuid) return 'Toutes catégories';
+    return this.commissionCategories().find((c) => c.uuid === uuid)?.name ?? uuid;
+  }
+
+  fetchCommissions(): void {
+    this.loadingCommissions.set(true);
+    this.forbiddenCommissions.set(false);
+    this.commissionSvc.list().subscribe({
+      next: (page) => { this.loadingCommissions.set(false); this.commissionRules.set(page.items); },
+      error: (err: ProblemDetails) => {
+        this.loadingCommissions.set(false);
+        if (err.status === 403) this.forbiddenCommissions.set(true);
+        else this.toast.error('Chargement impossible', err.detail);
+      },
+    });
+  }
+
+  fetchCommissionCategories(): void {
+    this.marketplace.listCategories().subscribe({
+      next: (page) => {
+        this.commissionCategories.set(page.items);
+        this.commissionCategoryOptions.set(page.items.map((c) => ({ value: c.uuid, label: c.name })));
+      },
+      error: () => undefined,
+    });
+  }
+
+  onCommissionPartnerUuidInput(): void {
+    this.commissionPartnerName.set(null);
+  }
+
+  lookupCommissionPartner(): void {
+    const uuid = this.commissionForm.controls.partner_uuid.value.trim();
+    if (!uuid) { this.commissionPartnerName.set(null); return; }
+    this.lookingUpCommissionPartner.set(true);
+    this.partners.get(uuid).subscribe({
+      next: (p) => { this.lookingUpCommissionPartner.set(false); this.commissionPartnerName.set(p.nom_commercial); },
+      error: (err: ProblemDetails) => {
+        this.lookingUpCommissionPartner.set(false);
+        this.commissionPartnerName.set(null);
+        this.toast.error('Partenaire introuvable', err.detail);
+      },
+    });
+  }
+
+  createCommission(): void {
+    if (this.commissionForm.invalid) {
+      this.commissionForm.markAllAsTouched();
+      return;
+    }
+    const v = this.commissionForm.getRawValue();
+    const req: CreateCommissionRuleRequest = {
+      partner_uuid: v.partner_uuid.trim() || null,
+      category_uuid: v.category_uuid || null,
+      basis_points: v.basis_points,
+      valid_from: v.valid_from,
+      valid_to: v.valid_to || null,
+      reason: v.reason,
+    };
+    this.creatingCommission.set(true);
+    this.commissionSvc.create(req).subscribe({
+      next: () => {
+        this.creatingCommission.set(false);
+        this.toast.success('Règle de commission créée');
+        this.commissionForm.reset({
+          partner_uuid: '', category_uuid: '', basis_points: 1000, valid_from: PricingPageComponent.todayIso(), valid_to: '', reason: '',
+        });
+        this.commissionPartnerName.set(null);
+        this.fetchCommissions();
+      },
+      error: (err: ProblemDetails) => { this.creatingCommission.set(false); this.toast.error('Échec de la création', err.detail); },
     });
   }
 }
