@@ -103,12 +103,12 @@ export class FleetPageComponent {
   protected readonly savingVehicle = signal(false);
   protected readonly vehicleForm = this.fb.nonNullable.group({
     registration: ['', [Validators.required]],
-    brand: [''],
-    model: [''],
+    brand: ['', [Validators.required]],
+    model: ['', [Validators.required]],
     year: [null as number | null],
     vehicle_type: ['', [Validators.required]],
-    category: [''],
-    license_category: [''],
+    category: ['', [Validators.required]],
+    license_category: ['', [Validators.required]],
     color: [''],
     capacity_kg: [0, [Validators.required, Validators.min(0)]],
     volume_liters: [0, [Validators.required, Validators.min(0)]],
@@ -219,7 +219,7 @@ export class FleetPageComponent {
   protected readonly driverForm = this.fb.nonNullable.group({
     first_name: ['', [Validators.required]],
     last_name: ['', [Validators.required]],
-    birth_date: ['', [Validators.required]],
+    birth_date: [''],
     phone: ['', [Validators.required]],
     address: [''],
     photo_url: [''],

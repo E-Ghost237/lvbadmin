@@ -109,7 +109,7 @@
             <app-field label="Nom" [control]="driverForm.controls.last_name" required><input class="input" formControlName="last_name" /></app-field>
           </div>
           <div class="grid grid-cols-2 gap-3">
-            <app-field label="Date de naissance" [control]="driverForm.controls.birth_date" required><input type="date" class="input" formControlName="birth_date" /></app-field>
+            <app-field label="Date de naissance" [control]="driverForm.controls.birth_date" hint="18 ans minimum"><input type="date" class="input" formControlName="birth_date" /></app-field>
             <app-field label="Téléphone" [control]="driverForm.controls.phone" required><input class="input" formControlName="phone" placeholder="+237…" /></app-field>
           </div>
           <app-field label="Adresse" [control]="driverForm.controls.address"><input class="input" formControlName="address" /></app-field>

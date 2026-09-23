@@ -32,6 +32,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/fleet/fleet.routes').then((m) => m.FLEET_ROUTES),
       },
       {
+        path: 'marketplace',
+        loadChildren: () => import('./features/marketplace/marketplace.routes').then((m) => m.MARKETPLACE_ROUTES),
+      },
+      {
         path: '**',
         loadComponent: () => import('./features/errors/status-page.component').then((m) => m.StatusPageComponent),
       },

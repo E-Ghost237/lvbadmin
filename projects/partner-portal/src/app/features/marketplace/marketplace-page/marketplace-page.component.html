@@ -1,0 +1,186 @@
+<app-breadcrumbs [crumbs]="[{ label: 'Marketplace' }]" />
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">Marketplace</h1>
+  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Vos tarifs et vos offres publiées sur le marketplace (LVB-CDC-MKT-RENT-2026-V1.0).</p>
+</div>
+
+<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
+
+<div class="mt-5">
+  @if (activeTab() === 'ratePlans') {
+    @if (forbiddenRatePlans()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission pricing.manage." />
+    } @else {
+      <div class="flex justify-end mb-4">
+        <button type="button" class="btn btn-primary btn-sm" (click)="openNewRatePlanForm()">+ Nouveau tarif</button>
+      </div>
+
+      @if (ratePlanFormOpen()) {
+        <form [formGroup]="ratePlanForm" (ngSubmit)="submitRatePlanForm()" class="card p-5 mb-4 flex flex-col gap-3">
+          <p class="text-sm font-medium mb-1">{{ editingRatePlan() ? 'Modifier le tarif' : 'Nouveau tarif' }}</p>
+          <div class="grid grid-cols-2 gap-3">
+            <app-field label="Nom" [control]="ratePlanForm.controls.name" required><input class="input" formControlName="name" /></app-field>
+            <app-field label="Mode" [control]="ratePlanForm.controls.mode" required>
+              <app-select [options]="ratePlanModeOptions" formControlName="mode" />
+            </app-field>
+          </div>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" class="checkbox" formControlName="active" /> Tarif actif
+          </label>
+
+          <p class="text-xs font-medium mt-2" style="color: var(--text-muted)">Montants (XAF)</p>
+          <div class="grid grid-cols-3 gap-3">
+            <app-field label="Montant de base" [control]="ratePlanForm.controls.base_amount"><input type="number" min="0" class="input" formControlName="base_amount" /></app-field>
+            <app-field label="Par durée" [control]="ratePlanForm.controls.duration_amount"><input type="number" min="0" class="input" formControlName="duration_amount" /></app-field>
+            <app-field label="Par kilomètre" [control]="ratePlanForm.controls.kilometer_amount"><input type="number" min="0" class="input" formControlName="kilometer_amount" /></app-field>
+            <app-field label="Par trajet" [control]="ratePlanForm.controls.trip_amount"><input type="number" min="0" class="input" formControlName="trip_amount" /></app-field>
+            <app-field label="Minimum" [control]="ratePlanForm.controls.minimum_amount"><input type="number" min="0" class="input" formControlName="minimum_amount" /></app-field>
+            <app-field label="Chauffeur" [control]="ratePlanForm.controls.driver_amount"><input type="number" min="0" class="input" formControlName="driver_amount" /></app-field>
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <app-field label="Manutention" [control]="ratePlanForm.controls.handling_amount"><input type="number" min="0" class="input" formControlName="handling_amount" /></app-field>
+            <app-field label="Carburant" [control]="ratePlanForm.controls.fuel_amount"><input type="number" min="0" class="input" formControlName="fuel_amount" /></app-field>
+            <app-field label="Péage" [control]="ratePlanForm.controls.toll_amount"><input type="number" min="0" class="input" formControlName="toll_amount" /></app-field>
+            <app-field label="Assurance" [control]="ratePlanForm.controls.insurance_amount"><input type="number" min="0" class="input" formControlName="insurance_amount" /></app-field>
+            <app-field label="Attente (par heure)" [control]="ratePlanForm.controls.waiting_hour_amount"><input type="number" min="0" class="input" formControlName="waiting_hour_amount" /></app-field>
+            <app-field label="Remise" [control]="ratePlanForm.controls.discount_amount"><input type="number" min="0" class="input" formControlName="discount_amount" /></app-field>
+          </div>
+
+          <p class="text-xs font-medium mt-2" style="color: var(--text-muted)">Durées et arrondi</p>
+          <div class="grid grid-cols-3 gap-3">
+            <app-field label="Durée minimum (min)" [control]="ratePlanForm.controls.minimum_minutes"><input type="number" min="1" class="input" formControlName="minimum_minutes" /></app-field>
+            <app-field label="Durée maximum (min)" [control]="ratePlanForm.controls.maximum_minutes"><input type="number" min="1" class="input" formControlName="maximum_minutes" /></app-field>
+            <app-field label="Incrément (min)" [control]="ratePlanForm.controls.increment_minutes"><input type="number" min="1" class="input" formControlName="increment_minutes" /></app-field>
+            <app-field label="Unité (min)" [control]="ratePlanForm.controls.unit_minutes"><input type="number" min="1" class="input" formControlName="unit_minutes" /></app-field>
+            <app-field label="Taxe (points de base)" [control]="ratePlanForm.controls.tax_bps"><input type="number" min="0" max="10000" class="input" formControlName="tax_bps" /></app-field>
+            <app-field label="Arrondi" [control]="ratePlanForm.controls.rounding">
+              <select class="select" formControlName="rounding">
+                <option value="UP">Supérieur</option>
+                <option value="DOWN">Inférieur</option>
+                <option value="NEAREST">Le plus proche</option>
+              </select>
+            </app-field>
+          </div>
+
+          <div class="flex gap-2 mt-2">
+            <button type="button" class="btn btn-ghost btn-sm" [disabled]="savingRatePlan()" (click)="ratePlanFormOpen.set(false)">Annuler</button>
+            <button type="submit" class="btn btn-primary btn-sm" [disabled]="savingRatePlan()">{{ editingRatePlan() ? 'Enregistrer' : 'Créer' }}</button>
+          </div>
+        </form>
+      }
+
+      <div class="card">
+        <app-data-table
+          [columns]="ratePlanColumns" [rows]="ratePlans()" [loading]="loadingRatePlans() && ratePlans().length === 0"
+          [trackBy]="trackByRatePlanUuid" emptyTitle="Aucun tarif" emptyHint="Créez un tarif pour pouvoir publier une offre."
+        >
+          <ng-template appCell="actions" let-row>
+            <div class="flex gap-1.5 justify-end">
+              <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openEditRatePlanForm(row)">Modifier</button>
+              @if (!row.active) {
+                <button type="button" class="btn btn-secondary btn-sm !py-1" [disabled]="activatingRatePlan() === row.uuid" (click)="activateRatePlan(row)">Activer</button>
+              }
+            </div>
+          </ng-template>
+        </app-data-table>
+      </div>
+      @if (ratePlansCursor()) {
+        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingRatePlans()" (click)="fetchRatePlans(ratePlansCursor()!)">Charger plus</button>
+      }
+    }
+  }
+
+  @if (activeTab() === 'offers') {
+    @if (forbiddenOffers()) {
+      <app-forbidden-state detail="Votre compte n’a pas la permission marketplace.offer.read." />
+    } @else {
+      <div class="flex items-center justify-between mb-4">
+        <div class="max-w-xs flex-1">
+          <app-select [options]="offerStatusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="offerStatusFilter()" (valueChange)="onOfferStatusFilterChange($event)" />
+        </div>
+        <button type="button" class="btn btn-primary btn-sm shrink-0" [disabled]="ratePlans().length === 0" (click)="openNewOfferForm()">+ Nouvelle offre</button>
+      </div>
+      @if (ratePlans().length === 0) {
+        <p class="text-xs mb-4" style="color: var(--text-muted)">Créez d’abord un tarif dans l’onglet « Tarifs » pour pouvoir publier une offre.</p>
+      }
+
+      @if (offerFormOpen()) {
+        <form [formGroup]="offerForm" (ngSubmit)="submitOfferForm()" class="card p-5 mb-4 flex flex-col gap-3">
+          <p class="text-sm font-medium mb-1">{{ editingOffer() ? 'Modifier l’offre' : 'Nouvelle offre' }}</p>
+          @if (editingOffer()?.status === 'PUBLIEE') {
+            <p class="text-xs px-3 py-2 rounded-(--radius-sm)" style="background: var(--status-warning-bg); color: var(--status-warning)">
+              Cette offre est publiée — toute modification la renverra automatiquement en revue.
+            </p>
+          }
+          @if (!editingOffer()) {
+            <app-field label="Catégorie" [control]="offerForm.controls.category_uuid" required>
+              <app-select [options]="categoryOptions()" formControlName="category_uuid" />
+            </app-field>
+          }
+          <app-field label="Titre" [control]="offerForm.controls.title" required><input class="input" formControlName="title" /></app-field>
+          <app-field label="Description" [control]="offerForm.controls.description" required><textarea class="input" rows="3" formControlName="description"></textarea></app-field>
+          <div class="grid grid-cols-2 gap-3">
+            <app-field label="Ville" [control]="offerForm.controls.city" required><input class="input" formControlName="city" /></app-field>
+            <app-field label="Zones desservies" [control]="offerForm.controls.service_zones" required hint="Séparées par des virgules"><input class="input" formControlName="service_zones" /></app-field>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <app-field label="Véhicule" [control]="offerForm.controls.vehicle_uuid" hint="Ou une catégorie de véhicule ci-contre">
+              <app-select [options]="vehicleOptions()" formControlName="vehicle_uuid" />
+            </app-field>
+            <app-field label="Catégorie de véhicule" [control]="offerForm.controls.vehicle_category"><input class="input" formControlName="vehicle_category" /></app-field>
+          </div>
+          <app-field label="Tarif" [control]="offerForm.controls.rate_plan_uuid" required>
+            <app-select [options]="ratePlansForOfferOptions()" [allowClear]="false" formControlName="rate_plan_uuid" />
+          </app-field>
+          <div class="grid grid-cols-2 gap-3">
+            <app-field label="Mode de réservation" [control]="offerForm.controls.booking_mode">
+              <app-select [options]="bookingModeOptions" [allowClear]="false" formControlName="booking_mode" />
+            </app-field>
+            <app-field label="Montant indicatif (XAF)" [control]="offerForm.controls.indicative_amount"><input type="number" min="0" class="input" formControlName="indicative_amount" /></app-field>
+          </div>
+          <label class="flex items-center gap-2 text-sm">
+            <input type="checkbox" class="checkbox" formControlName="with_driver" /> Avec chauffeur
+          </label>
+          <app-field label="Conditions (optionnel)" [control]="offerForm.controls.conditions"><textarea class="input" rows="2" formControlName="conditions"></textarea></app-field>
+
+          <p class="text-xs font-medium mt-2" style="color: var(--text-muted)">Politique d’annulation</p>
+          <div class="grid grid-cols-3 gap-3">
+            <app-field label="Annulation gratuite (heures)" [control]="offerForm.controls.cancellation_free_hours"><input type="number" min="0" class="input" formControlName="cancellation_free_hours" /></app-field>
+            <app-field label="Frais (points de base)" [control]="offerForm.controls.cancellation_fee_bps"><input type="number" min="0" max="10000" class="input" formControlName="cancellation_fee_bps" /></app-field>
+            <app-field label="Frais fixes (XAF)" [control]="offerForm.controls.cancellation_fixed_fee"><input type="number" min="0" class="input" formControlName="cancellation_fixed_fee" /></app-field>
+          </div>
+          <app-field label="Description de la politique" [control]="offerForm.controls.cancellation_description" required><input class="input" formControlName="cancellation_description" /></app-field>
+
+          <div class="flex gap-2 mt-2">
+            <button type="button" class="btn btn-ghost btn-sm" [disabled]="savingOffer()" (click)="offerFormOpen.set(false)">Annuler</button>
+            <button type="submit" class="btn btn-primary btn-sm" [disabled]="savingOffer()">{{ editingOffer() ? 'Enregistrer' : 'Créer' }}</button>
+          </div>
+        </form>
+      }
+
+      <div class="card">
+        <app-data-table
+          [columns]="offerColumns" [rows]="offers()" [loading]="loadingOffers() && offers().length === 0"
+          [trackBy]="trackByOfferUuid" emptyTitle="Aucune offre" emptyHint="Créez votre première offre pour commencer à recevoir des réservations."
+        >
+          <ng-template appCell="status" let-row><app-status-badge domain="marketplaceOffer" [status]="row.status" /></ng-template>
+          <ng-template appCell="actions" let-row>
+            <div class="flex gap-1.5 justify-end flex-wrap">
+              <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openEditOfferForm(row)">Modifier</button>
+              @for (action of actionsFor(row); track action.target) {
+                <button
+                  type="button" class="btn btn-sm !py-1" [class]="action.danger ? 'btn-danger-ghost' : 'btn-secondary'"
+                  [disabled]="transitioning() === row.uuid" (click)="applyTransition(row, action)"
+                >{{ action.label }}</button>
+              }
+            </div>
+          </ng-template>
+        </app-data-table>
+      </div>
+      @if (offersCursor()) {
+        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingOffers()" (click)="fetchOffers(offersCursor()!)">Charger plus</button>
+      }
+    }
+  }
+</div>
