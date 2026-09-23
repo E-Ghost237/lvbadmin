@@ -76,10 +76,28 @@ const RENTAL_DRIVER_TONE: Record<string, StatusTone> = {
   SUSPENDU: 'critical', ARCHIVE: 'neutral',
 };
 
+/** RGRNT030BookingTransition::TRANSITIONS (LVB-CDC-MKT-RENT-2026-V1.0) — the reservation lifecycle. */
+const BOOKING_TONE: Record<string, StatusTone> = {
+  EN_ATTENTE_PAIEMENT: 'warning', EN_ATTENTE_CONFIRMATION: 'warning', CONFIRMEE: 'info',
+  EN_ATTENTE_AFFECTATION: 'warning', PLANIFIEE: 'info', EN_ROUTE: 'info', PRESTATION_EN_COURS: 'info',
+  TERMINEE: 'good', ANNULEE: 'neutral', REJETEE: 'critical', EXPIREE: 'neutral', ECHEC_PAIEMENT: 'critical',
+};
+
+/** Independent of `status` — a booking's payment lifecycle. */
+const BOOKING_PAYMENT_TONE: Record<string, StatusTone> = {
+  PENDING: 'warning', PAID: 'good', FAILED: 'critical',
+  REFUND_PENDING: 'warning', REFUNDED: 'info', PARTIALLY_REFUNDED: 'info',
+};
+
+/** Independent two-state flag — `null` (no dispute) is not rendered as a badge. */
+const BOOKING_DISPUTE_TONE: Record<string, StatusTone> = {
+  OPEN: 'serious', RESOLVED: 'good',
+};
+
 export type StatusDomain =
   | 'order' | 'driverOp' | 'account' | 'claim' | 'transaction' | 'withdrawal' | 'gravity'
   | 'reconciliation' | 'reconciliationItem' | 'partner' | 'partnerDocument' | 'partnerChange'
-  | 'marketplaceOffer' | 'rentalVehicle' | 'rentalDriver';
+  | 'marketplaceOffer' | 'rentalVehicle' | 'rentalDriver' | 'booking' | 'bookingPayment' | 'bookingDispute';
 
 const DOMAIN_MAPS: Record<StatusDomain, Record<string, StatusTone>> = {
   order: ORDER_TONE, driverOp: DRIVER_OP_TONE, account: ACCOUNT_TONE, claim: CLAIM_TONE,
@@ -87,6 +105,7 @@ const DOMAIN_MAPS: Record<StatusDomain, Record<string, StatusTone>> = {
   reconciliation: RECONCILIATION_TONE, reconciliationItem: RECONCILIATION_ITEM_TONE,
   partner: PARTNER_TONE, partnerDocument: PARTNER_DOCUMENT_TONE, partnerChange: PARTNER_CHANGE_TONE,
   marketplaceOffer: MARKETPLACE_OFFER_TONE, rentalVehicle: RENTAL_VEHICLE_TONE, rentalDriver: RENTAL_DRIVER_TONE,
+  booking: BOOKING_TONE, bookingPayment: BOOKING_PAYMENT_TONE, bookingDispute: BOOKING_DISPUTE_TONE,
 };
 
 const I18N_KEY_PREFIX: Record<StatusDomain, string> = {
@@ -95,6 +114,7 @@ const I18N_KEY_PREFIX: Record<StatusDomain, string> = {
   reconciliation: 'status.reconciliation', reconciliationItem: 'status.reconciliationItem',
   partner: 'status.partner', partnerDocument: 'status.partnerDocument', partnerChange: 'status.partnerChange',
   marketplaceOffer: 'status.marketplaceOffer', rentalVehicle: 'status.rentalVehicle', rentalDriver: 'status.rentalDriver',
+  booking: 'status.booking', bookingPayment: 'status.bookingPayment', bookingDispute: 'status.bookingDispute',
 };
 
 export function toneFor(domain: StatusDomain, status: string): StatusTone {

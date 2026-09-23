@@ -1,16 +1,20 @@
 import { Component, inject, signal } from '@angular/core';
+import { Observable } from 'rxjs';
 import { MarketplaceService } from '../../../core/services/marketplace.service';
 import { RentalService } from '../../../core/services/rental.service';
+import { BookingService } from '../../../core/services/booking.service';
 import {
+  Booking, BOOKING_STATUS_VALUES, BOOKING_TERMINAL_STATUSES, BookingStatus, DisputeOutcome,
   DRIVER_STATUS_VALUES, Driver, DriverStatus, MARKETPLACE_OFFER_STATUS_VALUES, MARKETPLACE_OFFER_TRANSITIONS,
   MarketplaceCategory, MarketplaceOffer, MarketplaceOfferStatus, ProblemDetails, VEHICLE_STATUS_VALUES, Vehicle,
   VehicleStatus, RentalVehicleType,
 } from '../../../core/models';
-import { formatDate } from '../../../core/utils/formatters';
+import { formatDate, formatDateTime, formatXaf } from '../../../core/utils/formatters';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
-  BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, SelectComponent,
-  SelectOption, StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService, ToggleComponent,
+  BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, ModalComponent,
+  SelectComponent, SelectOption, StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService,
+  ToggleComponent,
 } from '../../../shared/ui';
 
 const TRANSITION_LABEL: Record<MarketplaceOfferStatus, string> = {
@@ -27,18 +31,32 @@ interface OfferAction {
   danger: boolean;
 }
 
+type BookingActionKind = 'accept' | 'reject' | 'cancel' | 'assign-driver' | 'incident' | 'resolve-dispute';
+
+interface BookingActionDef {
+  action: BookingActionKind;
+  label: string;
+  danger: boolean;
+}
+
+const BOOKING_REASON_LABEL: Partial<Record<BookingActionKind, string>> = {
+  reject: 'Motif de rejet', cancel: 'Motif d’annulation', incident: 'Description de l’incident',
+  'assign-driver': 'UUID du chauffeur affecté',
+};
+
 /** UC-MKT / MKT-M04 — /v1/admin/marketplace/categories, .../offers (Marketplace module, LVB-CDC-MKT-RENT-2026-V1.0). */
 @Component({
   selector: 'app-marketplace-page',
   imports: [
     BreadcrumbsComponent, TabsComponent, ForbiddenStateComponent, StatusBadgeComponent, SelectComponent,
-    DataTableComponent, TableCellDefDirective, ToggleComponent,
+    DataTableComponent, TableCellDefDirective, ToggleComponent, ModalComponent,
   ],
   templateUrl: './marketplace-page.component.html',
 })
 export class MarketplacePageComponent {
   private readonly marketplace = inject(MarketplaceService);
   private readonly rental = inject(RentalService);
+  private readonly bookingSvc = inject(BookingService);
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   protected readonly i18n = inject(I18nService);
@@ -46,7 +64,7 @@ export class MarketplacePageComponent {
   protected readonly tabs: TabDef[] = [
     { id: 'offers', label: 'Offres' }, { id: 'categories', label: 'Catégories' },
     { id: 'vehicles', label: 'Véhicules' }, { id: 'drivers', label: 'Chauffeurs' },
-    { id: 'vehicleTypes', label: 'Types de véhicule' },
+    { id: 'vehicleTypes', label: 'Types de véhicule' }, { id: 'bookings', label: 'Réservations' },
   ];
   protected readonly activeTab = signal('offers');
 
@@ -79,6 +97,7 @@ export class MarketplacePageComponent {
     this.activeTab.set(id);
     if (id === 'categories' && this.categories().length === 0) this.fetchCategories();
     if (id === 'vehicleTypes' && this.vehicleTypes().length === 0) this.fetchVehicleTypes();
+    if (id === 'bookings' && this.bookings().length === 0) this.fetchBookings();
   }
 
   fetchOffers(cursor?: string): void {
@@ -393,6 +412,180 @@ export class MarketplacePageComponent {
         this.fetchVehicleTypes();
       },
       error: (err: ProblemDetails) => this.toast.error('Échec de la création', err.detail),
+    });
+  }
+
+  // --- Bookings (RGRNT030BookingTransition) --------------------------------
+  // Bookings never expose partner_id/client_id/driver_id — only vehicle_uuid/
+  // offer_uuid and a driver_assigned flag (see BookingService docblock) — so
+  // unlike Vehicles/Drivers this list needs no partner lookup step, but rows
+  // can't show a partner/client/driver name either.
+
+  protected readonly bookingStatusOptions: SelectOption[] = BOOKING_STATUS_VALUES.map((s) => ({
+    value: s, label: this.i18n.t('status.booking.' + s),
+  }));
+  protected readonly disputeOutcomeOptions: SelectOption[] = [
+    { value: 'release', label: 'Libérer les fonds au partenaire' },
+    { value: 'refund', label: 'Rembourser le client' },
+  ];
+  protected readonly bookingColumns: ColumnDef<Booking>[] = [
+    { key: 'uuid', label: 'Réservation', cell: (r) => `${r.uuid.slice(0, 8)}…` },
+    { key: 'status', label: 'Statut' },
+    { key: 'dispute_status', label: 'Litige' },
+    { key: 'starts_at', label: 'Début', cell: (r) => formatDateTime(r.starts_at) },
+    { key: 'total_amount', label: 'Montant', cell: (r) => formatXaf(r.total_amount) },
+    { key: 'actions', label: '' },
+  ];
+  protected readonly trackByBookingUuid = (row: Booking) => row.uuid;
+
+  protected readonly bookings = signal<Booking[]>([]);
+  protected readonly loadingBookings = signal(false);
+  protected readonly forbiddenBookings = signal(false);
+  protected readonly bookingsCursor = signal<number | null>(null);
+  protected readonly bookingStatusFilter = signal<BookingStatus | ''>('');
+  protected readonly updatingBooking = signal<string | null>(null);
+
+  protected readonly bookingDetail = signal<Booking | null>(null);
+  protected readonly loadingBookingDetail = signal(false);
+  protected readonly showDisputeForm = signal(false);
+  protected readonly disputeOutcome = signal<DisputeOutcome>('release');
+  protected readonly disputeReason = signal('');
+  protected readonly resolvingDispute = signal(false);
+
+  fetchBookings(cursor?: number): void {
+    this.loadingBookings.set(true);
+    this.forbiddenBookings.set(false);
+    this.bookingSvc.listBookings({ status: this.bookingStatusFilter() || undefined, cursor, limit: 50 }).subscribe({
+      next: (page) => {
+        this.loadingBookings.set(false);
+        this.bookings.set(cursor ? [...this.bookings(), ...page.items] : page.items);
+        this.bookingsCursor.set(page.next_cursor);
+      },
+      error: (err: ProblemDetails) => {
+        this.loadingBookings.set(false);
+        if (err.status === 403) this.forbiddenBookings.set(true);
+        else this.toast.error('Chargement impossible', err.detail);
+      },
+    });
+  }
+
+  onBookingStatusFilterChange(value: string): void {
+    this.bookingStatusFilter.set(value as BookingStatus | '');
+    this.fetchBookings();
+  }
+
+  openBookingDetail(uuid: string): void {
+    this.showDisputeForm.set(false);
+    this.loadingBookingDetail.set(true);
+    this.bookingDetail.set(null);
+    this.bookingSvc.getBooking(uuid).subscribe({
+      next: (b) => { this.loadingBookingDetail.set(false); this.bookingDetail.set(b); },
+      error: (err: ProblemDetails) => { this.loadingBookingDetail.set(false); this.toast.error('Chargement impossible', err.detail); },
+    });
+  }
+
+  closeBookingDetail(): void {
+    this.bookingDetail.set(null);
+    this.showDisputeForm.set(false);
+  }
+
+  bookingActions(b: Booking): BookingActionDef[] {
+    const actions: BookingActionDef[] = [];
+    if (b.status === 'EN_ATTENTE_CONFIRMATION') {
+      actions.push({ action: 'accept', label: 'Confirmer', danger: false });
+      actions.push({ action: 'reject', label: 'Rejeter', danger: true });
+    }
+    if (b.with_driver && !b.driver_assigned && ['CONFIRMEE', 'EN_ATTENTE_AFFECTATION', 'PLANIFIEE'].includes(b.status)) {
+      actions.push({ action: 'assign-driver', label: 'Affecter un chauffeur', danger: false });
+    }
+    if (!BOOKING_TERMINAL_STATUSES.includes(b.status)) {
+      actions.push({ action: 'cancel', label: 'Annuler', danger: true });
+    }
+    if (b.dispute_status === 'OPEN') {
+      actions.push({ action: 'resolve-dispute', label: 'Résoudre le litige', danger: false });
+    }
+    actions.push({ action: 'incident', label: 'Signaler un incident', danger: false });
+    return actions;
+  }
+
+  async applyBookingAction(booking: Booking, def: BookingActionDef): Promise<void> {
+    if (def.action === 'resolve-dispute') {
+      this.disputeOutcome.set('release');
+      this.disputeReason.set('');
+      this.showDisputeForm.set(true);
+      return;
+    }
+    if (def.action === 'accept') {
+      const ok = await this.confirm.ask({ title: 'Confirmer cette réservation ?', message: booking.uuid, confirmLabel: 'Confirmer' });
+      if (!ok) return;
+      this.runBookingAction(booking.uuid, this.bookingSvc.acceptBooking(booking.uuid));
+      return;
+    }
+    const reason = await this.confirm.askReason({
+      title: `${def.label} cette réservation ?`, label: BOOKING_REASON_LABEL[def.action] ?? 'Motif',
+      danger: def.danger, confirmLabel: def.label,
+    });
+    if (reason === null) return;
+    const trimmed = reason.trim();
+    if (!trimmed) return;
+    let obs: Observable<Booking>;
+    switch (def.action) {
+      case 'reject': obs = this.bookingSvc.rejectBooking(booking.uuid, trimmed); break;
+      case 'cancel': obs = this.bookingSvc.cancelBooking(booking.uuid, trimmed); break;
+      case 'incident': obs = this.bookingSvc.reportIncident(booking.uuid, trimmed); break;
+      case 'assign-driver': obs = this.bookingSvc.assignDriver(booking.uuid, trimmed); break;
+      default: return;
+    }
+    this.runBookingAction(booking.uuid, obs);
+  }
+
+  onDisputeOutcomeChange(value: string): void {
+    this.disputeOutcome.set(value as DisputeOutcome);
+  }
+
+  onDisputeReasonInput(value: string): void {
+    this.disputeReason.set(value);
+  }
+
+  cancelDisputeForm(): void {
+    this.showDisputeForm.set(false);
+  }
+
+  submitDisputeResolution(): void {
+    const booking = this.bookingDetail();
+    const reason = this.disputeReason().trim();
+    if (!booking || !reason) return;
+    this.resolvingDispute.set(true);
+    this.bookingSvc.resolveDispute(booking.uuid, this.disputeOutcome(), reason).subscribe({
+      next: () => {
+        this.resolvingDispute.set(false);
+        this.showDisputeForm.set(false);
+        this.toast.success('Litige résolu');
+        this.fetchBookings();
+        this.openBookingDetail(booking.uuid);
+      },
+      error: (err: ProblemDetails) => { this.resolvingDispute.set(false); this.toast.error('Échec', err.detail); },
+    });
+  }
+
+  dateTime(iso: string | null): string {
+    return formatDateTime(iso);
+  }
+
+  xaf(amount: number | null): string {
+    return formatXaf(amount);
+  }
+
+  private runBookingAction(uuid: string, obs: Observable<Booking>): void {
+    this.updatingBooking.set(uuid);
+    obs.subscribe({
+      next: () => {
+        this.updatingBooking.set(null);
+        this.toast.success('Réservation mise à jour');
+        this.fetchBookings();
+        if (this.bookingDetail()?.uuid === uuid) this.openBookingDetail(uuid);
+      },
+      error: (err: ProblemDetails) => { this.updatingBooking.set(null); this.toast.error('Échec', err.detail); },
     });
   }
 }

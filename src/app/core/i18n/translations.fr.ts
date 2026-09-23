@@ -227,6 +227,29 @@ export const FR: Record<string, string> = {
   'status.rentalDriver.SUSPENDU': 'Suspendu',
   'status.rentalDriver.ARCHIVE': 'Archivé',
 
+  'status.booking.EN_ATTENTE_PAIEMENT': 'En attente de paiement',
+  'status.booking.EN_ATTENTE_CONFIRMATION': 'En attente de confirmation',
+  'status.booking.CONFIRMEE': 'Confirmée',
+  'status.booking.EN_ATTENTE_AFFECTATION': 'En attente d’affectation',
+  'status.booking.PLANIFIEE': 'Planifiée',
+  'status.booking.EN_ROUTE': 'En route',
+  'status.booking.PRESTATION_EN_COURS': 'Prestation en cours',
+  'status.booking.TERMINEE': 'Terminée',
+  'status.booking.ANNULEE': 'Annulée',
+  'status.booking.REJETEE': 'Rejetée',
+  'status.booking.EXPIREE': 'Expirée',
+  'status.booking.ECHEC_PAIEMENT': 'Échec du paiement',
+
+  'status.bookingPayment.PENDING': 'En attente',
+  'status.bookingPayment.PAID': 'Payé',
+  'status.bookingPayment.FAILED': 'Échoué',
+  'status.bookingPayment.REFUND_PENDING': 'Remboursement en cours',
+  'status.bookingPayment.REFUNDED': 'Remboursé',
+  'status.bookingPayment.PARTIALLY_REFUNDED': 'Partiellement remboursé',
+
+  'status.bookingDispute.OPEN': 'Litige ouvert',
+  'status.bookingDispute.RESOLVED': 'Litige résolu',
+
   'gravity.FAIBLE': 'Faible',
   'gravity.MOYENNE': 'Moyenne',
   'gravity.HAUTE': 'Haute',
@@ -237,6 +260,7 @@ export const FR: Record<string, string> = {
   // for any key the backend adds that isn't listed here yet.
   'permission.analytics.view': 'Consulter les analyses',
   'permission.audit.view': 'Consulter le journal d’audit',
+  'permission.booking.manage': 'Gérer les réservations',
   'permission.catalog.manage': 'Gérer la tarification & les zones',
   'permission.console.access': 'Accéder à la console téléconseiller',
   'permission.disputes.arbitrate': 'Arbitrer les réclamations & litiges',

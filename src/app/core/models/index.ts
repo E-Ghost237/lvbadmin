@@ -4,3 +4,4 @@ export * from './user.model';
 export * from './partner.model';
 export * from './marketplace.model';
 export * from './rental.model';
+export * from './booking.model';

@@ -227,6 +227,29 @@ export const EN: Record<string, string> = {
   'status.rentalDriver.SUSPENDU': 'Suspended',
   'status.rentalDriver.ARCHIVE': 'Archived',
 
+  'status.booking.EN_ATTENTE_PAIEMENT': 'Awaiting payment',
+  'status.booking.EN_ATTENTE_CONFIRMATION': 'Awaiting confirmation',
+  'status.booking.CONFIRMEE': 'Confirmed',
+  'status.booking.EN_ATTENTE_AFFECTATION': 'Awaiting driver assignment',
+  'status.booking.PLANIFIEE': 'Scheduled',
+  'status.booking.EN_ROUTE': 'En route',
+  'status.booking.PRESTATION_EN_COURS': 'In progress',
+  'status.booking.TERMINEE': 'Completed',
+  'status.booking.ANNULEE': 'Cancelled',
+  'status.booking.REJETEE': 'Rejected',
+  'status.booking.EXPIREE': 'Expired',
+  'status.booking.ECHEC_PAIEMENT': 'Payment failed',
+
+  'status.bookingPayment.PENDING': 'Pending',
+  'status.bookingPayment.PAID': 'Paid',
+  'status.bookingPayment.FAILED': 'Failed',
+  'status.bookingPayment.REFUND_PENDING': 'Refund pending',
+  'status.bookingPayment.REFUNDED': 'Refunded',
+  'status.bookingPayment.PARTIALLY_REFUNDED': 'Partially refunded',
+
+  'status.bookingDispute.OPEN': 'Dispute open',
+  'status.bookingDispute.RESOLVED': 'Dispute resolved',
+
   'gravity.FAIBLE': 'Low',
   'gravity.MOYENNE': 'Medium',
   'gravity.HAUTE': 'High',
@@ -237,6 +260,7 @@ export const EN: Record<string, string> = {
   // for any key the backend adds that isn't listed here yet.
   'permission.analytics.view': 'View analytics',
   'permission.audit.view': 'View audit log',
+  'permission.booking.manage': 'Manage bookings',
   'permission.catalog.manage': 'Manage pricing & zones',
   'permission.console.access': 'Access call-center console',
   'permission.disputes.arbitrate': 'Arbitrate claims & disputes',
