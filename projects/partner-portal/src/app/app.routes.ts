@@ -28,6 +28,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/profile/profile.routes').then((m) => m.PROFILE_ROUTES),
       },
       {
+        path: 'fleet',
+        loadChildren: () => import('./features/fleet/fleet.routes').then((m) => m.FLEET_ROUTES),
+      },
+      {
         path: '**',
         loadComponent: () => import('./features/errors/status-page.component').then((m) => m.StatusPageComponent),
       },

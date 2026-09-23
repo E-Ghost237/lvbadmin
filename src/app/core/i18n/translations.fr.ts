@@ -10,6 +10,7 @@ export const FR: Record<string, string> = {
   'partner.auth.login.subtitle': 'Accès réservé aux partenaires LVB',
   'partner.nav.dashboard': 'Tableau de bord',
   'partner.nav.profile': 'Profil',
+  'partner.nav.fleet': 'Flotte',
 
   'nav.dashboard': 'Supervision',
   'nav.orders': 'Commandes',
