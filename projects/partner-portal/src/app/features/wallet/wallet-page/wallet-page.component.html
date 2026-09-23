@@ -1,0 +1,110 @@
+<app-breadcrumbs [crumbs]="[{ label: 'Portefeuille' }]" />
+
+<div class="mb-5">
+  <h1 class="text-xl font-semibold">Portefeuille</h1>
+  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Solde, comptes de paiement et retraits (LVB-CDC-MKT-RENT-2026-V1.0).</p>
+</div>
+
+@if (forbidden()) {
+  <app-forbidden-state detail="Votre compte n’a pas la permission wallet.read." />
+} @else {
+  <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
+
+  <div class="mt-5">
+    @if (activeTab() === 'balance') {
+      @if (loadingSummary()) {
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div>
+        </div>
+      } @else if (summary(); as s) {
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+          <app-stat-tile label="Disponible" [value]="s.solde_disponible" unit="XAF" />
+          <app-stat-tile label="En attente" [value]="s.solde_en_attente" unit="XAF" />
+          <app-stat-tile label="Bloqué" [value]="s.solde_bloque" unit="XAF" />
+          <app-stat-tile label="Retraits en cours" [value]="s.retraits_en_cours" unit="XAF" />
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+          <app-stat-tile label="Total gagné" [value]="s.total_gagne" unit="XAF" />
+          <app-stat-tile label="Total retiré" [value]="s.total_retire" unit="XAF" />
+        </div>
+      }
+
+      <div class="card">
+        <p class="text-sm font-medium p-4 pb-0">Mouvements récents</p>
+        <app-data-table
+          [columns]="movementColumns" [rows]="movements()" [loading]="loadingMovements() && movements().length === 0"
+          [trackBy]="trackByMovementUuid" emptyTitle="Aucun mouvement" emptyHint="Aucun mouvement de portefeuille pour l’instant."
+        />
+      </div>
+      @if (movementsCursor()) {
+        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingMovements()" (click)="fetchMovements(movementsCursor()!)">Charger plus</button>
+      }
+    }
+
+    @if (activeTab() === 'accounts') {
+      <div class="flex justify-end mb-4">
+        <button type="button" class="btn btn-primary btn-sm" (click)="openNewAccountForm()">+ Ajouter un compte</button>
+      </div>
+
+      @if (accountFormOpen()) {
+        <form [formGroup]="accountForm" (ngSubmit)="submitAccountForm()" class="card p-5 mb-4 flex flex-col gap-3 max-w-md">
+          <p class="text-sm font-medium mb-1">Nouveau compte de paiement</p>
+          <app-field label="Opérateur" [control]="accountForm.controls.provider" required>
+            <app-select [options]="providerOptions" [allowClear]="false" formControlName="provider" />
+          </app-field>
+          <app-field label="Numéro de compte" [control]="accountForm.controls.account_number" required><input class="input" formControlName="account_number" /></app-field>
+          <app-field label="Titulaire du compte" [control]="accountForm.controls.holder_name" required><input class="input" formControlName="holder_name" /></app-field>
+          <p class="field-hint">Un administrateur LVB doit vérifier ce compte avant qu’il puisse recevoir un retrait.</p>
+          <div class="flex gap-2">
+            <button type="button" class="btn btn-ghost btn-sm" [disabled]="savingAccount()" (click)="accountFormOpen.set(false)">Annuler</button>
+            <button type="submit" class="btn btn-primary btn-sm" [disabled]="savingAccount()">Ajouter</button>
+          </div>
+        </form>
+      }
+
+      <div class="card">
+        <app-data-table
+          [columns]="accountColumns" [rows]="payoutAccounts()" [loading]="loadingAccounts() && payoutAccounts().length === 0"
+          [trackBy]="trackByAccountUuid" emptyTitle="Aucun compte" emptyHint="Ajoutez un compte de paiement pour pouvoir demander un retrait."
+        />
+      </div>
+    }
+
+    @if (activeTab() === 'withdrawals') {
+      <div class="flex justify-end mb-4">
+        <button type="button" class="btn btn-primary btn-sm" [disabled]="verifiedAccountOptions().length === 0" (click)="openWithdrawalForm()">+ Demander un retrait</button>
+      </div>
+      @if (verifiedAccountOptions().length === 0) {
+        <p class="text-xs mb-4" style="color: var(--text-muted)">Ajoutez un compte de paiement et attendez sa vérification par LVB avant de pouvoir demander un retrait.</p>
+      }
+
+      @if (withdrawalFormOpen()) {
+        <div class="card p-5 mb-4 flex flex-col gap-3 max-w-md">
+          <p class="text-sm font-medium mb-1">Nouvelle demande de retrait</p>
+          <div>
+            <label class="field-label">Compte de paiement</label>
+            <app-select [options]="verifiedAccountOptions()" [allowClear]="false" [value]="withdrawalPayoutAccount()" (valueChange)="onWithdrawalPayoutAccountChange($event)" />
+          </div>
+          <div>
+            <label class="field-label">Montant (XAF)</label>
+            <input type="number" min="1000" max="1000000" class="input" [value]="withdrawalAmount() ?? ''" (input)="onWithdrawalAmountInput($any($event.target).value)" />
+            <p class="field-hint">Entre 1 000 et 1 000 000 XAF.</p>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" class="btn btn-ghost btn-sm" [disabled]="submittingWithdrawal()" (click)="withdrawalFormOpen.set(false)">Annuler</button>
+            <button type="button" class="btn btn-primary btn-sm" [disabled]="submittingWithdrawal() || !withdrawalPayoutAccount() || !withdrawalAmount()" (click)="submitWithdrawal()">Envoyer la demande</button>
+          </div>
+        </div>
+      }
+
+      <div class="card">
+        <app-data-table
+          [columns]="withdrawalColumns" [rows]="withdrawals()" [loading]="loadingWithdrawals() && withdrawals().length === 0"
+          [trackBy]="trackByWithdrawalUuid" emptyTitle="Aucun retrait" emptyHint="Aucune demande de retrait pour l’instant."
+        >
+          <ng-template appCell="status" let-row><app-status-badge domain="partnerWithdrawal" [status]="row.status" /></ng-template>
+        </app-data-table>
+      </div>
+    }
+  </div>
+}

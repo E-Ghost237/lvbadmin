@@ -13,6 +13,7 @@ export const FR: Record<string, string> = {
   'partner.nav.fleet': 'Flotte',
   'partner.nav.marketplace': 'Marketplace',
   'partner.nav.bookings': 'Réservations',
+  'partner.nav.wallet': 'Portefeuille',
 
   'nav.dashboard': 'Supervision',
   'nav.orders': 'Commandes',

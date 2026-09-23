@@ -40,6 +40,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/bookings/bookings.routes').then((m) => m.BOOKINGS_ROUTES),
       },
       {
+        path: 'wallet',
+        loadChildren: () => import('./features/wallet/wallet.routes').then((m) => m.WALLET_ROUTES),
+      },
+      {
         path: '**',
         loadComponent: () => import('./features/errors/status-page.component').then((m) => m.StatusPageComponent),
       },
