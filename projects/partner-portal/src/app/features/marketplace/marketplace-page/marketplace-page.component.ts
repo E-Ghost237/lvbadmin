@@ -1,4 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
+import { intRange, requireOneOf, xafAmount } from '@lvb/utils/validators';
+import { FormFeedbackService } from '@lvb/ui/form-feedback/form-feedback.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RatePlanService } from '../../../core/services/rate-plan.service';
 import { OfferService } from '../../../core/services/offer.service';
@@ -79,6 +81,7 @@ export class MarketplacePageComponent {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
   protected readonly i18n = inject(I18nService);
 
   protected readonly tabs: TabDef[] = [{ id: 'ratePlans', label: 'Tarifs' }, { id: 'offers', label: 'Offres' }];
@@ -124,26 +127,26 @@ export class MarketplacePageComponent {
   protected readonly editingRatePlan = signal<RatePlan | null>(null);
   protected readonly savingRatePlan = signal(false);
   protected readonly ratePlanForm = this.fb.nonNullable.group({
-    name: ['', [Validators.required]],
+    name: ['', [Validators.required, Validators.maxLength(120)]],
     mode: ['' as RatePlanMode | '', [Validators.required]],
     active: [false],
-    base_amount: [0],
-    duration_amount: [0],
-    kilometer_amount: [0],
-    trip_amount: [0],
-    minimum_amount: [0],
-    driver_amount: [0],
-    handling_amount: [0],
-    fuel_amount: [0],
-    toll_amount: [0],
-    insurance_amount: [0],
-    waiting_hour_amount: [0],
-    discount_amount: [0],
-    tax_bps: [0],
-    minimum_minutes: [1],
-    maximum_minutes: [null as number | null],
-    increment_minutes: [1],
-    unit_minutes: [1],
+    base_amount: [0, [xafAmount(0, 1_000_000_000)]],
+    duration_amount: [0, [xafAmount(0, 1_000_000_000)]],
+    kilometer_amount: [0, [xafAmount(0, 1_000_000_000)]],
+    trip_amount: [0, [xafAmount(0, 1_000_000_000)]],
+    minimum_amount: [0, [xafAmount(0, 1_000_000_000)]],
+    driver_amount: [0, [xafAmount(0, 1_000_000_000)]],
+    handling_amount: [0, [xafAmount(0, 1_000_000_000)]],
+    fuel_amount: [0, [xafAmount(0, 1_000_000_000)]],
+    toll_amount: [0, [xafAmount(0, 1_000_000_000)]],
+    insurance_amount: [0, [xafAmount(0, 1_000_000_000)]],
+    waiting_hour_amount: [0, [xafAmount(0, 1_000_000_000)]],
+    discount_amount: [0, [xafAmount(0, 1_000_000_000)]],
+    tax_bps: [0, [intRange(0, 10000)]],
+    minimum_minutes: [1, [intRange(1, 525600)]],
+    maximum_minutes: [null as number | null, [intRange(1, 525600)]],
+    increment_minutes: [1, [intRange(1, 525600)]],
+    unit_minutes: [1, [intRange(1, 525600)]],
     rounding: ['NEAREST' as RoundingMode],
   });
 
@@ -197,7 +200,7 @@ export class MarketplacePageComponent {
 
   submitRatePlanForm(): void {
     if (this.ratePlanForm.invalid) {
-      this.ratePlanForm.markAllAsTouched();
+      this.feedback.invalid(this.ratePlanForm);
       return;
     }
     const v = this.ratePlanForm.getRawValue();
@@ -223,7 +226,7 @@ export class MarketplacePageComponent {
         this.toast.success(editing ? 'Tarif mis à jour' : 'Tarif créé');
         this.fetchRatePlans();
       },
-      error: (err: ProblemDetails) => { this.savingRatePlan.set(false); this.toast.error('Échec', err.detail); },
+      error: (err: ProblemDetails) => { this.savingRatePlan.set(false); this.feedback.serverError(this.ratePlanForm, 'Échec', err); },
     });
   }
 
@@ -275,22 +278,22 @@ export class MarketplacePageComponent {
   protected readonly savingOffer = signal(false);
   protected readonly offerForm = this.fb.nonNullable.group({
     category_uuid: [''],
-    title: ['', [Validators.required]],
-    description: ['', [Validators.required]],
-    city: ['', [Validators.required]],
+    title: ['', [Validators.required, Validators.maxLength(180)]],
+    description: ['', [Validators.required, Validators.maxLength(10000)]],
+    city: ['', [Validators.required, Validators.maxLength(120)]],
     service_zones: ['', [Validators.required]],
     vehicle_uuid: [''],
     vehicle_category: [''],
     rate_plan_uuid: ['', [Validators.required]],
     booking_mode: ['AUTO_CONFIRM' as OfferBookingMode],
     with_driver: [false],
-    indicative_amount: [null as number | null],
+    indicative_amount: [null as number | null, [xafAmount(0, 1_000_000_000)]],
     conditions: [''],
-    cancellation_free_hours: [24],
-    cancellation_fee_bps: [0],
-    cancellation_fixed_fee: [0],
-    cancellation_description: ['', [Validators.required]],
-  });
+    cancellation_free_hours: [24, [intRange(0, 8760)]],
+    cancellation_fee_bps: [0, [intRange(0, 10000)]],
+    cancellation_fixed_fee: [0, [xafAmount(0, 1_000_000_000)]],
+    cancellation_description: ['', [Validators.required, Validators.maxLength(2000)]],
+  }, { validators: [requireOneOf(['vehicle_uuid', 'vehicle_category'], 'vehicle')] });
 
   fetchCategories(): void {
     this.offerSvc.listCategories().subscribe({
@@ -344,6 +347,7 @@ export class MarketplacePageComponent {
 
   openNewOfferForm(): void {
     this.editingOffer.set(null);
+    this.offerForm.controls.category_uuid.setValidators([Validators.required]);
     this.offerForm.reset({
       category_uuid: '', title: '', description: '', city: '', service_zones: '', vehicle_uuid: '',
       vehicle_category: '', rate_plan_uuid: '', booking_mode: 'AUTO_CONFIRM', with_driver: false,
@@ -355,6 +359,7 @@ export class MarketplacePageComponent {
 
   openEditOfferForm(offer: MarketplaceOffer): void {
     this.editingOffer.set(offer);
+    this.offerForm.controls.category_uuid.clearValidators();
     this.offerForm.reset({
       category_uuid: '', title: offer.title, description: offer.description, city: offer.city,
       service_zones: offer.service_zones.join(', '), vehicle_uuid: offer.vehicle_uuid ?? '',
@@ -368,8 +373,8 @@ export class MarketplacePageComponent {
 
   submitOfferForm(): void {
     const editing = this.editingOffer();
-    if (this.offerForm.invalid || (!editing && !this.offerForm.controls.category_uuid.value)) {
-      this.offerForm.markAllAsTouched();
+    if (this.offerForm.invalid) {
+      this.feedback.invalid(this.offerForm);
       return;
     }
     const v = this.offerForm.getRawValue();
@@ -394,7 +399,7 @@ export class MarketplacePageComponent {
         this.toast.success(editing ? 'Offre mise à jour' : 'Offre créée');
         this.fetchOffers();
       },
-      error: (err: ProblemDetails) => { this.savingOffer.set(false); this.toast.error('Échec', err.detail); },
+      error: (err: ProblemDetails) => { this.savingOffer.set(false); this.feedback.serverError(this.offerForm, 'Échec', err); },
     });
   }
 }

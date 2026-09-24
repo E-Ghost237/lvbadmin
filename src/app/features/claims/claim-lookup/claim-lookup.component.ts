@@ -6,7 +6,7 @@ import { ArbitrationDecision, ArbitrationDossier, ClaimsService } from '../../..
 import { ProblemDetails } from '../../../core/models';
 import { formatDateTime, formatXaf } from '../../../core/utils/formatters';
 import {
-  AlertBannerComponent, BreadcrumbsComponent, FormFieldComponent, SelectComponent, SelectOption, ToastService,
+  AlertBannerComponent, BreadcrumbsComponent, FormFieldComponent, SelectComponent, SelectOption, ToastService, FormFeedbackService,
 } from '../../../shared/ui';
 
 const DECISION_OPTIONS: SelectOption[] = [
@@ -25,6 +25,7 @@ export class ClaimLookupComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
 
   protected readonly decisionOptions = DECISION_OPTIONS;
 
@@ -70,7 +71,7 @@ export class ClaimLookupComponent {
 
   decide(): void {
     if (this.decisionForm.invalid || !this.dossier()) {
-      this.decisionForm.markAllAsTouched();
+      this.feedback.invalid(this.decisionForm);
       return;
     }
     const v = this.decisionForm.getRawValue();

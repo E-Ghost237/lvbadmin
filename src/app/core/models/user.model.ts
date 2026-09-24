@@ -8,6 +8,26 @@ import { AccountStatus } from './enums';
  */
 export interface AuthIdentity {
   email: string;
+  /** Filled by `GET /v1/me` after login (best-effort). */
+  nom?: string;
+  prenom?: string | null;
+  langue?: string;
+  role?: string | null;
+  roles?: string[];
+}
+
+/** `GET /v1/me` (alias `/v1/auth/me`) — exact backend shape. */
+export interface CurrentUser {
+  uuid: string;
+  telephone: string;
+  email: string | null;
+  nom: string;
+  prenom: string | null;
+  photo_url: string | null;
+  langue: string;
+  statut: string;
+  role: string | null;
+  roles: string[];
 }
 
 export type UserProfile = 'CLIENT' | 'LIVREUR' | 'INTERNE';

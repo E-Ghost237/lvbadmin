@@ -7,7 +7,7 @@ import { AdminUserDetail, ProblemDetails } from '../../../core/models';
 import { formatDate, formatDateTime, formatPercent } from '../../../core/utils/formatters';
 import {
   AlertBannerComponent, BreadcrumbsComponent, ConfirmService, FormFieldComponent, ModalComponent, SelectComponent,
-  SelectOption, StatusBadgeComponent, ToastService,
+  SelectOption, StatusBadgeComponent, ToastService, FormFeedbackService,
 } from '../../../shared/ui';
 
 const SANCTION_TYPE_OPTIONS: SelectOption[] = [
@@ -31,6 +31,7 @@ export class DriverDetailComponent {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
 
   protected readonly uuid = this.route.snapshot.paramMap.get('uuid')!;
   protected readonly loading = signal(true);
@@ -111,7 +112,7 @@ export class DriverDetailComponent {
 
   proposeSanction(): void {
     if (this.sanctionForm.invalid) {
-      this.sanctionForm.markAllAsTouched();
+      this.feedback.invalid(this.sanctionForm);
       return;
     }
     const v = this.sanctionForm.getRawValue();
@@ -132,7 +133,7 @@ export class DriverDetailComponent {
   confirmSanction(): void {
     const sanction = this.proposedSanction();
     if (!sanction || this.decisionForm.invalid) {
-      this.decisionForm.markAllAsTouched();
+      this.feedback.invalid(this.decisionForm);
       return;
     }
     const v = this.decisionForm.getRawValue();

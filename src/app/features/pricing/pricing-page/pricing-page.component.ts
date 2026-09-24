@@ -9,7 +9,7 @@ import { formatDate, formatPercent, formatXaf } from '../../../core/utils/format
 import {
   BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, FormFieldComponent,
   PolygonPickerComponent, SegmentedControlComponent, SegmentOption, SelectComponent, SelectOption, TabDef,
-  TabsComponent, ToastService,
+  TabsComponent, ToastService, FormFeedbackService,
 } from '../../../shared/ui';
 
 const ZONE_TYPE_LABELS: Record<ZoneType, string> = {
@@ -28,6 +28,8 @@ const GRID_STATUS_COLORS: Record<PricingGridStatus, string> = {
   BROUILLON: 'var(--text-muted)', ACTIVE: 'var(--status-good)', ARCHIVEE: 'var(--text-muted)',
 };
 
+import { xafAmount } from '../../../core/utils/validators';
+
 @Component({
   selector: 'app-pricing-page',
   imports: [
@@ -44,6 +46,7 @@ export class PricingPageComponent {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
 
   protected readonly tabs: TabDef[] = [
     { id: 'grilles', label: 'Grilles tarifaires' }, { id: 'zones', label: 'Zones' }, { id: 'commissions', label: 'Commissions' },
@@ -64,11 +67,11 @@ export class PricingPageComponent {
   protected readonly grilleForm = this.fb.nonNullable.group({
     nom: ['', [Validators.required, Validators.maxLength(50)]],
     ville: ['Douala', [Validators.required]],
-    frais_prise_en_charge: [500, [Validators.required, Validators.min(0)]],
-    tarif_km: [150, [Validators.required, Validators.min(0)]],
-    tarif_minute: [15, [Validators.required, Validators.min(0)]],
-    prix_minimum: [1000, [Validators.required, Validators.min(0)]],
-    arrondi: [25, [Validators.required, Validators.min(0)]],
+    frais_prise_en_charge: [500, [Validators.required, xafAmount(0)]],
+    tarif_km: [150, [Validators.required, xafAmount(0)]],
+    tarif_minute: [15, [Validators.required, xafAmount(0)]],
+    prix_minimum: [1000, [Validators.required, xafAmount(0)]],
+    arrondi: [25, [Validators.required, xafAmount(0)]],
     plafond_remise: [1000],
   });
   protected readonly creatingGrille = signal(false);
@@ -102,7 +105,7 @@ export class PricingPageComponent {
 
   createGrille(): void {
     if (this.grilleForm.invalid) {
-      this.grilleForm.markAllAsTouched();
+      this.feedback.invalid(this.grilleForm);
       return;
     }
     const v = this.grilleForm.getRawValue();
@@ -204,7 +207,7 @@ export class PricingPageComponent {
 
   createZone(): void {
     if (this.zoneForm.invalid || this.zonePoints().length < 3) {
-      this.zoneForm.markAllAsTouched();
+      this.feedback.invalid(this.zoneForm);
       return;
     }
     const v = this.zoneForm.getRawValue();
@@ -243,7 +246,7 @@ export class PricingPageComponent {
   protected readonly commissionForm = this.fb.nonNullable.group({
     partner_uuid: [''],
     category_uuid: [''],
-    basis_points: [1000, [Validators.required, Validators.min(0), Validators.max(10000)]],
+    basis_points: [1000, [Validators.required, xafAmount(0, 10000)]],
     valid_from: [PricingPageComponent.todayIso(), [Validators.required]],
     valid_to: [''],
     reason: ['', [Validators.required, Validators.maxLength(1000)]],
@@ -322,7 +325,7 @@ export class PricingPageComponent {
 
   createCommission(): void {
     if (this.commissionForm.invalid) {
-      this.commissionForm.markAllAsTouched();
+      this.feedback.invalid(this.commissionForm);
       return;
     }
     const v = this.commissionForm.getRawValue();

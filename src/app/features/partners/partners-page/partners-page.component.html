@@ -72,6 +72,9 @@
           }
         </div>
       }
+      @if (ownerError() && !selectedOwner()) {
+        <p class="field-error" role="alert">{{ i18n.t('partners.ownerRequired') }}</p>
+      }
     </div>
 
     <form [formGroup]="newPartnerForm" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -79,7 +82,7 @@
         <input class="input" formControlName="nom_commercial" />
       </app-field>
       <app-field label="Téléphone" [control]="newPartnerForm.controls.telephone" required>
-        <input class="input" formControlName="telephone" placeholder="+237600000001" />
+        <input class="input" appCmPhone formControlName="telephone" placeholder="+237 6 51 23 45 67" />
       </app-field>
       <app-field label="Email" [control]="newPartnerForm.controls.email" [showOptional]="true">
         <input type="email" class="input" formControlName="email" />
@@ -93,7 +96,7 @@
       <app-field label="Ville" [control]="newPartnerForm.controls.ville" required>
         <input class="input" formControlName="ville" />
       </app-field>
-      <app-field label="RCCM" [control]="newPartnerForm.controls.rccm" [showOptional]="true">
+      <app-field label="RCCM" [control]="newPartnerForm.controls.rccm" [showOptional]="true" advisory="rccm">
         <input class="input" formControlName="rccm" />
       </app-field>
       <div></div>
@@ -101,7 +104,7 @@
         <input class="input" formControlName="responsable_nom" />
       </app-field>
       <app-field label="Téléphone du responsable" [control]="newPartnerForm.controls.responsable_telephone" required>
-        <input class="input" formControlName="responsable_telephone" placeholder="+237600000001" />
+        <input class="input" appCmPhone formControlName="responsable_telephone" placeholder="+237 6 51 23 45 67" />
       </app-field>
       <app-field label="Email du responsable" [control]="newPartnerForm.controls.responsable_email" [showOptional]="true">
         <input type="email" class="input" formControlName="responsable_email" />
@@ -110,7 +113,7 @@
   </div>
   <div modal-footer class="flex gap-2">
     <button type="button" class="btn btn-secondary" (click)="newPartnerOpen.set(false)">Annuler</button>
-    <button type="button" class="btn btn-primary" [disabled]="creatingPartner() || !selectedOwner()" (click)="createPartner()">Créer le dossier</button>
+    <button type="button" class="btn btn-primary" [disabled]="creatingPartner()" (click)="createPartner()">Créer le dossier</button>
   </div>
 </app-modal>
 

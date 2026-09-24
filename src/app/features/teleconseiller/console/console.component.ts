@@ -6,11 +6,11 @@ import {
   PaymentMethod, QuoteCreated, Reminder, TeleconseillerService, UrgencyLevel,
 } from '../../../core/services/teleconseiller.service';
 import { GeoPoint, ProblemDetails } from '../../../core/models';
-import { e164Phone } from '../../../core/utils/validators';
+import { cmMobilePhone, emailAddress, personName } from '../../../core/utils/validators';
 import { formatDateTime, formatXaf, humanizeSlug } from '../../../core/utils/formatters';
 import {
   BreadcrumbsComponent, FormFieldComponent, LocationPickerComponent, ModalComponent, SearchInputComponent,
-  SegmentedControlComponent, SegmentOption, SelectComponent, SelectOption, TabDef, TabsComponent, ToastService,
+  SegmentedControlComponent, SegmentOption, SelectComponent, SelectOption, TabDef, TabsComponent, ToastService, FormFeedbackService, CmPhoneDirective,
 } from '../../../shared/ui';
 
 type WizardStep = 1 | 2 | 3;
@@ -49,7 +49,7 @@ const DECOMPOSITION_LABELS: Record<string, string> = {
   selector: 'app-console',
   imports: [
     DecimalPipe, ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent,
-    LocationPickerComponent, SearchInputComponent, ModalComponent, SegmentedControlComponent, SelectComponent,
+    LocationPickerComponent, SearchInputComponent, ModalComponent, SegmentedControlComponent, SelectComponent, CmPhoneDirective,
   ],
   templateUrl: './console.component.html',
 })
@@ -57,6 +57,7 @@ export class ConsoleComponent {
   private readonly teleconseiller = inject(TeleconseillerService);
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly villeOptions = VILLE_OPTIONS;
@@ -77,9 +78,10 @@ export class ConsoleComponent {
   protected readonly elapsedSeconds = signal(0);
 
   protected readonly clientForm = this.fb.nonNullable.group({
-    telephone_client: ['', [Validators.required, e164Phone()]],
-    nom_client: ['', [Validators.required]],
-    prenom_client: [''],
+    telephone_client: ['', [Validators.required, cmMobilePhone()]],
+    email_client: ['', [emailAddress(), Validators.maxLength(255)]],
+    nom_client: ['', [Validators.required, personName(), Validators.maxLength(150)]],
+    prenom_client: ['', [personName(), Validators.maxLength(150)]],
   });
 
   protected readonly trajetForm = this.fb.nonNullable.group({
@@ -104,8 +106,8 @@ export class ConsoleComponent {
   protected readonly quoteError = signal('');
 
   protected readonly deliveryForm = this.fb.nonNullable.group({
-    destinataire_nom: ['', [Validators.required]],
-    destinataire_telephone: ['', [Validators.required, e164Phone()]],
+    destinataire_nom: ['', [Validators.required, personName(), Validators.maxLength(150)]],
+    destinataire_telephone: ['', [Validators.required, cmMobilePhone()]],
     mode_paiement: ['MTN_MOMO' as PaymentMethod, [Validators.required]],
     instructions_ramassage: [''],
     instructions_livraison: [''],
@@ -160,7 +162,7 @@ export class ConsoleComponent {
   // --- Wizard actions -----------------------------------------------------
   goToStep2(): void {
     if (this.clientForm.invalid) {
-      this.clientForm.markAllAsTouched();
+      this.feedback.invalid(this.clientForm);
       return;
     }
     this.wizardStep.set(2);
@@ -177,7 +179,7 @@ export class ConsoleComponent {
 
   requestQuote(): void {
     if (this.trajetForm.invalid || !this.pickupPoint() || !this.dropoffPoint()) {
-      this.trajetForm.markAllAsTouched();
+      this.feedback.invalid(this.trajetForm);
       this.quoteError.set(!this.pickupPoint() || !this.dropoffPoint() ? 'Placez les deux points sur la carte.' : '');
       return;
     }
@@ -209,14 +211,14 @@ export class ConsoleComponent {
 
   submitOrder(): void {
     if (this.deliveryForm.invalid || !this.quote()) {
-      this.deliveryForm.markAllAsTouched();
+      this.feedback.invalid(this.deliveryForm);
       return;
     }
     const client = this.clientForm.getRawValue();
     const delivery = this.deliveryForm.getRawValue();
     this.creating.set(true);
     this.teleconseiller.createOrder({
-      telephone_client: client.telephone_client, nom_client: client.nom_client, prenom_client: client.prenom_client || null,
+      telephone_client: client.telephone_client, email_client: client.email_client || null, nom_client: client.nom_client, prenom_client: client.prenom_client || null,
       devis_id: this.quote()!.devis_id,
       destinataire_nom: delivery.destinataire_nom, destinataire_telephone: delivery.destinataire_telephone,
       mode_paiement: delivery.mode_paiement,
@@ -235,7 +237,7 @@ export class ConsoleComponent {
   }
 
   resetWizard(): void {
-    this.clientForm.reset({ telephone_client: '', nom_client: '', prenom_client: '' });
+    this.clientForm.reset({ telephone_client: '', email_client: '', nom_client: '', prenom_client: '' });
     this.trajetForm.reset({ ville: 'Douala', urgence: 'STANDARD', poids_kg: 1, fragile: false, valeur_declaree_xaf: 0, assurance_souscrite: false, remise_souhaitee_xaf: 0 });
     this.deliveryForm.reset({ destinataire_nom: '', destinataire_telephone: '', mode_paiement: 'MTN_MOMO', instructions_ramassage: '', instructions_livraison: '' });
     this.pickupPoint.set(null);
@@ -292,7 +294,7 @@ export class ConsoleComponent {
 
   confirmReassign(): void {
     if (this.reassignForm.invalid || !this.selectedOrder()) {
-      this.reassignForm.markAllAsTouched();
+      this.feedback.invalid(this.reassignForm);
       return;
     }
     this.reassigning.set(true);
@@ -317,7 +319,7 @@ export class ConsoleComponent {
 
   confirmComplaint(): void {
     if (this.complaintForm.invalid || !this.selectedClient() || !this.selectedOrder()) {
-      this.complaintForm.markAllAsTouched();
+      this.feedback.invalid(this.complaintForm);
       return;
     }
     this.openingComplaint.set(true);
@@ -352,7 +354,7 @@ export class ConsoleComponent {
 
   createReminder(): void {
     if (this.reminderForm.invalid) {
-      this.reminderForm.markAllAsTouched();
+      this.feedback.invalid(this.reminderForm);
       return;
     }
     const v = this.reminderForm.getRawValue();

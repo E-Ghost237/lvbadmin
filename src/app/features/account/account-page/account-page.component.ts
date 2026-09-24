@@ -1,10 +1,10 @@
-import { KeyValuePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/auth/auth.service';
 import { AccountService, ConsentType } from '../../../core/services/account.service';
 import { DeviceSessionSummary, ProblemDetails } from '../../../core/models';
-import { formatDateTime, humanizeSlug } from '../../../core/utils/formatters';
+import { NotificationCategory, NotificationPreference } from '../../../core/models/notification-preference.model';
+import { formatDateTime } from '../../../core/utils/formatters';
 import {
   AlertBannerComponent, BreadcrumbsComponent, ConfirmService, FormFieldComponent, SelectComponent, SelectOption,
   TabDef, TabsComponent, ToggleComponent, ToastService,
@@ -14,10 +14,17 @@ const LANGUAGE_OPTIONS: SelectOption[] = [
   { value: '', label: 'Ne pas modifier' }, { value: 'fr', label: 'Français' }, { value: 'en', label: 'English' },
 ];
 
+const CATEGORY_LABEL: Record<NotificationCategory, string> = {
+  TRANSACTIONNEL_CRITIQUE: 'Notifications critiques (codes de livraison, OTP, incidents)',
+  TRANSACTIONNEL: 'Notifications transactionnelles',
+  SUPPORT: 'Support',
+  MARKETING: 'Marketing',
+};
+
 @Component({
   selector: 'app-account-page',
   imports: [
-    KeyValuePipe, ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, ToggleComponent,
+    ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, ToggleComponent,
     AlertBannerComponent, SelectComponent,
   ],
   templateUrl: './account-page.component.html',
@@ -101,34 +108,24 @@ export class AccountPageComponent {
   }
 
   // --- Notifications ------------------------------------------------------
-  protected readonly prefs = signal<Record<string, boolean> | null>(null);
+  protected readonly prefs = signal<NotificationPreference[]>([]);
   protected readonly loadingPrefs = signal(true);
 
   fetchPrefs(): void {
     this.loadingPrefs.set(true);
     this.account.notificationPreferences().subscribe({
-      next: (p) => { this.loadingPrefs.set(false); this.prefs.set(p); },
+      next: (r) => { this.loadingPrefs.set(false); this.prefs.set(r.preferences); },
       error: (err: ProblemDetails) => { this.loadingPrefs.set(false); this.toast.error('Chargement impossible', err.detail); },
     });
   }
 
-  /**
-   * The API contract promises named categories (`Record<string, boolean>`)
-   * but the deployed backend currently returns bare numeric keys ("0", "1"…)
-   * — there is no category-catalog endpoint anywhere to resolve a real name
-   * from, so this can only present them as ordinal placeholders rather than
-   * invent labels. Flagged in the info banner below; needs a backend fix
-   * (named categories, or a small lookup endpoint) against the cahier des
-   * charges, not a frontend one.
-   */
-  categoryLabel(key: string): string {
-    return /^\d+$/.test(key) ? `Catégorie ${Number(key) + 1}` : humanizeSlug(key);
-  }
+  protected readonly categoryLabel = CATEGORY_LABEL;
 
-  togglePref(category: string, enabled: boolean): void {
-    this.account.updateNotificationPreference(category, enabled).subscribe({
+  togglePref(pref: NotificationPreference, enabled: boolean): void {
+    if (!pref.can_disable && !enabled) return;
+    this.account.updateNotificationPreference(pref.category, enabled).subscribe({
       next: () => {
-        this.prefs.update((p) => (p ? { ...p, [category]: enabled } : p));
+        this.prefs.update((list) => list.map((p) => (p.category === pref.category ? { ...p, enabled } : p)));
         this.toast.success('Préférence mise à jour');
       },
       error: (err: ProblemDetails) => this.toast.error('Échec', err.detail),

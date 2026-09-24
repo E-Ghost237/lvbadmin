@@ -41,7 +41,10 @@
       @if (wizardStep() === 1) {
         <form [formGroup]="clientForm" (ngSubmit)="goToStep2()" class="card p-5 max-w-md flex flex-col gap-4">
           <app-field label="Téléphone du client" [control]="clientForm.controls.telephone_client" required>
-            <input class="input" formControlName="telephone_client" placeholder="+237600000001" />
+            <input class="input" appCmPhone formControlName="telephone_client" placeholder="+237 6 51 23 45 67" />
+          </app-field>
+          <app-field label="Email du client" [control]="clientForm.controls.email_client" [showOptional]="true" hint="Obligatoire si le client n’a pas encore de compte (il sera créé avec cet email).">
+            <input type="email" class="input" formControlName="email_client" placeholder="client@exemple.cm" />
           </app-field>
           <div class="grid grid-cols-2 gap-3">
             <app-field label="Nom" [control]="clientForm.controls.nom_client" required><input class="input" formControlName="nom_client" /></app-field>
@@ -93,7 +96,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <form [formGroup]="deliveryForm" (ngSubmit)="submitOrder()" class="card p-5 flex flex-col gap-4">
             <app-field label="Nom du destinataire" [control]="deliveryForm.controls.destinataire_nom" required><input class="input" formControlName="destinataire_nom" /></app-field>
-            <app-field label="Téléphone du destinataire" [control]="deliveryForm.controls.destinataire_telephone" required><input class="input" formControlName="destinataire_telephone" placeholder="+237600000001" /></app-field>
+            <app-field label="Téléphone du destinataire" [control]="deliveryForm.controls.destinataire_telephone" required><input class="input" appCmPhone formControlName="destinataire_telephone" placeholder="+237 6 51 23 45 67" /></app-field>
             <app-field label="Mode de paiement" [control]="deliveryForm.controls.mode_paiement" required>
               <app-select [options]="paymentOptions" [allowClear]="false" formControlName="mode_paiement" />
             </app-field>

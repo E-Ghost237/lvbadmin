@@ -28,7 +28,7 @@
             </p>
           }
           <div class="grid grid-cols-2 gap-3">
-            <app-field label="Immatriculation" [control]="vehicleForm.controls.registration" required><input class="input" formControlName="registration" /></app-field>
+            <app-field label="Immatriculation" [control]="vehicleForm.controls.registration" required advisory="plate"><input class="input" formControlName="registration" /></app-field>
             <app-field label="Type de véhicule" [control]="vehicleForm.controls.vehicle_type" required>
               <app-select [options]="vehicleTypeOptions()" [allowClear]="false" formControlName="vehicle_type" />
             </app-field>
@@ -110,7 +110,10 @@
           </div>
           <div class="grid grid-cols-2 gap-3">
             <app-field label="Date de naissance" [control]="driverForm.controls.birth_date" hint="18 ans minimum"><input type="date" class="input" formControlName="birth_date" /></app-field>
-            <app-field label="Téléphone" [control]="driverForm.controls.phone" required><input class="input" formControlName="phone" placeholder="+237…" /></app-field>
+            <app-field label="Email" [control]="driverForm.controls.email" required hint="Un compte chauffeur est créé avec cet email."><input type="email" class="input" formControlName="email" placeholder="chauffeur@exemple.cm" /></app-field>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <app-field label="Téléphone" [control]="driverForm.controls.phone" required><input class="input" appCmPhone formControlName="phone" placeholder="+237 6 51 23 45 67" /></app-field>
           </div>
           <app-field label="Adresse" [control]="driverForm.controls.address"><input class="input" formControlName="address" /></app-field>
           <app-field label="Photo (URL)" [control]="driverForm.controls.photo_url"><input class="input" formControlName="photo_url" placeholder="https://…" /></app-field>

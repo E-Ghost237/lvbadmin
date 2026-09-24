@@ -1,4 +1,5 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
+import { AuthService } from '../../../core/auth/auth.service';
 import { RouterOutlet } from '@angular/router';
 import { SidebarComponent } from '../sidebar/sidebar.component';
 import { TopbarComponent } from '../topbar/topbar.component';
@@ -37,5 +38,12 @@ import { ToastContainerComponent } from '../../ui/toast/toast-container.componen
   `,
 })
 export class ShellComponent {
+  private readonly auth = inject(AuthService);
   protected readonly mobileMenuOpen = signal(false);
+
+  constructor() {
+    // Shows the user's name instead of the bare email. Best-effort: a failure
+    // (older backend, network blip) never blocks the app.
+    this.auth.loadCurrentUser().subscribe({ error: () => undefined });
+  }
 }

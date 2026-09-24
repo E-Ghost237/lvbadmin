@@ -3,7 +3,8 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
-import { AlertBannerComponent, FormFieldComponent } from '../../../shared/ui';
+import { AlertBannerComponent, FormFieldComponent, FormFeedbackService,
+} from '../../../shared/ui';
 
 /** UC-AUT-05 (web) — lien signé à usage unique, réponse anti-énumération identique dans tous les cas. */
 @Component({
@@ -13,6 +14,7 @@ import { AlertBannerComponent, FormFieldComponent } from '../../../shared/ui';
 })
 export class ForgotPasswordComponent {
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
   private readonly auth = inject(AuthService);
   protected readonly i18n = inject(I18nService);
 
@@ -25,7 +27,7 @@ export class ForgotPasswordComponent {
 
   submit(): void {
     if (this.form.invalid) {
-      this.form.markAllAsTouched();
+      this.feedback.invalid(this.form);
       return;
     }
     this.submitting.set(true);

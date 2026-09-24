@@ -1,18 +1,161 @@
 import { AbstractControl, FormGroup, ValidationErrors, ValidatorFn } from '@angular/forms';
+import { analyzeCmPhone, analyzeEmail, analyzeName } from './cameroon';
 
 /**
  * Custom validators enforcing the CDC's business rules at the form boundary.
  * Every validator here mirrors a specific RG-/SEC-/ENF- requirement so the
  * mapping between UI validation and the contractual rule stays traceable.
+ *
+ * Failing validators return an error object carrying a `reason` (and any
+ * numbers the message needs) so `FormFieldComponent` can tell the user
+ * exactly what to fix instead of a generic "invalid" — see `validation.*`
+ * in the i18n dictionaries.
  */
 
-const E164_CM_PATTERN = /^\+237[26]\d{8}$/;
+const isBlank = (value: unknown): boolean => value === null || value === undefined || String(value).trim() === '';
 
-/** §2.4.3 — phone numbers stored in E.164 (+237XXXXXXXXX). */
+/**
+ * §2.4.3 — Cameroon phone number, mobile (6XXXXXXXX) or landline (2XXXXXXXX),
+ * typed in any usual shape. The value is normalised to `+237XXXXXXXXX` on
+ * blur by `CmPhoneDirective`; the backend's partner/rental modules require
+ * that canonical form.
+ */
 export function e164Phone(): ValidatorFn {
   return (control: AbstractControl): ValidationErrors | null => {
-    if (control.value === null || control.value === '' || control.value === undefined) return null;
-    return E164_CM_PATTERN.test(String(control.value).trim()) ? null : { phone: true };
+    if (isBlank(control.value)) return null;
+    const a = analyzeCmPhone(String(control.value));
+    return a.ok ? null : { phone: { reason: a.issue, delta: a.delta ?? 0 } };
+  };
+}
+
+/**
+ * Identity module (accounts, registration, admin user creation) only
+ * accepts MOBILE numbers (`+2376XXXXXXXX`) — a landline is rejected there.
+ */
+export function cmMobilePhone(): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    if (isBlank(control.value)) return null;
+    const a = analyzeCmPhone(String(control.value));
+    if (!a.ok) return { phone: { reason: a.issue, delta: a.delta ?? 0 } };
+    return a.kind === 'mobile' ? null : { phone: { reason: 'landline', delta: 0 } };
+  };
+}
+
+/** Mobile Money number: a Cameroon mobile number whenever the chosen provider is MTN or Orange. */
+export function momoAccount(provider: () => string): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    if (isBlank(control.value)) return null;
+    const p = provider();
+    if (p !== 'MTN_MOMO' && p !== 'ORANGE_MONEY') return null;
+    const a = analyzeCmPhone(String(control.value));
+    if (!a.ok) return { phone: { reason: a.issue, delta: a.delta ?? 0 } };
+    return a.kind === 'mobile' ? null : { phone: { reason: 'landline', delta: 0 } };
+  };
+}
+
+/** Stricter than Angular's `Validators.email` (which accepts `a@b`): requires a dotted domain and no spaces. */
+export function emailAddress(): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    if (isBlank(control.value)) return null;
+    const a = analyzeEmail(String(control.value));
+    return a.ok ? null : { email: { reason: a.issue } };
+  };
+}
+
+/** Person name: letters (accents allowed), spaces, apostrophes, dots and hyphens; 2+ characters. */
+export function personName(): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    if (isBlank(control.value)) return null;
+    const a = analyzeName(String(control.value));
+    return a.ok ? null : { personName: { reason: a.issue } };
+  };
+}
+
+/** Whole-XAF amount within bounds — there is no decimal subunit (§2.4.3). */
+export function xafAmount(min = 0, max = 1_000_000_000): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    if (isBlank(control.value)) return null;
+    const num = Number(control.value);
+    if (!Number.isFinite(num) || !Number.isInteger(num)) return { integer: true };
+    if (num < min) return { min: { min, actual: num } };
+    if (num > max) return { max: { max, actual: num } };
+    return null;
+  };
+}
+
+/** Whole number within `[min, max]` — quantities, years, minutes, basis points… (money uses `xafAmount`, same rule). */
+export const intRange = xafAmount;
+
+/** Web address. `httpsOnly` mirrors the backend's `url:https` rule (logos, photos, media). */
+export function webUrl(httpsOnly = false): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    if (isBlank(control.value)) return null;
+    try {
+      const url = new URL(String(control.value).trim());
+      if (url.protocol !== 'https:' && (httpsOnly || url.protocol !== 'http:')) return { url: { reason: 'protocol' } };
+      if (!url.hostname.includes('.')) return { url: { reason: 'format' } };
+      return null;
+    } catch {
+      return { url: { reason: 'format' } };
+    }
+  };
+}
+
+/** Comma-separated list (zones, licence categories…) with an item-count and per-item length cap. */
+export function csvList(opts: { maxItems: number; maxItemLength: number }): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    if (isBlank(control.value)) return null;
+    const items = String(control.value).split(',').map((i) => i.trim()).filter(Boolean);
+    if (items.length > opts.maxItems) return { list: { reason: 'items', max: opts.maxItems } };
+    const tooLong = items.find((i) => i.length > opts.maxItemLength);
+    if (tooLong) return { list: { reason: 'itemLength', max: opts.maxItemLength, item: tooLong } };
+    return null;
+  };
+}
+
+/** Group rule: at least one of `fields` must be filled — the error is shown under the LAST field of the list. */
+export function requireOneOf(fields: string[], reason?: string): ValidatorFn {
+  return (group: AbstractControl): ValidationErrors | null => {
+    const controls = fields.map((f) => group.get(f)).filter((c): c is AbstractControl => !!c);
+    if (controls.length !== fields.length) return null;
+    const anyFilled = controls.some((c) => !isBlank(c.value));
+    const target = controls[controls.length - 1];
+    if (anyFilled) {
+      if (target.hasError('oneOf')) {
+        const { oneOf, ...rest } = target.errors ?? {};
+        target.setErrors(Object.keys(rest).length ? rest : null);
+      }
+      return null;
+    }
+    target.setErrors({ ...(target.errors ?? {}), oneOf: reason ? { reason } : true });
+    return null;
+  };
+}
+
+/** The person must be at least `years` old on the given `YYYY-MM-DD` date (driver: 18). */
+export function minAge(years = 18): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    if (isBlank(control.value)) return null;
+    const born = new Date(String(control.value));
+    if (Number.isNaN(born.getTime())) return { date: true };
+    const limit = new Date();
+    limit.setFullYear(limit.getFullYear() - years);
+    return born.getTime() <= limit.getTime() ? null : { minAge: { years } };
+  };
+}
+
+/** Date that must not be in the past (document/licence expiry). Set `strict` to require a date after today. */
+export function notInPast(strict = false): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    if (isBlank(control.value)) return null;
+    const date = new Date(String(control.value));
+    if (Number.isNaN(date.getTime())) return { date: true };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const compare = new Date(date);
+    compare.setHours(0, 0, 0, 0);
+    const ok = strict ? compare.getTime() > today.getTime() : compare.getTime() >= today.getTime();
+    return ok ? null : { pastDate: { reason: strict ? 'strict' : 'past' } };
   };
 }
 

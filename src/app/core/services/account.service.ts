@@ -1,7 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, map } from 'rxjs';
+import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../http/api.config';
+import { NotificationCategory, NotificationPreference } from '../models/notification-preference.model';
 
 export type ConsentType = 'MARKETING' | 'PARTAGE_POSITION';
 
@@ -11,12 +12,12 @@ export class AccountService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = inject(API_BASE_URL);
 
-  notificationPreferences(): Observable<Record<string, boolean>> {
-    return this.http.get<{ preferences: Record<string, boolean> }>(`${this.baseUrl}/notification-preferences`).pipe(map((r) => r.preferences));
+  notificationPreferences(): Observable<{ preferences: NotificationPreference[] }> {
+    return this.http.get<{ preferences: NotificationPreference[] }>(`${this.baseUrl}/notification-preferences`);
   }
 
-  updateNotificationPreference(categorie: string, enabled: boolean): Observable<void> {
-    return this.http.put<void>(`${this.baseUrl}/notification-preferences/${encodeURIComponent(categorie)}`, { enabled });
+  updateNotificationPreference(categorie: NotificationCategory, enabled: boolean): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/notification-preferences/${categorie}`, { enabled });
   }
 
   updateConsent(type: ConsentType, accepte: boolean): Observable<{ message: string }> {

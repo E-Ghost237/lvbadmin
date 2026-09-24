@@ -143,7 +143,7 @@
     <app-field label="Nom" [control]="newInternalForm.controls.nom" required><input class="input" formControlName="nom" /></app-field>
     <app-field label="Prénom" [control]="newInternalForm.controls.prenom"><input class="input" formControlName="prenom" /></app-field>
     <app-field label="Téléphone" [control]="newInternalForm.controls.telephone" required>
-      <input class="input" formControlName="telephone" placeholder="+237600000001" />
+      <input class="input" appCmPhone formControlName="telephone" placeholder="+237 6 51 23 45 67" />
     </app-field>
     <app-field label="Email professionnel" [control]="newInternalForm.controls.email" required>
       <input type="email" class="input" formControlName="email" placeholder="prenom.nom@lvb.cm" />
@@ -158,12 +158,7 @@
     } @else {
       <div></div>
     }
-    <app-field label="Mot de passe" [control]="newInternalForm.controls.password" required hint="Minimum 12 caractères, majuscule, minuscule et chiffre.">
-      <input type="password" class="input" formControlName="password" autocomplete="new-password" />
-    </app-field>
-    <app-field label="Confirmer le mot de passe" [control]="newInternalForm.controls.password_confirmation" required>
-      <input type="password" class="input" formControlName="password_confirmation" autocomplete="new-password" />
-    </app-field>
+    <p class="sm:col-span-2 text-xs text-slate-500">Le mot de passe est généré automatiquement et envoyé par email au nouvel utilisateur.</p>
   </form>
   <div modal-footer class="flex gap-2">
     <button type="button" class="btn btn-secondary" (click)="newInternalOpen.set(false)">Annuler</button>

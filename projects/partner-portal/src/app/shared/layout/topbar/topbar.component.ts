@@ -35,7 +35,7 @@ type Theme = 'light' | 'dark' | 'system';
           @if (profileOpen()) {
             <div class="absolute right-0 mt-2 w-56 card shadow-(--shadow-lg) z-40 overflow-hidden">
               <div class="px-4 py-3" style="border-bottom: 1px solid var(--border)">
-                <p class="text-sm font-medium truncate">{{ userEmail() }}</p>
+                <p class="text-sm font-medium truncate">{{ userLabel() }}</p>
               </div>
               <a routerLink="/account" class="block px-4 py-2.5 text-sm hover:bg-(--surface-2)" (click)="profileOpen.set(false)">{{ i18n.t('nav.account') }}</a>
               <button type="button" class="w-full text-left px-4 py-2.5 text-sm hover:bg-(--surface-2)" style="color: var(--status-critical)" (click)="logout()">
@@ -63,7 +63,12 @@ export class TopbarComponent {
   protected readonly theme = signal<Theme>(this.readTheme());
 
   protected readonly userEmail = computed(() => this.auth.identity()?.email ?? '');
-  protected readonly userInitials = computed(() => (this.userEmail().slice(0, 2) || '?').toUpperCase());
+  protected readonly userLabel = computed(() => {
+    const id = this.auth.identity();
+    const name = [id?.prenom, id?.nom].filter(Boolean).join(' ').trim();
+    return name || id?.email || '';
+  });
+  protected readonly userInitials = computed(() => (this.userLabel().slice(0, 2) || '?').toUpperCase());
   protected readonly themeLabel = computed(() => ({ light: 'Thème clair', dark: 'Thème sombre', system: 'Thème automatique' })[this.theme()]);
 
   constructor(private readonly host: ElementRef<HTMLElement>) {}

@@ -55,7 +55,7 @@ const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
           </div>
           @if (!collapsed()) {
             <div class="min-w-0 flex-1">
-              <p class="text-xs font-medium truncate" style="color: var(--sidebar-text-active)">{{ userEmail() }}</p>
+              <p class="text-xs font-medium truncate" style="color: var(--sidebar-text-active)">{{ userLabel() }}</p>
               <p class="text-[11px] truncate" style="color: var(--sidebar-text)">Mon compte</p>
             </div>
           }
@@ -101,7 +101,12 @@ export class SidebarComponent {
   protected readonly collapsed = signal(this.readCollapsed());
 
   protected readonly userEmail = computed(() => this.auth.identity()?.email ?? '');
-  protected readonly userInitials = computed(() => (this.userEmail().slice(0, 2) || '?').toUpperCase());
+  protected readonly userLabel = computed(() => {
+    const id = this.auth.identity();
+    const name = [id?.prenom, id?.nom].filter(Boolean).join(' ').trim();
+    return name || id?.email || '';
+  });
+  protected readonly userInitials = computed(() => (this.userLabel().slice(0, 2) || '?').toUpperCase());
 
   toggleCollapsed(): void {
     const next = !this.collapsed();

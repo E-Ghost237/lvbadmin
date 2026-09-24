@@ -1,10 +1,11 @@
 import { Component, inject, signal } from '@angular/core';
+import { FormFeedbackService } from '@lvb/ui/form-feedback/form-feedback.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { AuthService } from '@lvb/auth/auth.service';
 import { I18nService } from '@lvb/i18n/i18n.service';
 import { ProblemDetails } from '@lvb/models/common.model';
-import { digitCode } from '@lvb/utils/validators';
+import { digitCode, emailAddress } from '@lvb/utils/validators';
 import { AlertBannerComponent } from '@lvb/ui/alert-banner/alert-banner.component';
 import { FormFieldComponent } from '@lvb/ui/field/form-field.component';
 
@@ -17,6 +18,7 @@ type Step = 'CREDENTIALS' | 'MFA';
 })
 export class LoginComponent {
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
@@ -28,7 +30,7 @@ export class LoginComponent {
   protected readonly currentYear = new Date().getFullYear();
 
   protected readonly credentialsForm = this.fb.nonNullable.group({
-    email: ['', [Validators.required, Validators.email]],
+    email: ['', [Validators.required, emailAddress()]],
     password: ['', [Validators.required]],
   });
 
@@ -38,16 +40,19 @@ export class LoginComponent {
 
   submitCredentials(): void {
     if (this.credentialsForm.invalid) {
-      this.credentialsForm.markAllAsTouched();
+      this.feedback.invalid(this.credentialsForm);
       return;
     }
     this.errorMessage.set('');
     this.submitting.set(true);
     const { email, password } = this.credentialsForm.getRawValue();
     this.auth.login(email, password).subscribe({
-      next: () => {
+      next: ({ outcome }) => {
         this.submitting.set(false);
-        this.step.set('MFA');
+        // Internal accounts must enter the emailed second-factor code; mobile-type
+        // accounts (clients, partner members…) get their session straight away.
+        if (outcome === 'MFA') this.step.set('MFA');
+        else this.redirectAfterLogin();
       },
       error: (err: ProblemDetails) => {
         this.submitting.set(false);
@@ -58,7 +63,7 @@ export class LoginComponent {
 
   submitMfa(): void {
     if (this.mfaForm.invalid) {
-      this.mfaForm.markAllAsTouched();
+      this.feedback.invalid(this.mfaForm);
       return;
     }
     this.errorMessage.set('');

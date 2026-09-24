@@ -10,8 +10,6 @@ export interface CreateInternalAccountRequest {
   nom: string;
   prenom?: string | null;
   langue?: 'fr' | 'en';
-  password: string;
-  password_confirmation: string;
   roles: string[];
 }
 

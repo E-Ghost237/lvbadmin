@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, map, shareReplay, tap, throwError } from 'rxjs';
 import { API_BASE_URL } from '../http/api.config';
-import { AuthIdentity, DeviceSessionSummary } from '../models';
+import { AuthIdentity, CurrentUser, DeviceSessionSummary } from '../models';
 
 const SESSION_KEY = 'lvb.session';
 
@@ -15,6 +15,9 @@ interface StoredSession {
 
 export type LoginStep = 'CREDENTIALS' | 'MFA';
 
+/** Outcome of `POST /auth/login`: `MFA` needs the emailed code next, `DONE` means the session is already open. */
+export type LoginOutcome = 'MFA' | 'DONE';
+
 /** A short "Browser on OS" label — well under any reasonable device-column limit. */
 function shortBrowserLabel(): string | null {
   if (typeof navigator === 'undefined') return null;
@@ -24,7 +27,7 @@ function shortBrowserLabel(): string | null {
   return os ? `${browser} sur ${os}` : browser;
 }
 
-interface LoginResponse {
+interface MfaChallengeResponse {
   mfa_required: true;
   challenge_token: string;
 }
@@ -34,6 +37,16 @@ interface AuthenticatedSessionResponse {
   refresh_token: string;
   token_type: 'Bearer';
   expires_in: number;
+  /** Mobile profile computed server-side (CHAUFFEUR / LIVREUR / CLIENT) — null for accounts with none, e.g. staff or partner members. */
+  role?: string | null;
+  roles?: string[];
+}
+
+/** `POST /auth/login` answers with EITHER a full session (mobile-type accounts) OR an MFA challenge (internal accounts). */
+type LoginResponse = MfaChallengeResponse | AuthenticatedSessionResponse;
+
+function isMfaChallenge(res: LoginResponse): res is MfaChallengeResponse {
+  return (res as MfaChallengeResponse).mfa_required === true;
 }
 
 /**
@@ -69,10 +82,30 @@ export class AuthService {
     return this.readStoredSession()?.accessToken ?? null;
   }
 
-  login(email: string, password: string): Observable<{ step: LoginStep }> {
-    return this.http.post<LoginResponse>(`${this.baseUrl}/auth/login`, { email, password }).pipe(
-      tap((res) => this._challengeToken.set(res.challenge_token)),
-      map(() => ({ step: 'MFA' as const })),
+  login(email: string, password: string): Observable<{ outcome: LoginOutcome }> {
+    const normalisedEmail = email.trim().toLowerCase();
+    return this.http.post<LoginResponse>(`${this.baseUrl}/auth/login`, { email: normalisedEmail, password }).pipe(
+      map((res): { outcome: LoginOutcome } => {
+        if (isMfaChallenge(res)) {
+          this._challengeToken.set(res.challenge_token);
+          return { outcome: 'MFA' };
+        }
+        this.persistSession(res, normalisedEmail);
+        return { outcome: 'DONE' };
+      }),
+    );
+  }
+
+  /**
+   * `GET /v1/me` — the account's own name, language and status. Best-effort:
+   * a failure never blocks the session (the app works with the email alone).
+   */
+  loadCurrentUser(): Observable<CurrentUser> {
+    return this.http.get<CurrentUser>(`${this.baseUrl}/me`).pipe(
+      tap((me) => {
+        const current = this._identity();
+        if (current) this._identity.set({ ...current, nom: me.nom, prenom: me.prenom, langue: me.langue, role: me.role, roles: me.roles });
+      }),
     );
   }
 
@@ -80,7 +113,7 @@ export class AuthService {
     const challengeToken = this._challengeToken();
     const body = {
       challenge_token: challengeToken,
-      code,
+      code: code.trim(),
       appareil_nom: 'Navigateur web',
       // The API schema allows up to 150 chars, but a full user-agent string
       // overflows the backend's internal analytics device column (80 chars)
@@ -102,7 +135,8 @@ export class AuthService {
     };
     if (typeof localStorage !== 'undefined') localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     this._challengeToken.set(null);
-    this._identity.set({ email });
+    // Keep the name/role already loaded from /me across token rotations.
+    this._identity.set({ ...(this._identity() ?? {}), email });
   }
 
   logout(): void {

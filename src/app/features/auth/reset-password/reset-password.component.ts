@@ -5,7 +5,8 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import { ProblemDetails } from '../../../core/models';
 import { matchControls, passwordPolicy } from '../../../core/utils/validators';
-import { AlertBannerComponent, FormFieldComponent } from '../../../shared/ui';
+import { AlertBannerComponent, FormFieldComponent, FormFeedbackService,
+} from '../../../shared/ui';
 
 /** UC-AUT-05 — second half: completing the reset from the signed link's `?token=`. */
 @Component({
@@ -15,6 +16,7 @@ import { AlertBannerComponent, FormFieldComponent } from '../../../shared/ui';
 })
 export class ResetPasswordComponent {
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   protected readonly i18n = inject(I18nService);
@@ -31,7 +33,7 @@ export class ResetPasswordComponent {
 
   submit(): void {
     if (!this.token || this.form.invalid) {
-      this.form.markAllAsTouched();
+      this.feedback.invalid(this.form);
       return;
     }
     this.errorMessage.set('');

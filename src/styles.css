@@ -244,6 +244,13 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--status-critical);
   }
 
+  /* Non-blocking advisory (RCCM / NIU / plate / RIB…): informs, never prevents submission. */
+  .field-warning {
+    @apply text-xs mt-1.5 flex items-start gap-1;
+    color: var(--status-warning);
+  }
+  .field-warning svg { margin-top: 2px; flex-shrink: 0; }
+
   .input, .select, .textarea {
     @apply w-full rounded-[var(--radius-sm)] px-3 py-2 text-sm transition-colors;
     background: var(--surface-2);

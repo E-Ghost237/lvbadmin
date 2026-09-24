@@ -30,13 +30,23 @@
     <div class="xl:col-span-3 card p-4 flex flex-col">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-sm font-semibold">Carte temps réel</h2>
-        <p class="text-xs" style="color: var(--text-muted)">{{ d.drivers.length }} livreur(s) — limite {{ d.limits.drivers }}</p>
+        <p class="text-xs" style="color: var(--text-muted)">
+          {{ d.drivers.length }} livreur(s) · {{ d.orders.length }} commande(s)
+          @if (lastUpdate(); as t) { · mis à jour {{ t.toLocaleTimeString('fr-FR') }} }
+        </p>
       </div>
-      <app-map-panel [bbox]="bbox()" [markers]="driverMarkers()" class="block h-85 sm:h-105 xl:h-120 2xl:h-155">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 text-xs" style="color: var(--text-secondary)">
+        <label class="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" [checked]="live()" (change)="live.set($any($event.target).checked)" /> Temps réel (20 s)</label>
+        <label class="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" [checked]="showOrders()" (change)="showOrders.set($any($event.target).checked)" /> Commandes</label>
+        <label class="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" [checked]="showTrails()" (change)="showTrails.set($any($event.target).checked)" /> Trajectoires</label>
+      </div>
+      <app-map-panel [bbox]="bbox()" [markers]="mapMarkers()" [lines]="mapLines()" class="block h-85 sm:h-105 xl:h-120 2xl:h-155">
         <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--status-good)"></span> Disponible</div>
         <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--brand)"></span> En mission</div>
         <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--status-warning)"></span> En pause</div>
         <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--status-neutral)"></span> Hors ligne</div>
+        <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: #2E9E44"></span> Ramassage</div>
+        <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: #D03B3B"></span> Livraison</div>
       </app-map-panel>
     </div>
 

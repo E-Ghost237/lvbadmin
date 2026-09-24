@@ -19,7 +19,14 @@ export interface Address {
   zone_id?: string;
 }
 
-/** RFC 9457 problem+json, enriched with the LVB application code (§9.1.1). */
+/**
+ * RFC 9457 problem+json, enriched with the LVB application code (§9.1.1).
+ *
+ * As produced by `errorNormalizationInterceptor`, `detail` is ALWAYS a
+ * ready-to-show message in the user's language (never the raw backend
+ * string), so every existing `toast.error(title, err.detail)` displays a
+ * clear reason. The original backend text is kept in `detail_raw`.
+ */
 export interface ProblemDetails {
   type: string;
   title: string;
@@ -29,6 +36,13 @@ export interface ProblemDetails {
   instance?: string;
   request_id: string;
   errors?: { field: string; message: string; code: string }[];
+  /** Original backend `detail` (French, throw-site text) before user-friendly rewriting. */
+  detail_raw?: string;
+  /** Fields the server refused, with labels/reasons in the user's language. */
+  field_errors?: { field: string; label: string; reason: string }[];
+  kind?: 'network' | 'auth' | 'forbidden' | 'notFound' | 'validation' | 'conflict' | 'rateLimit' | 'server' | 'client';
+  /** Seconds to wait before retrying, when the server sent `Retry-After`. */
+  retry_after?: number;
 }
 
 /** Cursor pagination — the shape every admin list endpoint actually uses (no total count, no page numbers). */

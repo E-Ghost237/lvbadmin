@@ -7,6 +7,17 @@ export interface MapMarker {
   point: GeoPoint;
   tone: 'good' | 'warning' | 'critical' | 'neutral' | 'info';
   label: string;
+  /** Pickup/drop-off pins are drawn smaller than drivers. Defaults to 'driver'. */
+  kind?: 'driver' | 'pickup' | 'dropoff';
+}
+
+export interface MapLine {
+  id: string;
+  points: GeoPoint[];
+  color: string;
+  dashed?: boolean;
+  weight?: number;
+  opacity?: number;
 }
 
 export interface MapZoneShape {
@@ -62,6 +73,7 @@ export class MapPanelComponent {
   readonly bbox = input.required<{ latMin: number; latMax: number; lngMin: number; lngMax: number }>();
   readonly markers = input<MapMarker[]>([]);
   readonly zones = input<MapZoneShape[]>([]);
+  readonly lines = input<MapLine[]>([]);
 
   readonly markerClick = output<string>();
 
@@ -80,6 +92,7 @@ export class MapPanelComponent {
   private activeBaseLayer: L.TileLayer | undefined;
   private hybridOverlay: L.TileLayer | undefined;
   private markerLayer: L.LayerGroup | undefined;
+  private lineLayer: L.LayerGroup | undefined;
   private zoneLayer: L.LayerGroup | undefined;
   private resizeObserver: ResizeObserver | undefined;
 
@@ -118,7 +131,8 @@ export class MapPanelComponent {
     effect(() => {
       const markers = this.markers();
       const zones = this.zones();
-      if (this.map) this.renderOverlays(markers, zones);
+      const lines = this.lines();
+      if (this.map) this.renderOverlays(markers, zones, lines);
     });
   }
 
@@ -130,10 +144,11 @@ export class MapPanelComponent {
     this.map = map;
     map.fitBounds(this.boundsFromBbox(), { padding: [12, 12] });
 
-    this.markerLayer = L.layerGroup().addTo(map);
     this.zoneLayer = L.layerGroup().addTo(map);
+    this.lineLayer = L.layerGroup().addTo(map);
+    this.markerLayer = L.layerGroup().addTo(map);
     this.applyBaseLayer(this.baseLayer());
-    this.renderOverlays(this.markers(), this.zones());
+    this.renderOverlays(this.markers(), this.zones(), this.lines());
   }
 
   private applyBaseLayer(layer: BaseLayer): void {
@@ -165,9 +180,18 @@ export class MapPanelComponent {
     if (this.hybridOverlay) this.hybridOverlay.addTo(map);
   }
 
-  private renderOverlays(markers: MapMarker[], zones: MapZoneShape[]): void {
+  private renderOverlays(markers: MapMarker[], zones: MapZoneShape[], lines: MapLine[]): void {
     this.markerLayer?.clearLayers();
     this.zoneLayer?.clearLayers();
+    this.lineLayer?.clearLayers();
+
+    for (const line of lines) {
+      if (line.points.length < 2) continue;
+      L.polyline(line.points.map((p) => [p.lat, p.lng] as [number, number]), {
+        color: line.color, weight: line.weight ?? 3, opacity: line.opacity ?? 0.8,
+        dashArray: line.dashed ? '6 6' : undefined, interactive: false,
+      }).addTo(this.lineLayer!);
+    }
 
     for (const zone of zones) {
       L.circle([zone.center.lat, zone.center.lng], {
@@ -179,7 +203,7 @@ export class MapPanelComponent {
     for (const marker of markers) {
       const color = TONE_COLOR[marker.tone];
       L.circleMarker([marker.point.lat, marker.point.lng], {
-        radius: 7, color: 'white', weight: 2, fillColor: color, fillOpacity: 1,
+        radius: marker.kind && marker.kind !== 'driver' ? 5 : 8, color: 'white', weight: 2, fillColor: color, fillOpacity: 1,
       })
         .bindTooltip(marker.label)
         .on('click', () => this.markerClick.emit(marker.id))

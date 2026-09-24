@@ -1,9 +1,13 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { tap } from 'rxjs';
+import { FormFeedbackService } from '@lvb/ui/form-feedback/form-feedback.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { WalletService } from '../../../core/services/wallet.service';
 import { CreatePayoutAccountRequest, PartnerLedgerMovement, PartnerPayoutAccount } from '../../../core/models';
 import { PartnerWalletSummary, PartnerWithdrawal } from '@lvb/models/wallet.model';
 import { ProblemDetails } from '@lvb/models/common.model';
+import { momoAccount, personName } from '@lvb/utils/validators';
 import { formatDateTime, formatXaf } from '@lvb/utils/formatters';
 import { I18nService } from '@lvb/i18n/i18n.service';
 import { BreadcrumbsComponent } from '@lvb/ui/breadcrumbs/breadcrumbs.component';
@@ -42,6 +46,7 @@ export class WalletPageComponent {
   private readonly wallet = inject(WalletService);
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
   protected readonly i18n = inject(I18nService);
 
   protected readonly tabs: TabDef[] = [
@@ -131,11 +136,22 @@ export class WalletPageComponent {
 
   protected readonly accountFormOpen = signal(false);
   protected readonly savingAccount = signal(false);
+  private currentProvider: string = 'MTN_MOMO';
   protected readonly accountForm = this.fb.nonNullable.group({
     provider: ['MTN_MOMO' as CreatePayoutAccountRequest['provider'], [Validators.required]],
-    account_number: ['', [Validators.required, Validators.minLength(4)]],
-    holder_name: ['', [Validators.required]],
+    account_number: ['', [Validators.required, Validators.minLength(4), Validators.maxLength(34), momoAccount(() => this.currentProvider)]],
+    holder_name: ['', [Validators.required, personName(), Validators.maxLength(150)]],
   });
+  private readonly accountProvider = toSignal(
+    this.accountForm.controls.provider.valueChanges.pipe(
+      tap((p) => { this.currentProvider = p; this.accountForm.controls.account_number.updateValueAndValidity(); }),
+    ),
+    { initialValue: 'MTN_MOMO' as CreatePayoutAccountRequest['provider'] },
+  );
+  protected readonly isBank = computed(() => this.accountProvider() === 'BANK');
+  protected readonly accountAdvisory = computed(() => (this.isBank() ? 'rib' : 'operator') as 'rib' | 'operator');
+  protected readonly accountAdvisoryContext = computed(() => ({ operator: this.accountProvider() }));
+  protected readonly withdrawalAmountError = signal<string | null>(null);
 
   providerLabel(provider: string): string {
     return PROVIDER_OPTIONS.find((o) => o.value === provider)?.label ?? provider;
@@ -151,12 +167,13 @@ export class WalletPageComponent {
 
   openNewAccountForm(): void {
     this.accountForm.reset({ provider: 'MTN_MOMO', account_number: '', holder_name: '' });
+    
     this.accountFormOpen.set(true);
   }
 
   submitAccountForm(): void {
     if (this.accountForm.invalid) {
-      this.accountForm.markAllAsTouched();
+      this.feedback.invalid(this.accountForm);
       return;
     }
     const v = this.accountForm.getRawValue();
@@ -168,7 +185,7 @@ export class WalletPageComponent {
         this.toast.success('Compte ajouté — en attente de vérification par LVB');
         this.fetchPayoutAccounts();
       },
-      error: (err: ProblemDetails) => { this.savingAccount.set(false); this.toast.error('Échec', err.detail); },
+      error: (err: ProblemDetails) => { this.savingAccount.set(false); this.feedback.serverError(this.accountForm, 'Échec', err); },
     });
   }
 
@@ -205,6 +222,7 @@ export class WalletPageComponent {
   openWithdrawalForm(): void {
     this.withdrawalPayoutAccount.set('');
     this.withdrawalAmount.set(null);
+    this.withdrawalAmountError.set(null);
     this.withdrawalFormOpen.set(true);
   }
 
@@ -215,12 +233,31 @@ export class WalletPageComponent {
   onWithdrawalAmountInput(value: string): void {
     const n = Number.parseInt(value, 10);
     this.withdrawalAmount.set(Number.isFinite(n) ? n : null);
+    this.withdrawalAmountError.set(null);
+  }
+
+  private validateWithdrawalAmount(n: number | null): string | null {
+    if (n === null) return 'Saisissez le montant du retrait (chiffres uniquement).';
+    if (n < 1000) return 'Le montant minimum d’un retrait est de 1 000 XAF.';
+    if (n > 1_000_000) return 'Le montant maximum par retrait est de 1 000 000 XAF.';
+    const available = this.summary()?.solde_disponible;
+    if (typeof available === 'number' && n > available) return `Solde insuffisant : ${this.xaf(available)} disponibles.`;
+    return null;
   }
 
   submitWithdrawal(): void {
     const payoutAccountUuid = this.withdrawalPayoutAccount();
     const amount = this.withdrawalAmount();
-    if (!payoutAccountUuid || !amount) return;
+    if (!payoutAccountUuid) {
+      this.feedback.blocked('Choisissez le compte de paiement qui recevra le retrait.', 'Retrait incomplet');
+      return;
+    }
+    const amountError = this.validateWithdrawalAmount(amount);
+    this.withdrawalAmountError.set(amountError);
+    if (amountError || amount === null) {
+      this.feedback.blocked(amountError ?? 'Saisissez le montant du retrait.', 'Montant invalide');
+      return;
+    }
     this.submittingWithdrawal.set(true);
     this.wallet.requestWithdrawal({ payout_account_uuid: payoutAccountUuid, amount_xaf: amount }).subscribe({
       next: () => {
@@ -230,7 +267,7 @@ export class WalletPageComponent {
         this.fetchWithdrawals();
         this.fetchSummary();
       },
-      error: (err: ProblemDetails) => { this.submittingWithdrawal.set(false); this.toast.error('Échec', err.detail); },
+      error: (err: ProblemDetails) => { this.submittingWithdrawal.set(false); this.feedback.serverError(null, 'Échec', err); },
     });
   }
 }

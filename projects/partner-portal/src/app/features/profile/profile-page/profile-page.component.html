@@ -19,7 +19,7 @@
           <p class="text-sm font-medium mb-1">Coordonnées</p>
           <app-field label="Nom commercial" [control]="profileForm.controls.nom_commercial" required><input class="input" formControlName="nom_commercial" /></app-field>
           <div class="grid grid-cols-2 gap-3">
-            <app-field label="Téléphone" [control]="profileForm.controls.telephone" required><input class="input" formControlName="telephone" /></app-field>
+            <app-field label="Téléphone" [control]="profileForm.controls.telephone" required><input class="input" appCmPhone formControlName="telephone" /></app-field>
             <app-field label="Email" [control]="profileForm.controls.email"><input type="email" class="input" formControlName="email" /></app-field>
           </div>
           <app-field label="Adresse" [control]="profileForm.controls.adresse_physique" required><input class="input" formControlName="adresse_physique" /></app-field>
@@ -31,7 +31,7 @@
           <app-field label="Site web" [control]="profileForm.controls.site_web"><input class="input" formControlName="site_web" placeholder="https://…" /></app-field>
           <app-field label="URL du logo" [control]="profileForm.controls.logo_url"><input class="input" formControlName="logo_url" placeholder="https://…" /></app-field>
           <div class="grid grid-cols-2 gap-3">
-            <app-field label="Téléphone du responsable" [control]="profileForm.controls.responsable_telephone" required><input class="input" formControlName="responsable_telephone" /></app-field>
+            <app-field label="Téléphone du responsable" [control]="profileForm.controls.responsable_telephone" required><input class="input" appCmPhone formControlName="responsable_telephone" /></app-field>
             <app-field label="Email du responsable" [control]="profileForm.controls.responsable_email"><input type="email" class="input" formControlName="responsable_email" /></app-field>
           </div>
           <button type="submit" class="btn btn-primary self-start" [disabled]="savingProfile()">Enregistrer</button>
@@ -56,8 +56,8 @@
             } @else {
               <form [formGroup]="changeForm" (ngSubmit)="submitChangeRequest()" class="flex flex-col gap-3">
                 <app-field label="Raison sociale" [control]="changeForm.controls.raison_sociale"><input class="input" formControlName="raison_sociale" /></app-field>
-                <app-field label="N° contribuable" [control]="changeForm.controls.numero_contribuable"><input class="input" formControlName="numero_contribuable" /></app-field>
-                <app-field label="RCCM" [control]="changeForm.controls.rccm"><input class="input" formControlName="rccm" /></app-field>
+                <app-field label="N° contribuable" [control]="changeForm.controls.numero_contribuable" advisory="niu"><input class="input" formControlName="numero_contribuable" /></app-field>
+                <app-field label="RCCM" [control]="changeForm.controls.rccm" advisory="rccm"><input class="input" formControlName="rccm" /></app-field>
                 <app-field label="Nom du responsable" [control]="changeForm.controls.responsable_nom"><input class="input" formControlName="responsable_nom" /></app-field>
                 <div class="flex gap-2">
                   <button type="button" class="btn btn-ghost btn-sm" [disabled]="submittingChange()" (click)="showChangeForm.set(false)">Annuler</button>
@@ -131,7 +131,7 @@
         <div class="flex items-center gap-2">
           <input class="input flex-1" placeholder="Email ou téléphone" [value]="inviteContact()" (input)="onInviteContactInput($any($event.target).value)" />
           <app-select class="w-44 shrink-0" [options]="roleOptions" [allowClear]="false" [value]="inviteRole()" (valueChange)="onInviteRoleChange($event)" />
-          <button type="button" class="btn btn-primary btn-sm shrink-0" [disabled]="inviting() || !inviteContact().trim()" (click)="submitInvite()">Inviter</button>
+          <button type="button" class="btn btn-primary btn-sm shrink-0" [disabled]="inviting()" (click)="submitInvite()">Inviter</button>
         </div>
       </div>
 

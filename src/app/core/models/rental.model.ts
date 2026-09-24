@@ -51,6 +51,8 @@ export interface Driver {
   first_name: string;
   last_name: string;
   birth_date: string | null;
+  email?: string | null;
+  account_linked?: boolean;
   phone: string;
   address: string | null;
   photo_url: string | null;

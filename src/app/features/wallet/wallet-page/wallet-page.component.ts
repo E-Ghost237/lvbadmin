@@ -181,13 +181,14 @@ export class WalletPageComponent {
   }
 
   async verifyPayoutAccount(row: PartnerWithdrawal): Promise<void> {
-    const ok = await this.confirm.ask({
+    const reference = await this.confirm.askReason({
       title: 'Vérifier ce compte de paiement ?',
-      message: `Compte ${row.payout_account_uuid} — utilisé par le retrait en cours.`, confirmLabel: 'Vérifier',
+      message: `Compte ${row.payout_account_uuid} — utilisé par le retrait en cours.`,
+      label: 'Référence de vérification (ex. appel opérateur, capture du titulaire)', minLength: 3, confirmLabel: 'Vérifier',
     });
-    if (!ok) return;
+    if (!reference) return;
     this.verifyingAccount.set(row.uuid);
-    this.wallet.verifyPayoutAccount(row.payout_account_uuid).subscribe({
+    this.wallet.verifyPayoutAccount(row.payout_account_uuid, reference.trim().slice(0, 200)).subscribe({
       next: () => { this.verifyingAccount.set(null); this.toast.success('Compte vérifié'); },
       error: (err: ProblemDetails) => { this.verifyingAccount.set(null); this.toast.error('Échec', err.detail); },
     });

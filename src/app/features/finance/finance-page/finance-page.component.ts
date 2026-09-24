@@ -11,7 +11,7 @@ import { I18nService } from '../../../core/i18n/i18n.service';
 import {
   BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, FormFieldComponent,
   ModalComponent, SelectComponent, SelectOption, StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent,
-  ToastService,
+  ToastService, FormFeedbackService,
 } from '../../../shared/ui';
 
 const WITHDRAWAL_STATUSES: WithdrawalStatus[] = ['EN_ATTENTE', 'EN_COURS', 'PAYE', 'REJETE', 'ECHEC'];
@@ -41,6 +41,7 @@ export class FinancePageComponent {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
   protected readonly i18n = inject(I18nService);
 
   protected readonly tabs: TabDef[] = [{ id: 'withdrawals', label: 'Retraits' }, { id: 'reconciliation', label: 'Rapprochement' }];
@@ -234,7 +235,7 @@ export class FinancePageComponent {
     const period = this.selectedPeriod();
     const item = this.resolvingItem();
     if (!period || !item || this.resolveForm.invalid) {
-      this.resolveForm.markAllAsTouched();
+      this.feedback.invalid(this.resolveForm);
       return;
     }
     const v = this.resolveForm.getRawValue();

@@ -19,7 +19,7 @@ const CHANNEL_LABELS: Record<OrderChannel, string> = {
 };
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
   MTN_MOMO: 'MTN Mobile Money', ORANGE_MONEY: 'Orange Money', CARTE: 'Carte', COD: 'Paiement à la livraison',
-  COMPTE_DIFFERE: 'Compte différé', AVOIR: 'Avoir',
+  PORTEFEUILLE_PARTENAIRE: 'Portefeuille partenaire',
 };
 
 const UNASSIGNED_STATUSES: OrderStatus[] = ['EN_ATTENTE_AFFECTATION', 'EN_ATTENTE_MANUELLE'];

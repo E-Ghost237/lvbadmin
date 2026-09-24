@@ -68,7 +68,7 @@ export type CancellationReason =
 
 export type UrgencyLevel = 'STANDARD' | 'EXPRESS' | 'PLANIFIE';
 
-export type PaymentMethod = 'MTN_MOMO' | 'ORANGE_MONEY' | 'CARTE' | 'COD' | 'COMPTE_DIFFERE' | 'AVOIR';
+export type PaymentMethod = 'MTN_MOMO' | 'ORANGE_MONEY' | 'CARTE' | 'COD' | 'PORTEFEUILLE_PARTENAIRE';
 
 export type ParcelType = 'DOCUMENT' | 'PETIT' | 'STANDARD' | 'VOLUMINEUX' | 'FRAGILE' | 'ALIMENTAIRE';
 

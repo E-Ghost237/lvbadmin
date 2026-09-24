@@ -28,7 +28,7 @@ export class SearchInputComponent {
   private readonly input$ = new Subject<string>();
 
   constructor() {
-    const sub = this.input$.pipe(debounceTime(this.debounceMs()), distinctUntilChanged()).subscribe((v) => this.searchChange.emit(v));
+    const sub = this.input$.pipe(debounceTime(this.debounceMs()), distinctUntilChanged()).subscribe((v) => this.searchChange.emit(v.trim().length < 2 ? '' : v.trim()));
     this.destroyRef.onDestroy(() => sub.unsubscribe());
   }
 

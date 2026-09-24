@@ -5,7 +5,7 @@ import { ProblemDetails } from '../../../core/models';
 import { formatDateTime } from '../../../core/utils/formatters';
 import {
   AlertBannerComponent, BreadcrumbsComponent, ForbiddenStateComponent, FormFieldComponent, SelectComponent,
-  SelectOption, ToastService,
+  SelectOption, ToastService, FormFeedbackService,
 } from '../../../shared/ui';
 
 const PARAMETRE_TYPE_OPTIONS: SelectOption[] = [
@@ -25,6 +25,7 @@ export class SettingsPageComponent {
   private readonly settings = inject(SettingsService);
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
   protected readonly parametreTypeOptions = PARAMETRE_TYPE_OPTIONS;
 
   protected readonly key = signal('');
@@ -98,7 +99,7 @@ export class SettingsPageComponent {
 
   save(): void {
     if (this.editForm.invalid) {
-      this.editForm.markAllAsTouched();
+      this.feedback.invalid(this.editForm);
       return;
     }
     const v = this.editForm.getRawValue();

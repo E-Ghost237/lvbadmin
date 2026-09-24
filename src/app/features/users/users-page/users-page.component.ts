@@ -5,12 +5,12 @@ import { UsersService } from '../../../core/services/users.service';
 import { RolesService } from '../../../core/services/roles.service';
 import { AdminUserSummary, CursorPage, ProblemDetails, RbacCatalog, RbacRole, UserProfile } from '../../../core/models';
 import { formatDate, humanizeSlug } from '../../../core/utils/formatters';
-import { e164Phone, matchControls, passwordPolicy } from '../../../core/utils/validators';
+import { cmMobilePhone, emailAddress, personName } from '../../../core/utils/validators';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
   BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, FormFieldComponent,
   ModalComponent, SearchInputComponent, SelectComponent, SelectOption, StatusBadgeComponent, TabDef,
-  TableCellDefDirective, TabsComponent, ToastService,
+  TableCellDefDirective, TabsComponent, ToastService, FormFeedbackService, CmPhoneDirective,
 } from '../../../shared/ui';
 
 const LANGUAGE_OPTIONS: SelectOption[] = [{ value: 'fr', label: 'Français' }, { value: 'en', label: 'English' }];
@@ -20,7 +20,7 @@ const LANGUAGE_OPTIONS: SelectOption[] = [{ value: 'fr', label: 'Français' }, {
   imports: [
     SlicePipe, ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, DataTableComponent, SearchInputComponent,
     StatusBadgeComponent, ForbiddenStateComponent, TableCellDefDirective, ModalComponent, FormFieldComponent,
-    SelectComponent,
+    SelectComponent, CmPhoneDirective,
   ],
   templateUrl: './users-page.component.html',
 })
@@ -30,6 +30,7 @@ export class UsersPageComponent {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
   protected readonly i18n = inject(I18nService);
 
   protected readonly tabs: TabDef[] = [
@@ -66,15 +67,13 @@ export class UsersPageComponent {
   protected readonly newInternalOpen = signal(false);
   protected readonly creatingInternal = signal(false);
   protected readonly newInternalForm = this.fb.nonNullable.group({
-    nom: ['', [Validators.required, Validators.maxLength(100)]],
-    prenom: [''],
-    telephone: ['', [Validators.required, e164Phone()]],
-    email: ['', [Validators.required, Validators.email, Validators.maxLength(255)]],
+    nom: ['', [Validators.required, personName(), Validators.maxLength(100)]],
+    prenom: ['', [personName(), Validators.maxLength(100)]],
+    telephone: ['', [Validators.required, cmMobilePhone()]],
+    email: ['', [Validators.required, emailAddress(), Validators.maxLength(255)]],
     langue: ['fr' as 'fr' | 'en', [Validators.required]],
     role: ['', [Validators.required]],
-    password: ['', [Validators.required, passwordPolicy()]],
-    password_confirmation: ['', [Validators.required]],
-  }, { validators: [matchControls('password', 'password_confirmation')] });
+  });
 
   // --- Role assignment --------------------------------------------------
   // Same one-role-per-account rule as account creation — this replaces a
@@ -175,31 +174,31 @@ export class UsersPageComponent {
   }
 
   openNewInternal(): void {
-    this.newInternalForm.reset({ nom: '', prenom: '', telephone: '', email: '', langue: 'fr', role: '', password: '', password_confirmation: '' });
+    this.newInternalForm.reset({ nom: '', prenom: '', telephone: '', email: '', langue: 'fr', role: '' });
     this.newInternalOpen.set(true);
     if (!this.catalog()) this.fetchCatalog();
   }
 
   createInternalAccount(): void {
     if (this.newInternalForm.invalid) {
-      this.newInternalForm.markAllAsTouched();
+      this.feedback.invalid(this.newInternalForm);
       return;
     }
     const v = this.newInternalForm.getRawValue();
     this.creatingInternal.set(true);
     this.users.createInternal({
       telephone: v.telephone, email: v.email, nom: v.nom, prenom: v.prenom || null, langue: v.langue,
-      password: v.password, password_confirmation: v.password_confirmation, roles: [v.role],
+      roles: [v.role],
     }).subscribe({
       next: () => {
         this.creatingInternal.set(false);
         this.newInternalOpen.set(false);
-        this.toast.success('Compte interne créé');
+        this.toast.success('Compte interne créé', 'Le mot de passe temporaire a été envoyé par email à l’intéressé.');
         this.fetchInternal();
       },
       error: (err: ProblemDetails) => {
         this.creatingInternal.set(false);
-        this.toast.error('Échec de la création', err.detail);
+        this.feedback.serverError(this.newInternalForm, 'Échec de la création', err);
       },
     });
   }
@@ -286,7 +285,7 @@ export class UsersPageComponent {
 
   createRole(): void {
     if (this.newRoleForm.invalid || this.newRolePermissions().size === 0) {
-      this.newRoleForm.markAllAsTouched();
+      this.feedback.invalid(this.newRoleForm);
       return;
     }
     this.savingRole.set(true);

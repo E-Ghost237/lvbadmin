@@ -8,11 +8,11 @@ import {
   PartnerDocumentType, PartnerMember, PartnerRole, PartnerStatus, ProblemDetails,
 } from '../../../core/models';
 import { formatDate, formatDateTime, humanizeSlug } from '../../../core/utils/formatters';
-import { e164Phone } from '../../../core/utils/validators';
+import { e164Phone, emailAddress, personName, xafAmount } from '../../../core/utils/validators';
 import {
   BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, FormFieldComponent, ModalComponent,
   SegmentedControlComponent, SegmentOption, SelectComponent, SelectOption, StatusBadgeComponent, TabDef,
-  TableCellDefDirective, TabsComponent, ToastService,
+  TableCellDefDirective, TabsComponent, ToastService, CmPhoneDirective, FormFeedbackService,
 } from '../../../shared/ui';
 
 interface StatusTransition {
@@ -63,6 +63,7 @@ const STATUS_TRANSITIONS: Record<PartnerStatus, StatusTransition[]> = {
   imports: [
     JsonPipe, ReactiveFormsModule, BreadcrumbsComponent, StatusBadgeComponent, ModalComponent, FormFieldComponent,
     TabsComponent, DataTableComponent, TableCellDefDirective, SelectComponent, SegmentedControlComponent,
+    CmPhoneDirective,
   ],
   templateUrl: './partner-detail.component.html',
 })
@@ -72,6 +73,7 @@ export class PartnerDetailComponent {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
 
   protected readonly uuid = this.route.snapshot.paramMap.get('uuid')!;
   protected readonly loading = signal(true);
@@ -128,7 +130,7 @@ export class PartnerDetailComponent {
 
   protected readonly validateOpen = signal(false);
   protected readonly validateForm = this.fb.nonNullable.group({
-    encours_autorise_xaf: [500000, [Validators.required, Validators.min(0)]],
+    encours_autorise_xaf: [500000, [Validators.required, xafAmount(0)]],
   });
   protected readonly validating = signal(false);
 
@@ -139,7 +141,7 @@ export class PartnerDetailComponent {
 
   confirmValidate(): void {
     if (this.validateForm.invalid) {
-      this.validateForm.markAllAsTouched();
+      this.feedback.invalid(this.validateForm);
       return;
     }
     this.validating.set(true);
@@ -164,13 +166,13 @@ export class PartnerDetailComponent {
   protected readonly editForm = this.fb.nonNullable.group({
     nom_commercial: ['', [Validators.required, Validators.maxLength(200)]],
     telephone: ['', [Validators.required, e164Phone()]],
-    email: ['', [Validators.email, Validators.maxLength(255)]],
+    email: ['', [emailAddress(), Validators.maxLength(255)]],
     secteur_activite: ['', [Validators.maxLength(100)]],
     adresse_physique: ['', [Validators.required, Validators.maxLength(2000)]],
     ville: ['', [Validators.required, Validators.maxLength(50)]],
     site_web: ['', [Validators.maxLength(2048)]],
     responsable_telephone: ['', [Validators.required, e164Phone()]],
-    responsable_email: ['', [Validators.email, Validators.maxLength(255)]],
+    responsable_email: ['', [emailAddress(), Validators.maxLength(255)]],
     categorie_uuid: [''],
   });
 
@@ -188,7 +190,7 @@ export class PartnerDetailComponent {
 
   saveEdit(): void {
     if (this.editForm.invalid) {
-      this.editForm.markAllAsTouched();
+      this.feedback.invalid(this.editForm);
       return;
     }
     const v = this.editForm.getRawValue();
@@ -414,7 +416,7 @@ export class PartnerDetailComponent {
   protected readonly inviting = signal(false);
   protected readonly inviteContactType = signal<'email' | 'telephone'>('email');
   protected readonly inviteForm = this.fb.nonNullable.group({
-    email: ['', [Validators.email, Validators.maxLength(254)]],
+    email: ['', [emailAddress(), Validators.maxLength(254)]],
     telephone: ['', [e164Phone()]],
     role: ['LECTEUR_PARTENAIRE' as PartnerRole, [Validators.required]],
   });
@@ -433,8 +435,10 @@ export class PartnerDetailComponent {
     const type = this.inviteContactType();
     const control = this.inviteForm.controls[type];
     const contact = control.value.trim();
+    if (!contact) control.setErrors({ required: true });
     if (!contact || control.invalid) {
       control.markAsTouched();
+      this.feedback.invalid(this.inviteForm);
       return;
     }
     const role = this.inviteForm.getRawValue().role;

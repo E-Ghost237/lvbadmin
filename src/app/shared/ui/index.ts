@@ -11,6 +11,8 @@ export * from './modal/modal.component';
 export * from './confirm/confirm.service';
 export * from './confirm/confirm-host.component';
 export * from './toast/toast.service';
+export * from './form-feedback/form-feedback.service';
+export * from './cm-phone/cm-phone.directive';
 export * from './toast/toast-container.component';
 export * from './tabs/tabs.component';
 export * from './search-input/search-input.component';

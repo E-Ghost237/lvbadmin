@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { FormFeedbackService } from '@lvb/ui/form-feedback/form-feedback.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '@lvb/auth/auth.service';
@@ -16,6 +17,7 @@ import { FormFieldComponent } from '@lvb/ui/field/form-field.component';
 })
 export class ResetPasswordComponent {
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   protected readonly i18n = inject(I18nService);
@@ -32,7 +34,7 @@ export class ResetPasswordComponent {
 
   submit(): void {
     if (!this.token || this.form.invalid) {
-      this.form.markAllAsTouched();
+      this.feedback.invalid(this.form);
       return;
     }
     this.errorMessage.set('');

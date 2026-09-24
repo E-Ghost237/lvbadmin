@@ -7,12 +7,12 @@ import {
   AdminUserSummary, CreatePartnerRequest, Partner, PartnerCategory, PartnerStatus, ProblemDetails,
 } from '../../../core/models';
 import { formatDate } from '../../../core/utils/formatters';
-import { e164Phone } from '../../../core/utils/validators';
+import { e164Phone, emailAddress, personName, xafAmount } from '../../../core/utils/validators';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
   BreadcrumbsComponent, ColumnDef, DataTableComponent, ForbiddenStateComponent, FormFieldComponent, ModalComponent,
   SearchInputComponent, SelectComponent, SelectOption, StatusBadgeComponent, TableCellDefDirective, ToastService,
-  ToggleComponent,
+  ToggleComponent, FormFeedbackService, CmPhoneDirective,
 } from '../../../shared/ui';
 
 const PARTNER_STATUS_VALUES: PartnerStatus[] = [
@@ -25,6 +25,7 @@ const PARTNER_STATUS_VALUES: PartnerStatus[] = [
   imports: [
     ReactiveFormsModule, BreadcrumbsComponent, ForbiddenStateComponent, StatusBadgeComponent, SearchInputComponent,
     ModalComponent, FormFieldComponent, DataTableComponent, TableCellDefDirective, ToggleComponent, SelectComponent,
+    CmPhoneDirective,
   ],
   templateUrl: './partners-page.component.html',
 })
@@ -33,6 +34,7 @@ export class PartnersPageComponent {
   private readonly users = inject(UsersService);
   private readonly toast = inject(ToastService);
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
   private readonly router = inject(Router);
   protected readonly i18n = inject(I18nService);
 
@@ -94,14 +96,14 @@ export class PartnersPageComponent {
   protected readonly newPartnerForm = this.fb.nonNullable.group({
     nom_commercial: ['', [Validators.required, Validators.maxLength(200)]],
     telephone: ['', [Validators.required, e164Phone()]],
-    email: ['', [Validators.email, Validators.maxLength(255)]],
+    email: ['', [emailAddress(), Validators.maxLength(255)]],
     adresse_physique: ['', [Validators.required, Validators.maxLength(2000)]],
     ville: ['', [Validators.required, Validators.maxLength(50)]],
     secteur_activite: ['', [Validators.maxLength(100)]],
     rccm: ['', [Validators.maxLength(100)]],
-    responsable_nom: ['', [Validators.required, Validators.maxLength(200)]],
+    responsable_nom: ['', [Validators.required, personName(), Validators.maxLength(200)]],
     responsable_telephone: ['', [Validators.required, e164Phone()]],
-    responsable_email: ['', [Validators.email, Validators.maxLength(255)]],
+    responsable_email: ['', [emailAddress(), Validators.maxLength(255)]],
   });
 
   // Owner picker — searches ENTREPRISE clients only; the backend has no
@@ -110,6 +112,8 @@ export class PartnersPageComponent {
   protected readonly ownerCandidates = signal<AdminUserSummary[]>([]);
   protected readonly loadingOwners = signal(false);
   protected readonly selectedOwner = signal<AdminUserSummary | null>(null);
+  /** Shown under the owner picker when submission was attempted without a client selected. */
+  protected readonly ownerError = signal(false);
 
   openNewPartner(): void {
     this.newPartnerForm.reset({
@@ -119,6 +123,7 @@ export class PartnersPageComponent {
     this.ownerQuery.set('');
     this.ownerCandidates.set([]);
     this.selectedOwner.set(null);
+    this.ownerError.set(false);
     this.newPartnerOpen.set(true);
   }
 
@@ -140,6 +145,7 @@ export class PartnersPageComponent {
 
   selectOwner(client: AdminUserSummary): void {
     this.selectedOwner.set(client);
+    this.ownerError.set(false);
     if (!this.newPartnerForm.controls.telephone.value) {
       this.newPartnerForm.controls.telephone.setValue(client.telephone);
     }
@@ -151,8 +157,13 @@ export class PartnersPageComponent {
 
   createPartner(): void {
     const owner = this.selectedOwner();
-    if (!owner || this.newPartnerForm.invalid) {
-      this.newPartnerForm.markAllAsTouched();
+    if (!owner) this.ownerError.set(true);
+    if (this.newPartnerForm.invalid) {
+      this.feedback.invalid(this.newPartnerForm);
+      return;
+    }
+    if (!owner) {
+      this.feedback.blocked(this.i18n.t('partners.ownerRequired'));
       return;
     }
     const v = this.newPartnerForm.getRawValue();
@@ -183,7 +194,7 @@ export class PartnersPageComponent {
       },
       error: (err: ProblemDetails) => {
         this.creatingPartner.set(false);
-        this.toast.error('Échec de la création', err.detail);
+        this.feedback.serverError(this.newPartnerForm, 'Échec de la création', err);
       },
     });
   }
@@ -192,7 +203,7 @@ export class PartnersPageComponent {
 
   protected readonly validateTarget = signal<Partner | null>(null);
   protected readonly validateForm = this.fb.nonNullable.group({
-    encours_autorise_xaf: [500000, [Validators.required, Validators.min(0)]],
+    encours_autorise_xaf: [500000, [Validators.required, xafAmount(0)]],
   });
   protected readonly validating = signal(false);
 
@@ -204,7 +215,7 @@ export class PartnersPageComponent {
   confirmValidate(): void {
     const target = this.validateTarget();
     if (!target || this.validateForm.invalid) {
-      this.validateForm.markAllAsTouched();
+      this.feedback.invalid(this.validateForm);
       return;
     }
     this.validating.set(true);

@@ -174,7 +174,7 @@
       <input class="input" formControlName="nom_commercial" />
     </app-field>
     <app-field label="Téléphone" [control]="editForm.controls.telephone" required>
-      <input class="input" formControlName="telephone" placeholder="+237600000001" />
+      <input class="input" appCmPhone formControlName="telephone" placeholder="+237 6 51 23 45 67" />
     </app-field>
     <app-field label="Email" [control]="editForm.controls.email" [showOptional]="true">
       <input type="email" class="input" formControlName="email" />
@@ -195,7 +195,7 @@
       <app-select [options]="categoryOptions()" placeholder="Sans catégorie" formControlName="categorie_uuid" />
     </app-field>
     <app-field label="Téléphone du responsable" [control]="editForm.controls.responsable_telephone" required>
-      <input class="input" formControlName="responsable_telephone" placeholder="+237600000001" />
+      <input class="input" appCmPhone formControlName="responsable_telephone" placeholder="+237 6 51 23 45 67" />
     </app-field>
     <app-field label="Email du responsable" [control]="editForm.controls.responsable_email" [showOptional]="true">
       <input type="email" class="input" formControlName="responsable_email" />
@@ -228,7 +228,7 @@
       </app-field>
     } @else {
       <app-field label="Téléphone" [control]="inviteForm.controls.telephone" required>
-        <input class="input" formControlName="telephone" placeholder="+237600000001" />
+        <input class="input" appCmPhone formControlName="telephone" placeholder="+237 6 51 23 45 67" />
       </app-field>
     }
     <app-field label="Rôle" [control]="inviteForm.controls.role" required>

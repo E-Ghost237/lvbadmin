@@ -75,7 +75,7 @@ export class OrdersService {
     if (filters.payment_method) params['payment_method'] = filters.payment_method;
     if (filters.channel) params['channel'] = filters.channel;
     if (filters.q) params['q'] = filters.q;
-    if (filters.archived !== undefined) params['archived'] = String(filters.archived);
+    if (filters.archived !== undefined) params['archived'] = filters.archived ? '1' : '0';
     if (filters.cursor) params['cursor'] = filters.cursor;
     if (filters.limit) params['limit'] = String(filters.limit);
     return params;

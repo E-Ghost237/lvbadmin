@@ -40,8 +40,8 @@ export class WalletService {
   }
 
   /** Four-eyes enforced server-side: the verifier must differ from whoever created the payout account. */
-  verifyPayoutAccount(uuid: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/admin/partner-wallet/payout-accounts/${uuid}/verify`, {}, {
+  verifyPayoutAccount(uuid: string, verificationReference: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/admin/partner-wallet/payout-accounts/${uuid}/verify`, { verification_reference: verificationReference }, {
       context: withIdempotencyKey(newIdempotencyKey()),
     });
   }

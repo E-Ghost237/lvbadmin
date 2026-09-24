@@ -41,6 +41,7 @@ export interface QuoteCreated {
 
 export interface CreateConsoleOrderRequest {
   telephone_client: string;
+  email_client?: string | null;
   nom_client: string;
   prenom_client?: string | null;
   devis_id: string;

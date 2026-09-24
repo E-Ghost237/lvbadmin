@@ -1,4 +1,9 @@
 import { KeyValuePipe } from '@angular/common';
+import { emailAddress, e164Phone, personName, webUrl } from '@lvb/utils/validators';
+import { analyzeCmPhone, analyzeEmail } from '@lvb/utils/cameroon';
+import { CmPhoneDirective } from '@lvb/ui/cm-phone/cm-phone.directive';
+import { I18nService } from '@lvb/i18n/i18n.service';
+import { FormFeedbackService } from '@lvb/ui/form-feedback/form-feedback.service';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PartnerProfileService } from '../../../core/services/partner-profile.service';
@@ -41,7 +46,7 @@ const ROLE_OPTIONS: SelectOption[] = (Object.keys(ROLE_LABELS) as PartnerRole[])
   selector: 'app-profile-page',
   imports: [
     ReactiveFormsModule, KeyValuePipe, BreadcrumbsComponent, TabsComponent, ForbiddenStateComponent, StatusBadgeComponent,
-    SelectComponent, DataTableComponent, TableCellDefDirective, FileDropComponent, FormFieldComponent,
+    SelectComponent, DataTableComponent, TableCellDefDirective, FileDropComponent, FormFieldComponent, CmPhoneDirective,
   ],
   templateUrl: './profile-page.component.html',
 })
@@ -50,6 +55,8 @@ export class ProfilePageComponent {
   private readonly toast = inject(ToastService);
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
+  private readonly feedback = inject(FormFeedbackService);
+  private readonly i18n = inject(I18nService);
 
   protected readonly tabs: TabDef[] = [
     { id: 'profile', label: 'Profil' }, { id: 'documents', label: 'Documents' }, { id: 'team', label: 'Équipe' },
@@ -86,24 +93,24 @@ export class ProfilePageComponent {
   protected readonly savingProfile = signal(false);
 
   protected readonly profileForm = this.fb.nonNullable.group({
-    nom_commercial: ['', [Validators.required]],
-    telephone: ['', [Validators.required]],
-    email: [''],
-    adresse_physique: ['', [Validators.required]],
-    ville: ['', [Validators.required]],
-    secteur_activite: [''],
-    site_web: [''],
-    logo_url: [''],
-    responsable_telephone: ['', [Validators.required]],
-    responsable_email: [''],
+    nom_commercial: ['', [Validators.required, Validators.maxLength(200)]],
+    telephone: ['', [Validators.required, e164Phone()]],
+    email: ['', [emailAddress(), Validators.maxLength(255)]],
+    adresse_physique: ['', [Validators.required, Validators.maxLength(2000)]],
+    ville: ['', [Validators.required, Validators.maxLength(50)]],
+    secteur_activite: ['', [Validators.maxLength(100)]],
+    site_web: ['', [webUrl(), Validators.maxLength(2048)]],
+    logo_url: ['', [webUrl(true), Validators.maxLength(2048)]],
+    responsable_telephone: ['', [Validators.required, e164Phone()]],
+    responsable_email: ['', [emailAddress(), Validators.maxLength(255)]],
     zones_desservies: [''],
   });
 
   protected readonly changeForm = this.fb.nonNullable.group({
-    raison_sociale: [''],
-    numero_contribuable: [''],
-    rccm: [''],
-    responsable_nom: [''],
+    raison_sociale: ['', [Validators.maxLength(200)]],
+    numero_contribuable: ['', [Validators.maxLength(50)]],
+    rccm: ['', [Validators.maxLength(100)]],
+    responsable_nom: ['', [personName(), Validators.maxLength(200)]],
   });
   protected readonly showChangeForm = signal(false);
   protected readonly submittingChange = signal(false);
@@ -143,7 +150,7 @@ export class ProfilePageComponent {
 
   saveProfile(): void {
     if (this.profileForm.invalid) {
-      this.profileForm.markAllAsTouched();
+      this.feedback.invalid(this.profileForm);
       return;
     }
     const v = this.profileForm.getRawValue();
@@ -156,7 +163,7 @@ export class ProfilePageComponent {
       zones_desservies: v.zones_desservies.split(',').map((z) => z.trim()).filter(Boolean),
     }).subscribe({
       next: (p) => { this.savingProfile.set(false); this.profile.set(p); this.toast.success('Profil mis à jour'); },
-      error: (err: ProblemDetails) => { this.savingProfile.set(false); this.toast.error('Échec', err.detail); },
+      error: (err: ProblemDetails) => { this.savingProfile.set(false); this.feedback.serverError(this.profileForm, 'Échec', err); },
     });
   }
 
@@ -185,7 +192,7 @@ export class ProfilePageComponent {
         this.toast.success('Demande envoyée — en attente de validation par un administrateur');
         this.fetchChangeRequests();
       },
-      error: (err: ProblemDetails) => { this.submittingChange.set(false); this.toast.error('Échec', err.detail); },
+      error: (err: ProblemDetails) => { this.submittingChange.set(false); this.feedback.serverError(this.changeForm, 'Échec', err); },
     });
   }
 
@@ -310,12 +317,30 @@ export class ProfilePageComponent {
     this.inviteRole.set(value as PartnerRole);
   }
 
+  private emailIssue(v: string): string | null {
+    const a = analyzeEmail(v);
+    return a.ok ? null : this.i18n.t('validation.email.' + a.issue);
+  }
+
+  private phoneIssue(v: string): string | null {
+    const a = analyzeCmPhone(v);
+    return a.ok ? null : this.i18n.t('validation.phone.' + a.issue, { delta: a.delta ?? 0 });
+  }
+
   submitInvite(): void {
     const contact = this.inviteContact().trim();
-    if (!contact) return;
+    if (!contact) {
+      this.feedback.blocked('Saisissez l’email ou le numéro de téléphone de la personne à inviter.', 'Invitation incomplète');
+      return;
+    }
+    const reason = contact.includes('@') ? this.emailIssue(contact) : this.phoneIssue(contact);
+    if (reason) {
+      this.feedback.blocked(reason, 'Invitation impossible');
+      return;
+    }
     const invite: InvitePartnerUserRequest = contact.includes('@')
-      ? { email: contact, role: this.inviteRole() }
-      : { telephone: contact, role: this.inviteRole() };
+      ? { email: contact.toLowerCase(), role: this.inviteRole() }
+      : { telephone: analyzeCmPhone(contact).e164 ?? contact, role: this.inviteRole() };
     this.inviting.set(true);
     this.profileSvc.inviteMember(invite).subscribe({
       next: () => {
@@ -323,7 +348,7 @@ export class ProfilePageComponent {
         this.inviteContact.set('');
         this.toast.success('Invitation envoyée');
       },
-      error: (err: ProblemDetails) => { this.inviting.set(false); this.toast.error('Échec de l’invitation', err.detail); },
+      error: (err: ProblemDetails) => { this.inviting.set(false); this.feedback.serverError(null, 'Échec de l’invitation', err); },
     });
   }
 

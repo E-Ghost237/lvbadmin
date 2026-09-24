@@ -109,8 +109,8 @@ export class SupervisionService {
 
   dashboard(status?: string, city?: string): Observable<SupervisionDashboard> {
     const params: Record<string, string> = {};
-    if (status) params['status'] = status;
-    if (city) params['city'] = city;
+    if (status) params['statut'] = status;
+    if (city) params['ville'] = city;
     return this.http.get<SupervisionDashboard>(`${this.baseUrl}/admin/supervision`, { params });
   }
 

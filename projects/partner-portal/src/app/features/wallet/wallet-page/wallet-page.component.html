@@ -52,7 +52,7 @@
           <app-field label="Opérateur" [control]="accountForm.controls.provider" required>
             <app-select [options]="providerOptions" [allowClear]="false" formControlName="provider" />
           </app-field>
-          <app-field label="Numéro de compte" [control]="accountForm.controls.account_number" required><input class="input" formControlName="account_number" /></app-field>
+          <app-field label="Numéro de compte" [control]="accountForm.controls.account_number" required [advisory]="accountAdvisory()" [advisoryContext]="accountAdvisoryContext()"><input class="input" formControlName="account_number" [attr.inputmode]="isBank() ? 'text' : 'tel'" /></app-field>
           <app-field label="Titulaire du compte" [control]="accountForm.controls.holder_name" required><input class="input" formControlName="holder_name" /></app-field>
           <p class="field-hint">Un administrateur LVB doit vérifier ce compte avant qu’il puisse recevoir un retrait.</p>
           <div class="flex gap-2">
@@ -88,11 +88,15 @@
           <div>
             <label class="field-label">Montant (XAF)</label>
             <input type="number" min="1000" max="1000000" class="input" [value]="withdrawalAmount() ?? ''" (input)="onWithdrawalAmountInput($any($event.target).value)" />
-            <p class="field-hint">Entre 1 000 et 1 000 000 XAF.</p>
+            @if (withdrawalAmountError()) {
+              <p class="field-error" role="alert">{{ withdrawalAmountError() }}</p>
+            } @else {
+              <p class="field-hint">Entre 1 000 et 1 000 000 XAF.</p>
+            }
           </div>
           <div class="flex gap-2">
             <button type="button" class="btn btn-ghost btn-sm" [disabled]="submittingWithdrawal()" (click)="withdrawalFormOpen.set(false)">Annuler</button>
-            <button type="button" class="btn btn-primary btn-sm" [disabled]="submittingWithdrawal() || !withdrawalPayoutAccount() || !withdrawalAmount()" (click)="submitWithdrawal()">Envoyer la demande</button>
+            <button type="button" class="btn btn-primary btn-sm" [disabled]="submittingWithdrawal()" (click)="submitWithdrawal()">Envoyer la demande</button>
           </div>
         </div>
       }
