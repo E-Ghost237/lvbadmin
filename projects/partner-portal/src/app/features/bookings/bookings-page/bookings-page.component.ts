@@ -5,6 +5,7 @@ import { FleetService } from '../../../core/services/fleet.service';
 import { BOOKING_STATUS_VALUES, BOOKING_TERMINAL_STATUSES, Booking, BookingStatus } from '@lvb/models/booking.model';
 import { ProblemDetails } from '@lvb/models/common.model';
 import { formatDateTime, formatXaf } from '@lvb/utils/formatters';
+import { PartnerContextService } from '../../../core/services/partner-context.service';
 import { I18nService } from '@lvb/i18n/i18n.service';
 import { BreadcrumbsComponent } from '@lvb/ui/breadcrumbs/breadcrumbs.component';
 import { ForbiddenStateComponent } from '@lvb/ui/forbidden-state/forbidden-state.component';
@@ -52,6 +53,8 @@ export class BookingsPageComponent {
   private readonly bookingSvc = inject(BookingService);
   private readonly fleet = inject(FleetService);
   private readonly toast = inject(ToastService);
+  protected readonly ctx = inject(PartnerContextService);
+  protected readonly canAct = this.ctx.can('booking.accept');
   private readonly confirm = inject(ConfirmService);
   protected readonly i18n = inject(I18nService);
 

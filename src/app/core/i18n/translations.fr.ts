@@ -14,6 +14,7 @@ export const FR: Record<string, string> = {
   'partner.nav.marketplace': 'Marketplace',
   'partner.nav.bookings': 'Réservations',
   'partner.nav.wallet': 'Portefeuille',
+  'partner.nav.onboarding': 'Mon dossier',
   'partner.nav.orders': 'Commandes',
 
   'nav.dashboard': 'Supervision',
@@ -148,6 +149,9 @@ export const FR: Record<string, string> = {
   'validation.list.items': 'Trop d’éléments : {max} au maximum, séparés par des virgules.',
   'validation.list.itemLength': 'Un élément dépasse {max} caractères (« {item} »).',
   'validation.oneOf': 'Renseignez au moins l’un des deux champs.',
+  'validation.token.chars': 'Le code contient des caractères non valides : seuls les chiffres et les lettres a à f sont acceptés.',
+  'validation.token.length': 'Le code doit faire 64 caractères ({have} saisis).',
+  'validation.token': 'Code d’invitation invalide.',
   'validation.oneOf.vehicle': 'Choisissez un véhicule ou saisissez une catégorie de véhicule.',
   'validation.oneOfVehicle': 'Choisissez un véhicule ou saisissez une catégorie de véhicule.',
   'validation.contactOneOf': 'Renseignez un email ou un téléphone (un seul des deux).',

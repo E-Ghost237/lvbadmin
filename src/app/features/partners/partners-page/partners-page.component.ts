@@ -134,7 +134,8 @@ export class PartnersPageComponent {
       return;
     }
     this.loadingOwners.set(true);
-    this.users.list({ profil: 'CLIENT', q, limit: 20 }).subscribe({
+    // The backend can't filter by client type, so fetch the maximum page and keep ENTREPRISE accounts client-side.
+    this.users.list({ profil: 'CLIENT', q, limit: 100 }).subscribe({
       next: (page) => {
         this.loadingOwners.set(false);
         this.ownerCandidates.set(page.items.filter((c) => c.type_client === 'ENTREPRISE'));

@@ -99,7 +99,9 @@
         <div class="max-w-xs flex-1">
           <app-select [options]="offerStatusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="offerStatusFilter()" (valueChange)="onOfferStatusFilterChange($event)" />
         </div>
-        <button type="button" class="btn btn-primary btn-sm shrink-0" [disabled]="ratePlans().length === 0" (click)="openNewOfferForm()">+ Nouvelle offre</button>
+        @if (canCreateOffer) {
+          <button type="button" class="btn btn-primary btn-sm shrink-0" [disabled]="ratePlans().length === 0" (click)="openNewOfferForm()">+ Nouvelle offre</button>
+        }
       </div>
       @if (ratePlans().length === 0) {
         <p class="text-xs mb-4" style="color: var(--text-muted)">Créez d’abord un tarif dans l’onglet « Tarifs » pour pouvoir publier une offre.</p>
@@ -167,12 +169,14 @@
           <ng-template appCell="status" let-row><app-status-badge domain="marketplaceOffer" [status]="row.status" /></ng-template>
           <ng-template appCell="actions" let-row>
             <div class="flex gap-1.5 justify-end flex-wrap">
+              @if (canUpdateOffer) {
               <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openEditOfferForm(row)">Modifier</button>
               @for (action of actionsFor(row); track action.target) {
                 <button
                   type="button" class="btn btn-sm !py-1" [class]="action.danger ? 'btn-danger-ghost' : 'btn-secondary'"
                   [disabled]="transitioning() === row.uuid" (click)="applyTransition(row, action)"
                 >{{ action.label }}</button>
+              }
               }
             </div>
           </ng-template>

@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { intRange, requireOneOf, xafAmount } from '@lvb/utils/validators';
+import { PartnerContextService } from '../../../core/services/partner-context.service';
 import { FormFeedbackService } from '@lvb/ui/form-feedback/form-feedback.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RatePlanService } from '../../../core/services/rate-plan.service';
@@ -84,8 +85,15 @@ export class MarketplacePageComponent {
   private readonly feedback = inject(FormFeedbackService);
   protected readonly i18n = inject(I18nService);
 
-  protected readonly tabs: TabDef[] = [{ id: 'ratePlans', label: 'Tarifs' }, { id: 'offers', label: 'Offres' }];
-  protected readonly activeTab = signal('ratePlans');
+  protected readonly ctx = inject(PartnerContextService);
+  protected readonly canPricing = this.ctx.can('pricing.manage');
+  protected readonly canCreateOffer = this.ctx.can('marketplace.offer.create');
+  protected readonly canUpdateOffer = this.ctx.can('marketplace.offer.update');
+  // Rate plans need `pricing.manage` (responsable only); other roles just see the offers.
+  protected readonly tabs: TabDef[] = this.canPricing
+    ? [{ id: 'ratePlans', label: 'Tarifs' }, { id: 'offers', label: 'Offres' }]
+    : [{ id: 'offers', label: 'Offres' }];
+  protected readonly activeTab = signal(this.canPricing ? 'ratePlans' : 'offers');
   protected readonly bookingModeOptions = BOOKING_MODE_OPTIONS;
 
   xaf(amount: number | null | undefined): string {
@@ -93,8 +101,12 @@ export class MarketplacePageComponent {
   }
 
   constructor() {
-    this.fetchRatePlans();
-    this.fetchVehicles();
+    if (this.canPricing) {
+      this.fetchRatePlans();
+      this.fetchVehicles();
+    } else {
+      this.selectTab('offers');
+    }
   }
 
   selectTab(id: string): void {

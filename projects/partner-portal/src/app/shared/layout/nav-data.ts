@@ -6,6 +6,8 @@ export interface NavItem {
   labelKey: string;
   path: string;
   icon: IconDefinition;
+  /** Backend partner permission needed; item is hidden when the role/status can't use it. */
+  permission?: string;
 }
 
 /**
@@ -19,11 +21,11 @@ export interface NavItem {
  * these sections; that's enforced server-side per PartnerRole::allows().
  */
 export const NAV_ITEMS: NavItem[] = [
-  { label: 'Tableau de bord', labelKey: 'partner.nav.dashboard', path: '/dashboard', icon: faGaugeHigh },
-  { label: 'Profil', labelKey: 'partner.nav.profile', path: '/profile', icon: faBuilding },
-  { label: 'Flotte', labelKey: 'partner.nav.fleet', path: '/fleet', icon: faTruck },
-  { label: 'Marketplace', labelKey: 'partner.nav.marketplace', path: '/marketplace', icon: faStore },
-  { label: 'Réservations', labelKey: 'partner.nav.bookings', path: '/bookings', icon: faCalendarCheck },
-  { label: 'Portefeuille', labelKey: 'partner.nav.wallet', path: '/wallet', icon: faWallet },
-  { label: 'Commandes', labelKey: 'partner.nav.orders', path: '/orders', icon: faBoxOpen },
+  { label: 'Tableau de bord', labelKey: 'partner.nav.dashboard', path: '/dashboard', icon: faGaugeHigh, permission: 'dashboard.read' },
+  { label: 'Profil', labelKey: 'partner.nav.profile', path: '/profile', icon: faBuilding, permission: 'profile.read' },
+  { label: 'Flotte', labelKey: 'partner.nav.fleet', path: '/fleet', icon: faTruck, permission: 'fleet.vehicle.manage' },
+  { label: 'Marketplace', labelKey: 'partner.nav.marketplace', path: '/marketplace', icon: faStore, permission: 'marketplace.offer.read' },
+  { label: 'Réservations', labelKey: 'partner.nav.bookings', path: '/bookings', icon: faCalendarCheck, permission: 'booking.read' },
+  { label: 'Portefeuille', labelKey: 'partner.nav.wallet', path: '/wallet', icon: faWallet, permission: 'wallet.read' },
+  { label: 'Commandes', labelKey: 'partner.nav.orders', path: '/orders', icon: faBoxOpen, permission: 'orders.read' },
 ];

@@ -2,9 +2,10 @@ import { KeyValuePipe } from '@angular/common';
 import { emailAddress, e164Phone, personName, webUrl } from '@lvb/utils/validators';
 import { analyzeCmPhone, analyzeEmail } from '@lvb/utils/cameroon';
 import { CmPhoneDirective } from '@lvb/ui/cm-phone/cm-phone.directive';
+import { PartnerContextService } from '../../../core/services/partner-context.service';
 import { I18nService } from '@lvb/i18n/i18n.service';
 import { FormFeedbackService } from '@lvb/ui/form-feedback/form-feedback.service';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PartnerProfileService } from '../../../core/services/partner-profile.service';
 import { InvitePartnerUserRequest, RequestPartnerProfileChangeRequest } from '../../../core/models';
@@ -56,6 +57,10 @@ export class ProfilePageComponent {
   private readonly confirm = inject(ConfirmService);
   private readonly fb = inject(FormBuilder);
   private readonly feedback = inject(FormFeedbackService);
+  protected readonly ctx = inject(PartnerContextService);
+  protected readonly canWrite = computed(() => this.ctx.can('profile.write'));
+  protected readonly canUpload = computed(() => this.ctx.can('documents.write'));
+  protected readonly canManageUsers = computed(() => this.ctx.can('users.manage'));
   private readonly i18n = inject(I18nService);
 
   protected readonly tabs: TabDef[] = [
@@ -76,6 +81,11 @@ export class ProfilePageComponent {
   }
 
   constructor() {
+    effect(() => {
+      // Read-only roles see the data but can't edit it.
+      if (this.canWrite()) { this.profileForm.enable({ emitEvent: false }); this.changeForm.enable({ emitEvent: false }); }
+      else { this.profileForm.disable({ emitEvent: false }); this.changeForm.disable({ emitEvent: false }); }
+    });
     this.fetchProfile();
   }
 
@@ -261,6 +271,7 @@ export class ProfilePageComponent {
         this.uploadFile.set(null);
         this.toast.success('Document déposé');
         this.fetchDocuments();
+        void this.ctx.refresh();
       },
       error: (err: ProblemDetails) => { this.uploading.set(false); this.toast.error('Échec du dépôt', err.detail); },
     });

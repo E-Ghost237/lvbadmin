@@ -47,6 +47,7 @@
       }
     </div>
 
+    @if (canAct) {
     <div class="flex gap-2 flex-wrap mt-5 pt-4" style="border-top: 1px solid var(--border)">
       @for (action of actionsFor(b); track action.action) {
         <button
@@ -55,8 +56,11 @@
         >{{ action.label }}</button>
       }
     </div>
+    } @else {
+      <p class="field-hint mt-5">Lecture seule — votre rôle ne permet pas de traiter les réservations.</p>
+    }
 
-    @if (showAssignDriverForm()) {
+    @if (showAssignDriverForm() && canAct) {
       <div class="card p-4 mt-3" style="border: 1px solid var(--border)">
         <p class="text-sm font-medium mb-3">Affecter un chauffeur</p>
         <div class="flex flex-col gap-3">

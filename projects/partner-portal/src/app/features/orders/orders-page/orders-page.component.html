@@ -47,7 +47,9 @@
       </div>
     } @else if (finance(); as f) {
       <div class="flex justify-end mb-3">
+        @if (canExport) {
         <button type="button" class="btn btn-secondary btn-sm" [disabled]="exportingCsv()" (click)="exportFinanceCsv()">Exporter en CSV</button>
+        }
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
         <app-stat-tile label="Total facturé" [value]="f.total_facture_xaf" unit="XAF" />

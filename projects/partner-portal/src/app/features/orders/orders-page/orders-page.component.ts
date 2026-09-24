@@ -5,6 +5,7 @@ import { DashboardFinance, PartnerOrder, PartnerOrderDetail } from '../../../cor
 import { ORDER_STATUS_VALUES, OrderStatus, PaymentMethod } from '@lvb/models/enums';
 import { ProblemDetails } from '@lvb/models/common.model';
 import { formatDate, formatDateTime, formatXaf } from '@lvb/utils/formatters';
+import { PartnerContextService } from '../../../core/services/partner-context.service';
 import { I18nService } from '@lvb/i18n/i18n.service';
 import { BreadcrumbsComponent } from '@lvb/ui/breadcrumbs/breadcrumbs.component';
 import { TabDef, TabsComponent } from '@lvb/ui/tabs/tabs.component';
@@ -45,6 +46,7 @@ export class OrdersPageComponent {
   private readonly orderSvc = inject(PartnerOrderService);
   private readonly financeSvc = inject(PartnerFinanceService);
   private readonly toast = inject(ToastService);
+  protected readonly canExport = inject(PartnerContextService).can('finance.export');
   protected readonly i18n = inject(I18nService);
 
   protected readonly tabs: TabDef[] = [{ id: 'orders', label: 'Commandes' }, { id: 'finance', label: 'Finance' }];

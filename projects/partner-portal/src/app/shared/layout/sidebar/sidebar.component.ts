@@ -1,9 +1,10 @@
 import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { FaIconComponent } from '@fortawesome/angular-fontawesome';
-import { faChevronLeft, faXmark } from '@fortawesome/free-solid-svg-icons';
+import { faChevronLeft, faClipboardCheck, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { AuthService } from '@lvb/auth/auth.service';
 import { I18nService } from '@lvb/i18n/i18n.service';
+import { PartnerContextService } from '../../../core/services/partner-context.service';
 import { NAV_ITEMS } from '../nav-data';
 
 const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
@@ -27,7 +28,7 @@ const COLLAPSE_KEY = 'lvb.sidebar.collapsed';
       </div>
 
       <nav class="flex-1 overflow-y-auto thin-scroll px-3 py-4 flex flex-col gap-0.5" aria-label="Navigation principale">
-        @for (item of navItems; track item.path) {
+        @for (item of navItems(); track item.path) {
           <a
             [routerLink]="item.path" routerLinkActive="active-nav-link" [routerLinkActiveOptions]="{ exact: false }"
             class="nav-link flex items-center gap-3 rounded-(--radius-sm) py-2 text-sm font-medium transition-colors"
@@ -95,7 +96,16 @@ export class SidebarComponent {
   readonly closeMobile = output<void>();
   readonly allowCollapse = input(true);
 
-  protected readonly navItems = NAV_ITEMS;
+  private readonly partnerCtx = inject(PartnerContextService);
+  protected readonly navItems = computed(() => {
+    // Re-evaluates when the partner context (status / role) loads or changes.
+    this.partnerCtx.state(); this.partnerCtx.status(); this.partnerCtx.role();
+    const visible = NAV_ITEMS.filter((i) => !i.permission || this.partnerCtx.can(i.permission));
+    const needsOnboarding = this.partnerCtx.state() === 'no-partner' || (this.partnerCtx.state() === 'ready' && !this.partnerCtx.isActive());
+    return needsOnboarding
+      ? [{ label: 'Mon dossier', labelKey: 'partner.nav.onboarding', path: '/onboarding', icon: faClipboardCheck }, ...visible]
+      : visible;
+  });
   protected readonly closeIcon = faXmark;
   protected readonly collapseIcon = faChevronLeft;
   protected readonly collapsed = signal(this.readCollapsed());

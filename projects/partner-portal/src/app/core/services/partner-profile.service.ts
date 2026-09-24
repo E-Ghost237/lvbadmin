@@ -79,6 +79,17 @@ export class PartnerProfileService {
     });
   }
 
+  /**
+   * Invitee side: the signed-in *client* account (verified contact matching the
+   * invitation) presents the 64-hex token sent by email/SMS to join the partner.
+   */
+  acceptInvitation(token: string): Observable<{ uuid: string; partenaire_uuid: string; role: PartnerRole }> {
+    return this.http.post<{ uuid: string; partenaire_uuid: string; role: PartnerRole }>(
+      `${this.baseUrl}/partner/users/invitations/accept`, { token: token.trim().toLowerCase(), accepte: true },
+      { context: withIdempotencyKey(newIdempotencyKey()) },
+    );
+  }
+
   changeMemberRole(uuid: string, role: PartnerRole): Observable<void> {
     return this.http.patch<void>(`${this.baseUrl}/partner/users/${uuid}/role`, { role }, {
       context: withIdempotencyKey(newIdempotencyKey()),

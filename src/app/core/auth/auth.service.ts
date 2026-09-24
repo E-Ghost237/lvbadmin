@@ -104,7 +104,7 @@ export class AuthService {
     return this.http.get<CurrentUser>(`${this.baseUrl}/me`).pipe(
       tap((me) => {
         const current = this._identity();
-        if (current) this._identity.set({ ...current, nom: me.nom, prenom: me.prenom, langue: me.langue, role: me.role, roles: me.roles });
+        if (current) this._identity.set({ ...current, uuid: me.uuid, nom: me.nom, prenom: me.prenom, langue: me.langue, role: me.role, roles: me.roles });
       }),
     );
   }

@@ -8,6 +8,8 @@ import { AccountStatus } from './enums';
  */
 export interface AuthIdentity {
   email: string;
+  /** Filled by `GET /v1/me`. */
+  uuid?: string;
   /** Filled by `GET /v1/me` after login (best-effort). */
   nom?: string;
   prenom?: string | null;

@@ -34,14 +34,18 @@
             <app-field label="Téléphone du responsable" [control]="profileForm.controls.responsable_telephone" required><input class="input" appCmPhone formControlName="responsable_telephone" /></app-field>
             <app-field label="Email du responsable" [control]="profileForm.controls.responsable_email"><input type="email" class="input" formControlName="responsable_email" /></app-field>
           </div>
-          <button type="submit" class="btn btn-primary self-start" [disabled]="savingProfile()">Enregistrer</button>
+          @if (canWrite()) {
+            <button type="submit" class="btn btn-primary self-start" [disabled]="savingProfile()">Enregistrer</button>
+          } @else {
+            <p class="field-hint">Lecture seule — seul le responsable du partenaire peut modifier ces informations.</p>
+          }
         </form>
 
         <div class="flex flex-col gap-4">
           <div class="card p-5">
             <div class="flex items-center justify-between mb-3">
               <p class="text-sm font-medium">Informations légales</p>
-              @if (!showChangeForm()) {
+              @if (!showChangeForm() && canWrite()) {
                 <button type="button" class="btn btn-secondary btn-sm" (click)="openChangeForm()">Demander une modification</button>
               }
             </div>
@@ -92,6 +96,20 @@
     @if (forbiddenDocuments()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission documents.read." />
     } @else {
+      @if (!ctx.isActive() && ctx.state() === 'ready') {
+        <div class="card p-5 mb-4 max-w-lg">
+          <p class="text-sm font-medium mb-3">Pièces exigées pour la validation</p>
+          <ul class="flex flex-col gap-1.5">
+            @for (item of ctx.readiness().documents; track item.key) {
+              <li class="flex items-start gap-2 text-sm">
+                <span class="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] text-white" [style.background]="item.ok ? 'var(--status-good)' : 'var(--status-warning)'">{{ item.ok ? '✓' : '!' }}</span>
+                <span>{{ item.label }}@if (!item.ok && item.detail) { <span class="text-xs" style="color: var(--text-muted)"> — {{ item.detail }}</span> }</span>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+      @if (canUpload()) {
       <div class="card p-5 mb-4 max-w-lg">
         <p class="text-sm font-medium mb-3">Déposer un document</p>
         <div class="flex flex-col gap-3">
@@ -104,6 +122,7 @@
           <button type="button" class="btn btn-primary btn-sm self-start" [disabled]="uploading() || !uploadType()" (click)="submitUpload()">Déposer</button>
         </div>
       </div>
+      }
 
       <div class="card">
         <app-data-table
@@ -126,6 +145,7 @@
     @if (forbiddenMembers()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission users.read." />
     } @else {
+      @if (canManageUsers()) {
       <div class="card p-4 mb-4 max-w-lg">
         <p class="text-sm font-medium mb-3">Inviter un membre</p>
         <div class="flex items-center gap-2">
@@ -134,6 +154,7 @@
           <button type="button" class="btn btn-primary btn-sm shrink-0" [disabled]="inviting()" (click)="submitInvite()">Inviter</button>
         </div>
       </div>
+      }
 
       <div class="card">
         <app-data-table
@@ -143,11 +164,11 @@
           <ng-template appCell="role" let-row>
             <app-select
               class="w-auto min-w-40" [options]="roleOptions" [allowClear]="false" [value]="row.role"
-              [disabled]="updatingMember() === row.uuid || !row.actif" (valueChange)="changeMemberRole(row, $event)"
+              [disabled]="updatingMember() === row.uuid || !row.actif || !canManageUsers()" (valueChange)="changeMemberRole(row, $event)"
             />
           </ng-template>
           <ng-template appCell="actions" let-row>
-            @if (row.actif) {
+            @if (row.actif && canManageUsers()) {
               <button type="button" class="btn btn-danger-ghost btn-sm !py-1" [disabled]="updatingMember() === row.uuid" (click)="revokeMember(row)">Révoquer</button>
             }
           </ng-template>

@@ -27,6 +27,22 @@
 
   <div class="mt-5">
     @if (activeTab() === 'profil') {
+      @if (showReadiness()) {
+        <div class="card p-5 mb-4" [style.border-left]="'4px solid var(--status-' + (readiness().ready ? 'good' : 'warning') + ')'">
+          <p class="text-sm font-semibold mb-1">Prérequis de {{ p.statut_partenaire === 'VALIDE' ? 'l’activation' : 'la validation' }}</p>
+          <p class="text-xs mb-3" style="color: var(--text-muted)">
+            {{ readiness().ready ? 'Tout est en règle : vous pouvez ' + (p.statut_partenaire === 'VALIDE' ? 'activer' : 'valider') + ' ce partenaire.' : 'Le backend refusera la validation tant que ces éléments ne sont pas réunis (documents acceptés, identité fiscale et responsable renseignés).' }}
+          </p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+            @for (item of readiness().documents; track item.key) {
+              <div class="flex items-start gap-2"><span class="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] text-white" [style.background]="item.ok ? 'var(--status-good)' : 'var(--status-warning)'">{{ item.ok ? '✓' : '!' }}</span><span>{{ item.label }}@if (!item.ok && item.detail) { <span class="text-xs" style="color: var(--text-muted)"> — {{ item.detail }}</span> }</span></div>
+            }
+            @for (item of readiness().fields; track item.key) {
+              <div class="flex items-start gap-2"><span class="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] text-white" [style.background]="item.ok ? 'var(--status-good)' : 'var(--status-warning)'">{{ item.ok ? '✓' : '!' }}</span><span>{{ item.label }}@if (!item.ok) { <span class="text-xs" style="color: var(--text-muted)"> — non renseigné</span> }</span></div>
+            }
+          </div>
+        </div>
+      }
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div class="card p-5">
           <p class="text-sm font-semibold mb-3">Profil</p>
@@ -40,7 +56,7 @@
             <div><p class="text-xs" style="color: var(--text-muted)">Raison sociale</p><p>{{ p.raison_sociale || '—' }}</p></div>
             <div><p class="text-xs" style="color: var(--text-muted)">N° contribuable</p><p>{{ p.numero_contribuable || '—' }}</p></div>
           </div>
-          <p class="text-xs mt-3" style="color: var(--text-muted)">Raison sociale, numéro contribuable, RCCM et nom du responsable ne se modifient que par demande de changement approuvée (écran à venir).</p>
+          <p class="text-xs mt-3" style="color: var(--text-muted)">Raison sociale, numéro contribuable, RCCM et nom du responsable ne se modifient que par demande de changement approuvée (onglet « Demandes de modification »).</p>
         </div>
 
         <div class="card p-5">

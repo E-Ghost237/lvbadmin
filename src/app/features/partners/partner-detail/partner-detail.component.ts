@@ -8,6 +8,7 @@ import {
   PartnerDocumentType, PartnerMember, PartnerRole, PartnerStatus, ProblemDetails,
 } from '../../../core/models';
 import { formatDate, formatDateTime, humanizeSlug } from '../../../core/utils/formatters';
+import { computeReadiness } from '../../../core/utils/partner-access';
 import { e164Phone, emailAddress, personName, xafAmount } from '../../../core/utils/validators';
 import {
   BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, FormFieldComponent, ModalComponent,
@@ -104,8 +105,31 @@ export class PartnerDetailComponent {
     if (id === 'audit' && this.auditEntries().length === 0) this.fetchAudit();
   }
 
+  // What LVB requires before VALIDE / ACTIF (mirrors ManagePartnerProfile::transition on the backend).
+  // Loaded separately from the paged Documents tab so the check always sees every document.
+  private readonly readinessDocs = signal<PartnerDocument[] | null>(null);
+  protected readonly readiness = computed(() => computeReadiness(this.partner(), this.readinessDocs() ?? []));
+  protected readonly showReadiness = computed(() => ['EN_ATTENTE_VALIDATION', 'VALIDE'].includes(this.partner()?.statut_partenaire ?? ''));
+
+  private loadReadinessDocs(): void {
+    this.partners.listDocuments(this.uuid, { limit: 100 }).subscribe({
+      next: (page) => this.readinessDocs.set(page.items),
+      error: () => this.readinessDocs.set(null),
+    });
+  }
+
+  /** Blocks (with the exact list of what's missing) instead of letting the API answer ERR-4229/4097. */
+  private assertReady(): boolean {
+    if (this.readinessDocs() === null) return true; // couldn't load — let the server decide
+    const r = this.readiness();
+    if (r.ready) return true;
+    this.feedback.blocked(`Dossier incomplet — il manque : ${r.missing.join(' ; ')}.`, 'Validation impossible');
+    return false;
+  }
+
   fetch(): void {
     this.loading.set(true);
+    this.loadReadinessDocs();
     this.partners.get(this.uuid).subscribe({
       next: (p) => { this.loading.set(false); this.partner.set(p); },
       error: (err: ProblemDetails) => { this.loading.set(false); this.toast.error('Chargement impossible', err.detail); },
@@ -119,10 +143,11 @@ export class PartnerDetailComponent {
       label: 'Motif du changement de statut', minLength: 3, danger: transition.danger, confirmLabel: transition.label,
     });
     if (!motif) return;
+    if (transition.target === 'ACTIF' && this.partner()?.statut_partenaire === 'VALIDE' && !this.assertReady()) return;
     this.changingStatus.set(true);
     this.partners.changeStatus(this.uuid, transition.target, motif).subscribe({
       next: (p) => { this.changingStatus.set(false); this.partner.set(p); this.toast.success('Statut mis à jour'); },
-      error: (err: ProblemDetails) => { this.changingStatus.set(false); this.toast.error('Échec', err.detail); },
+      error: (err: ProblemDetails) => { this.changingStatus.set(false); this.feedback.serverError(null, 'Échec', err); },
     });
   }
 
@@ -135,6 +160,7 @@ export class PartnerDetailComponent {
   protected readonly validating = signal(false);
 
   openValidate(): void {
+    if (!this.assertReady()) return;
     this.validateForm.reset({ encours_autorise_xaf: 500000 });
     this.validateOpen.set(true);
   }
@@ -154,7 +180,7 @@ export class PartnerDetailComponent {
       },
       error: (err: ProblemDetails) => {
         this.validating.set(false);
-        this.toast.error('Échec', err.detail);
+        this.feedback.serverError(this.validateForm, 'Échec', err);
       },
     });
   }
@@ -291,6 +317,7 @@ export class PartnerDetailComponent {
         this.reviewingDocument.set(null);
         this.toast.success(accepte ? 'Document validé' : 'Document rejeté');
         this.fetchDocuments();
+        this.loadReadinessDocs();
       },
       error: (err: ProblemDetails) => {
         this.reviewingDocument.set(null);

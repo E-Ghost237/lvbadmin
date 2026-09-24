@@ -14,6 +14,7 @@ export const EN: Record<string, string> = {
   'partner.nav.marketplace': 'Marketplace',
   'partner.nav.bookings': 'Bookings',
   'partner.nav.wallet': 'Wallet',
+  'partner.nav.onboarding': 'My application',
   'partner.nav.orders': 'Orders',
 
   'nav.dashboard': 'Live ops',
@@ -148,6 +149,9 @@ export const EN: Record<string, string> = {
   'validation.list.items': 'Too many items: at most {max}, separated by commas.',
   'validation.list.itemLength': 'One item is longer than {max} characters (“{item}”).',
   'validation.oneOf': 'Fill in at least one of the two fields.',
+  'validation.token.chars': 'The code has invalid characters: only digits and the letters a to f are allowed.',
+  'validation.token.length': 'The code must be 64 characters long ({have} entered).',
+  'validation.token': 'Invalid invitation code.',
   'validation.oneOf.vehicle': 'Pick a vehicle or enter a vehicle category.',
   'validation.oneOfVehicle': 'Choose a vehicle or enter a vehicle category.',
   'validation.contactOneOf': 'Enter an email or a phone number (only one of the two).',
