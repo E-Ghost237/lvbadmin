@@ -1,6 +1,6 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { SupervisionAlert, SupervisionAlertType, SupervisionDashboard, SupervisionService } from '../../../core/services/supervision.service';
+import { OrderRoute, SupervisionAlert, SupervisionAlertType, SupervisionDashboard, SupervisionService } from '../../../core/services/supervision.service';
 import { GeoPoint, ProblemDetails } from '../../../core/models';
 import { formatRelative, formatXaf } from '../../../core/utils/formatters';
 import { I18nService } from '../../../core/i18n/i18n.service';
@@ -116,8 +116,12 @@ export class DashboardPageComponent {
     if (!d) return [];
     const lines: MapLine[] = [];
     if (this.showOrders()) {
+      // Road routes computed by the backend (driver → current pickup/drop-off). No straight
+      // pickup→drop-off line: orders without a usable route just show their two pins.
+      const routes = this.routes();
       for (const o of d.orders) {
-        lines.push({ id: `o:${o.uuid}`, points: [o.pickup, o.dropoff], color: '#6B7686', dashed: true, weight: 2, opacity: 0.6 });
+        const r = routes[o.uuid];
+        if (r) lines.push({ id: `o:${o.uuid}`, points: r, color: '#E8830C', weight: 4, opacity: 0.9 });
       }
     }
     if (this.showTrails()) {
@@ -145,6 +149,37 @@ export class DashboardPageComponent {
       latMin: Math.min(...lats) - pad, latMax: Math.max(...lats) + pad,
       lngMin: Math.min(...lngs) - pad, lngMax: Math.max(...lngs) + pad,
     });
+  }
+
+  private readonly routes = signal<Record<string, GeoPoint[]>>({});
+  private readonly routeFetchedAt = new Map<string, number>();
+
+  /** Statuses for which the backend computes a route (driver assigned and moving toward a target). */
+  private static readonly ROUTABLE = ['AFFECTEE', 'EN_ROUTE_RAMASSAGE', 'ARRIVE_RAMASSAGE', 'COLIS_RECUPERE', 'EN_LIVRAISON', 'ARRIVE_LIVRAISON'];
+
+  /** The route endpoint is rate-limited (60/min), so refresh each order at most once a minute and cap the batch. */
+  private refreshRoutes(d: SupervisionDashboard): void {
+    const now = Date.now();
+    const live = new Set(d.orders.map((o) => o.uuid));
+    const due = d.orders
+      .filter((o) => DashboardPageComponent.ROUTABLE.includes(o.status) && now - (this.routeFetchedAt.get(o.uuid) ?? 0) > 60_000)
+      .slice(0, 25);
+    for (const o of due) {
+      this.routeFetchedAt.set(o.uuid, now);
+      this.supervision.orderRoute(o.uuid).subscribe({
+        next: (r: OrderRoute) => {
+          const pts = r.route_available && r.geometry ? r.geometry.coordinates.map(([lng, lat]) => ({ lat, lng })) : null;
+          this.routes.update((prev) => {
+            const next = { ...prev };
+            if (pts) next[o.uuid] = pts; else delete next[o.uuid];
+            return next;
+          });
+        },
+        error: () => undefined, // a missing route just means no line for this order
+      });
+    }
+    // Forget finished orders.
+    this.routes.update((prev) => Object.fromEntries(Object.entries(prev).filter(([k]) => live.has(k))));
   }
 
   private recordTrails(d: SupervisionDashboard): void {
@@ -177,6 +212,7 @@ export class DashboardPageComponent {
         const first = this.dashboard() === null;
         this.dashboard.set(d);
         this.recordTrails(d);
+        this.refreshRoutes(d);
         this.lastUpdate.set(new Date());
         this.loading.set(false);
         if (first || !silent) this.fitToData();

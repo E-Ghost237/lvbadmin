@@ -79,6 +79,19 @@ export interface SupervisionDashboard {
   alerts: SupervisionAlert[];
 }
 
+/** `GET /v1/orders/{uuid}/route` — road route computed by the backend (OSRM) from the driver's position to the current target. */
+export interface OrderRoute {
+  route_available: boolean;
+  reason: string | null;
+  target: 'pickup' | 'delivery' | null;
+  distance_m: number | null;
+  duration_seconds: number | null;
+  eta_min_minutes: number | null;
+  eta_max_minutes: number | null;
+  /** GeoJSON LineString — coordinates are `[lng, lat]`. */
+  geometry: { type: 'LineString'; coordinates: [number, number][] } | null;
+}
+
 export interface KpiMeasurement {
   id: string;
   label: string;
@@ -112,6 +125,10 @@ export class SupervisionService {
     if (status) params['statut'] = status;
     if (city) params['ville'] = city;
     return this.http.get<SupervisionDashboard>(`${this.baseUrl}/admin/supervision`, { params });
+  }
+
+  orderRoute(orderUuid: string): Observable<OrderRoute> {
+    return this.http.get<OrderRoute>(`${this.baseUrl}/orders/${orderUuid}/route`, { params: { optimization: 'fastest' } });
   }
 
   acknowledgeAlert(alertId: string, motif: string): Observable<void> {
