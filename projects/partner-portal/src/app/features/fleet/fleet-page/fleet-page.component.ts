@@ -1,6 +1,8 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormFeedbackService } from '@lvb/ui/form-feedback/form-feedback.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ChipPickerComponent } from '../chip-picker.component';
+import { FUEL_OPTIONS, LICENSE_CATEGORIES, LICENSE_SELECT_OPTIONS, TRANSMISSION_OPTIONS, TypeProfile, profileFor } from '../fleet-catalog';
 import { ResourcePanelComponent } from '../resource-panel.component';
 import { CouriersPanelComponent } from '../couriers-panel.component';
 import { FleetService } from '../../../core/services/fleet.service';
@@ -40,7 +42,7 @@ import { ToastService } from '@lvb/ui/toast/toast.service';
   selector: 'app-fleet-page',
   imports: [
     ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, ForbiddenStateComponent, StatusBadgeComponent,
-    SelectComponent, DataTableComponent, TableCellDefDirective, FormFieldComponent, CmPhoneDirective, CouriersPanelComponent, ResourcePanelComponent,
+    SelectComponent, DataTableComponent, TableCellDefDirective, FormFieldComponent, CmPhoneDirective, CouriersPanelComponent, ResourcePanelComponent, ChipPickerComponent,
   ],
   templateUrl: './fleet-page.component.html',
 })
@@ -119,23 +121,54 @@ export class FleetPageComponent {
   protected readonly editingVehicle = signal<Vehicle | null>(null);
   protected readonly savingVehicle = signal(false);
   protected readonly vehicleForm = this.fb.nonNullable.group({
+    vehicle_type: ['', [Validators.required]],
     registration: ['', [Validators.required, Validators.maxLength(40)]],
     brand: ['', [Validators.required, Validators.maxLength(80)]],
     model: ['', [Validators.required, Validators.maxLength(80)]],
-    year: [null as number | null, [intRange(1950, new Date().getFullYear() + 1)]],
-    vehicle_type: ['', [Validators.required]],
-    category: ['', [Validators.required]],
     license_category: ['', [Validators.required]],
-    color: [''],
-    capacity_kg: [0, [Validators.required, intRange(0, 1_000_000)]],
-    volume_liters: [0, [Validators.required, intRange(0, 100_000_000)]],
+    capacity_kg: [null as number | null, [Validators.required, intRange(1, 1_000_000)]],
+    volume: [null as number | null, [Validators.min(0), Validators.max(100_000)]],
+    year: [null as number | null, [intRange(1950, new Date().getFullYear() + 1)]],
+    color: ['', [Validators.maxLength(60)]],
+    chassis_number: ['', [Validators.maxLength(100)]],
     seats: [null as number | null, [intRange(1, 100)]],
     fuel: [''],
     transmission: [''],
     mileage: [null as number | null, [intRange(0, 100_000_000)]],
-    condition: [''],
+    length_cm: [null as number | null, [intRange(1, 10_000)]],
+    width_cm: [null as number | null, [intRange(1, 10_000)]],
+    height_cm: [null as number | null, [intRange(1, 10_000)]],
+    condition: ['', [Validators.maxLength(2000)]],
     status: ['' as VehicleStatus | ''],
   });
+
+  // The form adapts to the kind of vehicle picked: relevant fields only, sensible defaults.
+  protected readonly vehicleProfile = signal<TypeProfile>(profileFor(''));
+  protected readonly showVehicleMore = signal(false);
+  protected readonly licenseOptions = LICENSE_SELECT_OPTIONS;
+  protected readonly fuelOptions = FUEL_OPTIONS;
+  protected readonly transmissionOptions = TRANSMISSION_OPTIONS;
+
+  private readonly onTypeChange = this.vehicleForm.controls.vehicle_type.valueChanges.subscribe((code) => {
+    const prev = this.vehicleProfile();
+    const next = profileFor(code);
+    this.vehicleProfile.set(next);
+    const c = this.vehicleForm.controls;
+    // Suggest the licence category the type usually needs — unless the user already chose something else.
+    if (!c.license_category.value || c.license_category.value === prev.permit) c.license_category.setValue(next.permit);
+    // Keep a typed volume meaningful when the unit changes (m³ ↔ litres); drop it when the type has none.
+    const v = c.volume.value;
+    if (v !== null && prev.volume !== next.volume) {
+      if (next.volume === null) c.volume.setValue(null);
+      else if (prev.volume === 'm3' && next.volume === 'L') c.volume.setValue(v * 1000);
+      else if (prev.volume === 'L' && next.volume === 'm3') c.volume.setValue(v / 1000);
+    }
+  });
+
+  private vehicleCategoryLabel(typeCode: string, capacityKg: number): string {
+    const label = this.vehicleTypeOptions().find((o) => o.value === typeCode)?.label ?? typeCode;
+    return capacityKg >= 1000 ? `${label} ${Math.round(capacityKg / 100) / 10} t` : label;
+  }
 
   fetchVehicles(cursor?: number): void {
     this.loadingVehicles.set(true);
@@ -161,23 +194,31 @@ export class FleetPageComponent {
 
   openNewVehicleForm(): void {
     this.editingVehicle.set(null);
+    this.vehicleProfile.set(profileFor(''));
     this.vehicleForm.reset({
-      registration: '', brand: '', model: '', year: null, vehicle_type: '', category: '', license_category: '',
-      color: '', capacity_kg: 0, volume_liters: 0, seats: null, fuel: '', transmission: '', mileage: null,
-      condition: '', status: '',
+      vehicle_type: '', registration: '', brand: '', model: '', license_category: '', capacity_kg: null, volume: null, year: null,
+      color: '', chassis_number: '', seats: null, fuel: '', transmission: '', mileage: null, length_cm: null, width_cm: null,
+      height_cm: null, condition: '', status: '',
     });
+    this.showVehicleMore.set(false);
     this.vehicleFormOpen.set(true);
   }
 
   openEditVehicleForm(vehicle: Vehicle): void {
     this.editingVehicle.set(vehicle);
+    const profile = profileFor(vehicle.vehicle_type);
+    this.vehicleProfile.set(profile);
+    const v = vehicle as Vehicle & { chassis_number?: string | null; length_cm?: number | null; width_cm?: number | null; height_cm?: number | null };
     this.vehicleForm.reset({
-      registration: vehicle.registration, brand: vehicle.brand, model: vehicle.model, year: vehicle.year,
-      vehicle_type: vehicle.vehicle_type, category: vehicle.category, license_category: vehicle.license_category,
-      color: vehicle.color ?? '', capacity_kg: vehicle.capacity_kg, volume_liters: vehicle.volume_liters,
-      seats: vehicle.seats ?? null, fuel: vehicle.fuel ?? '', transmission: vehicle.transmission ?? '',
-      mileage: vehicle.mileage ?? null, condition: vehicle.condition ?? '', status: vehicle.status,
+      vehicle_type: vehicle.vehicle_type, registration: vehicle.registration, brand: vehicle.brand, model: vehicle.model,
+      license_category: vehicle.license_category, capacity_kg: vehicle.capacity_kg,
+      volume: profile.volume === 'm3' ? vehicle.volume_liters / 1000 : profile.volume === 'L' ? vehicle.volume_liters : null,
+      year: vehicle.year, color: vehicle.color ?? '', chassis_number: v.chassis_number ?? '', seats: vehicle.seats ?? null,
+      fuel: vehicle.fuel ?? '', transmission: vehicle.transmission ?? '', mileage: vehicle.mileage ?? null,
+      length_cm: v.length_cm ?? null, width_cm: v.width_cm ?? null, height_cm: v.height_cm ?? null,
+      condition: vehicle.condition ?? '', status: vehicle.status,
     });
+    this.showVehicleMore.set(true);
     this.vehicleFormOpen.set(true);
   }
 
@@ -187,13 +228,21 @@ export class FleetPageComponent {
       return;
     }
     const v = this.vehicleForm.getRawValue();
+    const profile = this.vehicleProfile();
+    const capacity = v.capacity_kg ?? 0;
+    const liters = profile.volume === null || v.volume === null ? 0 : Math.round(profile.volume === 'm3' ? v.volume * 1000 : v.volume);
     const req: SaveVehicleRequest = {
-      registration: v.registration, brand: v.brand || undefined, model: v.model || undefined,
-      year: v.year ?? undefined, vehicle_type: v.vehicle_type, category: v.category || undefined,
-      license_category: v.license_category || undefined, color: v.color || undefined,
-      capacity_kg: v.capacity_kg, volume_liters: v.volume_liters, seats: v.seats ?? undefined,
+      registration: v.registration, brand: v.brand.trim(), model: v.model.trim(), vehicle_type: v.vehicle_type,
+      // The backend requires a free-text category; derive it from the type (+ tonnage) instead of asking for it.
+      category: this.vehicleCategoryLabel(v.vehicle_type, capacity),
+      license_category: v.license_category, capacity_kg: capacity, volume_liters: liters,
+      year: v.year ?? undefined, color: v.color.trim() || undefined, seats: v.seats ?? undefined,
       fuel: v.fuel || undefined, transmission: v.transmission || undefined, mileage: v.mileage ?? undefined,
-      condition: v.condition || undefined, status: v.status || undefined,
+      condition: v.condition.trim() || undefined, status: v.status || undefined,
+      ...(v.chassis_number.trim() ? { chassis_number: v.chassis_number.trim() } : {}),
+      ...(profile.dimensions && v.length_cm ? { length_cm: v.length_cm } : {}),
+      ...(profile.dimensions && v.width_cm ? { width_cm: v.width_cm } : {}),
+      ...(profile.dimensions && v.height_cm ? { height_cm: v.height_cm } : {}),
     };
     this.savingVehicle.set(true);
     const editing = this.editingVehicle();
@@ -233,6 +282,15 @@ export class FleetPageComponent {
   protected readonly driverFormOpen = signal(false);
   protected readonly editingDriver = signal<Driver | null>(null);
   protected readonly savingDriver = signal(false);
+  protected readonly showDriverMore = signal(false);
+  protected readonly licenseChips = LICENSE_CATEGORIES;
+  protected readonly vehicleTypeChips = () => this.vehicleTypeOptions().map((o) => ({ value: o.value, label: o.label }));
+  protected setDriverCsv(control: 'license_categories' | 'vehicle_types', value: string): void {
+    const c = this.driverForm.controls[control];
+    c.setValue(value);
+    c.markAsTouched();
+  }
+
   protected readonly driverForm = this.fb.nonNullable.group({
     first_name: ['', [Validators.required, personName(), Validators.maxLength(100)]],
     last_name: ['', [Validators.required, personName(), Validators.maxLength(100)]],
@@ -278,6 +336,7 @@ export class FleetPageComponent {
       first_name: '', last_name: '', birth_date: '', email: '', phone: '', address: '', photo_url: '', license_number: '',
       license_categories: '', license_expires_at: '', experience_years: null, vehicle_types: '', status: '',
     });
+    this.showDriverMore.set(false);
     this.driverFormOpen.set(true);
   }
 
@@ -291,6 +350,7 @@ export class FleetPageComponent {
       experience_years: driver.experience_years ?? null, vehicle_types: (driver.vehicle_types ?? []).join(', '),
       status: driver.status,
     });
+    this.showDriverMore.set(true);
     this.driverFormOpen.set(true);
   }
 

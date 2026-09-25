@@ -26,46 +26,54 @@
       </div>
 
       @if (vehicleFormOpen()) {
-        <form [formGroup]="vehicleForm" (ngSubmit)="submitVehicleForm()" class="card p-5 mb-4 flex flex-col gap-3">
-          <p class="text-sm font-medium mb-1">{{ editingVehicle() ? 'Modifier le véhicule' : 'Nouveau véhicule' }}</p>
+        <form [formGroup]="vehicleForm" (ngSubmit)="submitVehicleForm()" class="card p-5 mb-4 flex flex-col gap-4">
+          <p class="text-sm font-medium">{{ editingVehicle() ? 'Modifier le véhicule' : 'Nouveau véhicule' }}</p>
           @if (editingVehicle()?.compliance_suspended) {
             <p class="text-xs px-3 py-2 rounded-(--radius-sm)" style="background: var(--status-critical-bg); color: var(--status-critical)">
               Ce véhicule est suspendu pour non-conformité par LVB — toute modification sera refusée tant que la suspension n’est pas levée.
             </p>
           }
-          <div class="grid grid-cols-2 gap-3">
-            <app-field label="Immatriculation" [control]="vehicleForm.controls.registration" required advisory="plate"><input class="input" formControlName="registration" /></app-field>
-            <app-field label="Type de véhicule" [control]="vehicleForm.controls.vehicle_type" required>
-              <app-select [options]="vehicleTypeOptions()" [allowClear]="false" formControlName="vehicle_type" />
-            </app-field>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <app-field label="Marque" [control]="vehicleForm.controls.brand"><input class="input" formControlName="brand" /></app-field>
-            <app-field label="Modèle" [control]="vehicleForm.controls.model"><input class="input" formControlName="model" /></app-field>
-          </div>
-          <div class="grid grid-cols-3 gap-3">
-            <app-field label="Année" [control]="vehicleForm.controls.year"><input type="number" class="input" formControlName="year" /></app-field>
-            <app-field label="Catégorie" [control]="vehicleForm.controls.category"><input class="input" formControlName="category" /></app-field>
-            <app-field label="Catégorie de permis requise" [control]="vehicleForm.controls.license_category"><input class="input" formControlName="license_category" /></app-field>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <app-field label="Capacité (kg)" [control]="vehicleForm.controls.capacity_kg" required><input type="number" min="0" class="input" formControlName="capacity_kg" /></app-field>
-            <app-field label="Volume (litres)" [control]="vehicleForm.controls.volume_liters" required><input type="number" min="0" class="input" formControlName="volume_liters" /></app-field>
-          </div>
-          <div class="grid grid-cols-3 gap-3">
-            <app-field label="Couleur" [control]="vehicleForm.controls.color"><input class="input" formControlName="color" /></app-field>
-            <app-field label="Places" [control]="vehicleForm.controls.seats"><input type="number" min="1" class="input" formControlName="seats" /></app-field>
-            <app-field label="Kilométrage" [control]="vehicleForm.controls.mileage"><input type="number" min="0" class="input" formControlName="mileage" /></app-field>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <app-field label="Carburant" [control]="vehicleForm.controls.fuel"><input class="input" formControlName="fuel" /></app-field>
-            <app-field label="Transmission" [control]="vehicleForm.controls.transmission"><input class="input" formControlName="transmission" /></app-field>
-          </div>
-          <app-field label="État / remarques" [control]="vehicleForm.controls.condition"><textarea class="input" rows="2" formControlName="condition"></textarea></app-field>
-          @if (editingVehicle()) {
-            <app-field label="Statut" [control]="vehicleForm.controls.status">
-              <app-select [options]="vehicleStatusOptions" formControlName="status" />
-            </app-field>
+          <app-field label="Type de véhicule" [control]="vehicleForm.controls.vehicle_type" required hint="Choisissez d’abord le type : le formulaire s’adapte.">
+            <app-select [options]="vehicleTypeOptions()" [allowClear]="false" placeholder="Sélectionner un type" formControlName="vehicle_type" />
+          </app-field>
+
+          @if (vehicleForm.controls.vehicle_type.value) {
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <app-field label="Immatriculation" [control]="vehicleForm.controls.registration" required advisory="plate"><input class="input" formControlName="registration" placeholder="LT 123 AB" /></app-field>
+              <app-field label="Catégorie de permis requise" [control]="vehicleForm.controls.license_category" required hint="Proposée selon le type — modifiable.">
+                <app-select [options]="licenseOptions" [allowClear]="false" placeholder="Sélectionner" formControlName="license_category" />
+              </app-field>
+              <app-field label="Marque" [control]="vehicleForm.controls.brand" required><input class="input" formControlName="brand" placeholder="Mercedes, Isuzu…" /></app-field>
+              <app-field label="Modèle" [control]="vehicleForm.controls.model" required><input class="input" formControlName="model" placeholder="Actros, NPR…" /></app-field>
+              <app-field [label]="vehicleProfile().capacityLabel" [control]="vehicleForm.controls.capacity_kg" required><input type="number" min="1" class="input" formControlName="capacity_kg" /></app-field>
+              @if (vehicleProfile().volume) {
+                <app-field [label]="vehicleProfile().volumeLabel" [control]="vehicleForm.controls.volume" [hint]="vehicleProfile().volume === 'm3' ? '1 m³ = 1 000 litres' : ''"><input type="number" min="0" step="any" class="input" formControlName="volume" /></app-field>
+              }
+            </div>
+
+            <button type="button" class="text-sm font-medium self-start" style="color: var(--brand)" (click)="showVehicleMore.set(!showVehicleMore())">
+              {{ showVehicleMore() ? '− Masquer les détails' : '+ Plus de détails (facultatif)' }}
+            </button>
+            @if (showVehicleMore()) {
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <app-field label="Année" [control]="vehicleForm.controls.year"><input type="number" class="input" formControlName="year" placeholder="2020" /></app-field>
+                <app-field label="Couleur" [control]="vehicleForm.controls.color"><input class="input" formControlName="color" /></app-field>
+                <app-field label="Numéro de châssis" [control]="vehicleForm.controls.chassis_number"><input class="input" formControlName="chassis_number" /></app-field>
+                <app-field label="Carburant" [control]="vehicleForm.controls.fuel"><app-select [options]="fuelOptions" formControlName="fuel" /></app-field>
+                <app-field label="Boîte de vitesses" [control]="vehicleForm.controls.transmission"><app-select [options]="transmissionOptions" formControlName="transmission" /></app-field>
+                <app-field label="Places" [control]="vehicleForm.controls.seats"><input type="number" min="1" class="input" formControlName="seats" /></app-field>
+                <app-field label="Kilométrage" [control]="vehicleForm.controls.mileage"><input type="number" min="0" class="input" formControlName="mileage" /></app-field>
+                @if (vehicleProfile().dimensions) {
+                  <app-field label="Longueur (cm)" [control]="vehicleForm.controls.length_cm"><input type="number" min="1" class="input" formControlName="length_cm" /></app-field>
+                  <app-field label="Largeur (cm)" [control]="vehicleForm.controls.width_cm"><input type="number" min="1" class="input" formControlName="width_cm" /></app-field>
+                  <app-field label="Hauteur (cm)" [control]="vehicleForm.controls.height_cm"><input type="number" min="1" class="input" formControlName="height_cm" /></app-field>
+                }
+                @if (editingVehicle()) {
+                  <app-field label="Statut" [control]="vehicleForm.controls.status"><app-select [options]="vehicleStatusOptions" formControlName="status" /></app-field>
+                }
+                <app-field class="sm:col-span-3" label="État / remarques" [control]="vehicleForm.controls.condition"><textarea class="input" rows="2" formControlName="condition"></textarea></app-field>
+              </div>
+            }
           }
           <div class="flex gap-2">
             <button type="button" class="btn btn-ghost btn-sm" [disabled]="savingVehicle()" (click)="vehicleFormOpen.set(false)">Annuler</button>
@@ -106,43 +114,43 @@
       </div>
 
       @if (driverFormOpen()) {
-        <form [formGroup]="driverForm" (ngSubmit)="submitDriverForm()" class="card p-5 mb-4 flex flex-col gap-3">
-          <p class="text-sm font-medium mb-1">{{ editingDriver() ? 'Modifier le chauffeur' : 'Nouveau chauffeur' }}</p>
+        <form [formGroup]="driverForm" (ngSubmit)="submitDriverForm()" class="card p-5 mb-4 flex flex-col gap-4">
+          <p class="text-sm font-medium">{{ editingDriver() ? 'Modifier le chauffeur' : 'Nouveau chauffeur' }}</p>
           @if (editingDriver()?.compliance_suspended) {
             <p class="text-xs px-3 py-2 rounded-(--radius-sm)" style="background: var(--status-critical-bg); color: var(--status-critical)">
               Ce chauffeur est suspendu pour non-conformité par LVB — toute modification sera refusée tant que la suspension n’est pas levée.
             </p>
           }
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <app-field label="Prénom" [control]="driverForm.controls.first_name" required><input class="input" formControlName="first_name" /></app-field>
             <app-field label="Nom" [control]="driverForm.controls.last_name" required><input class="input" formControlName="last_name" /></app-field>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <app-field label="Date de naissance" [control]="driverForm.controls.birth_date" hint="18 ans minimum"><input type="date" class="input" formControlName="birth_date" /></app-field>
-            <app-field label="Email" [control]="driverForm.controls.email" required hint="Un compte chauffeur est créé avec cet email."><input type="email" class="input" formControlName="email" placeholder="chauffeur@exemple.cm" /></app-field>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
             <app-field label="Téléphone" [control]="driverForm.controls.phone" required><input class="input" appCmPhone formControlName="phone" placeholder="+237 6 51 23 45 67" /></app-field>
-          </div>
-          <app-field label="Adresse" [control]="driverForm.controls.address"><input class="input" formControlName="address" /></app-field>
-          <app-field label="Photo (URL)" [control]="driverForm.controls.photo_url"><input class="input" formControlName="photo_url" placeholder="https://…" /></app-field>
-          @if (!editingDriver()) {
-            <app-field label="Numéro de permis" [control]="driverForm.controls.license_number" required hint="Chiffré côté serveur — jamais réaffiché ensuite."><input class="input" formControlName="license_number" /></app-field>
-          } @else {
-            <app-field label="Nouveau numéro de permis (optionnel)" [control]="driverForm.controls.license_number" hint="Laisser vide pour ne pas modifier. Renseigner ce champ renvoie le dossier en attente de validation LVB."><input class="input" formControlName="license_number" /></app-field>
-          }
-          <div class="grid grid-cols-2 gap-3">
-            <app-field label="Catégories de permis" [control]="driverForm.controls.license_categories" required hint="Séparées par des virgules, ex. A, B"><input class="input" formControlName="license_categories" /></app-field>
+            <app-field label="Email" [control]="driverForm.controls.email" required hint="Un compte chauffeur est créé avec cet email."><input type="email" class="input" formControlName="email" placeholder="chauffeur@exemple.cm" /></app-field>
+            <app-field label="Numéro de permis" [control]="driverForm.controls.license_number" [required]="!editingDriver()" [hint]="editingDriver() ? 'Laisser vide pour ne pas modifier — un changement renvoie le dossier en validation LVB.' : 'Chiffré côté serveur — jamais réaffiché ensuite.'"><input class="input" formControlName="license_number" autocomplete="off" /></app-field>
             <app-field label="Permis valide jusqu’au" [control]="driverForm.controls.license_expires_at" required><input type="date" class="input" formControlName="license_expires_at" /></app-field>
           </div>
-          <div class="grid grid-cols-2 gap-3">
-            <app-field label="Années d’expérience" [control]="driverForm.controls.experience_years"><input type="number" min="0" class="input" formControlName="experience_years" /></app-field>
-            <app-field label="Types de véhicule autorisés" [control]="driverForm.controls.vehicle_types" hint="Séparés par des virgules"><input class="input" formControlName="vehicle_types" /></app-field>
-          </div>
-          @if (editingDriver()) {
-            <app-field label="Statut" [control]="driverForm.controls.status" hint="Le passage à Actif ou Suspendu après invalidation nécessite une validation par LVB.">
-              <app-select [options]="driverStatusOptions" formControlName="status" />
-            </app-field>
+          <app-field label="Catégories de permis détenues" [control]="driverForm.controls.license_categories" required hint="Touchez pour sélectionner (plusieurs possibles).">
+            <app-chip-picker [options]="licenseChips" [value]="driverForm.controls.license_categories.value" ariaLabel="Catégories de permis" (valueChange)="setDriverCsv('license_categories', $event)" />
+          </app-field>
+
+          <button type="button" class="text-sm font-medium self-start" style="color: var(--brand)" (click)="showDriverMore.set(!showDriverMore())">
+            {{ showDriverMore() ? '− Masquer les détails' : '+ Plus de détails (facultatif)' }}
+          </button>
+          @if (showDriverMore()) {
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <app-field label="Date de naissance" [control]="driverForm.controls.birth_date" hint="18 ans minimum"><input type="date" class="input" formControlName="birth_date" /></app-field>
+              <app-field label="Années d’expérience" [control]="driverForm.controls.experience_years"><input type="number" min="0" class="input" formControlName="experience_years" /></app-field>
+              <app-field class="sm:col-span-2" label="Adresse" [control]="driverForm.controls.address"><input class="input" formControlName="address" /></app-field>
+              <app-field class="sm:col-span-2" label="Photo (URL https)" [control]="driverForm.controls.photo_url"><input class="input" formControlName="photo_url" placeholder="https://…" /></app-field>
+              <app-field class="sm:col-span-2" label="Types de véhicules conduits" [control]="driverForm.controls.vehicle_types">
+                <app-chip-picker [options]="vehicleTypeChips()" [value]="driverForm.controls.vehicle_types.value" ariaLabel="Types de véhicules" (valueChange)="setDriverCsv('vehicle_types', $event)" />
+              </app-field>
+              @if (editingDriver()) {
+                <app-field class="sm:col-span-2" label="Statut" [control]="driverForm.controls.status" hint="Le passage à Actif ou Suspendu après invalidation nécessite une validation par LVB.">
+                  <app-select [options]="driverStatusOptions" formControlName="status" />
+                </app-field>
+              }
+            </div>
           }
           <div class="flex gap-2">
             <button type="button" class="btn btn-ghost btn-sm" [disabled]="savingDriver()" (click)="driverFormOpen.set(false)">Annuler</button>
