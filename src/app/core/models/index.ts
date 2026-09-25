@@ -1,4 +1,5 @@
 export * from './enums';
+export * from './courier.model';
 export * from './notification-preference.model';
 export * from './common.model';
 export * from './user.model';

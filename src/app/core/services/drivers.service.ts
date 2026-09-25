@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL, newIdempotencyKey, withIdempotencyKey } from '../http/api.config';
+import { CourierAccount, CreateCourierRequest } from '../models/courier.model';
 import { AccountStatus, AdminUserDetail, AdminUserSummary, CursorPage, DriverOperationalStatus, UuidCursorPage } from '../models';
 
 export interface AdminDriverSummary {
@@ -69,6 +70,11 @@ export class DriversService {
     if (opts.cursor) params['cursor'] = opts.cursor;
     if (opts.limit) params['limit'] = String(opts.limit);
     return this.http.get<UuidCursorPage<AdminDriverSummary>>(`${this.baseUrl}/admin/drivers`, { params });
+  }
+
+  /** Creates a courier account (status EN_ATTENTE_VALIDATION); the backend generates the password and emails it. */
+  createCourier(req: CreateCourierRequest): Observable<CourierAccount> {
+    return this.http.post<CourierAccount>(`${this.baseUrl}/admin/drivers`, req, { context: withIdempotencyKey(newIdempotencyKey()) });
   }
 
   approve(uuid: string): Observable<void> {

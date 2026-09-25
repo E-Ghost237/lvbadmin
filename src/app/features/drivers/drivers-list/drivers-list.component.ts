@@ -1,11 +1,12 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { AdminDriverSummary, DriversService, KycDossierSummary } from '../../../core/services/drivers.service';
+import { CreateCourierRequest } from '../../../core/models/courier.model';
 import { DriverOperationalStatus, ProblemDetails } from '../../../core/models';
 import { formatDate, formatPercent, formatXaf } from '../../../core/utils/formatters';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
-  BreadcrumbsComponent, ColumnDef, DataTableComponent, ForbiddenStateComponent, SearchInputComponent,
+  BreadcrumbsComponent, ColumnDef, CourierFormComponent, ModalComponent, DataTableComponent, ForbiddenStateComponent, SearchInputComponent,
   StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService, i18nKeyFor,
 } from '../../../shared/ui';
 
@@ -13,7 +14,7 @@ import {
   selector: 'app-drivers-list',
   imports: [
     BreadcrumbsComponent, TabsComponent, DataTableComponent, SearchInputComponent, StatusBadgeComponent,
-    ForbiddenStateComponent, TableCellDefDirective,
+    ForbiddenStateComponent, TableCellDefDirective, CourierFormComponent, ModalComponent,
   ],
   templateUrl: './drivers-list.component.html',
 })
@@ -22,6 +23,26 @@ export class DriversListComponent {
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly i18n = inject(I18nService);
+
+  protected readonly newCourierOpen = signal(false);
+  protected readonly creatingCourier = signal(false);
+  private readonly courierForm = viewChild(CourierFormComponent);
+
+  createCourier(req: CreateCourierRequest): void {
+    this.creatingCourier.set(true);
+    this.drivers.createCourier(req).subscribe({
+      next: (c) => {
+        this.creatingCourier.set(false);
+        this.newCourierOpen.set(false);
+        this.toast.success('Livreur créé', `${c.matricule} — un mot de passe temporaire a été envoyé par email.`);
+        this.fetch();
+      },
+      error: (err: ProblemDetails) => {
+        this.creatingCourier.set(false);
+        this.courierForm()?.showServerError('Création impossible', err);
+      },
+    });
+  }
 
   protected readonly trackByUuid = (row: AdminDriverSummary) => row.uuid;
 

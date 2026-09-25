@@ -16,9 +16,9 @@ export const DRIVER_STATUS_VALUES: DriverStatus[] = [
  * PATCH body accepts) — the actionable lever is `status`.
  */
 export interface Vehicle {
-  id: number;
+  id?: number;
   uuid: string;
-  partner_id: number;
+  partner_id?: number;
   registration: string;
   brand: string;
   model: string;
@@ -45,9 +45,9 @@ export interface Vehicle {
 }
 
 export interface Driver {
-  id: number;
+  id?: number;
   uuid: string;
-  partner_id: number;
+  partner_id?: number;
   first_name: string;
   last_name: string;
   birth_date: string | null;

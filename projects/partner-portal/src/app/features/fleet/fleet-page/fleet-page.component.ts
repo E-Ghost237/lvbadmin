@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormFeedbackService } from '@lvb/ui/form-feedback/form-feedback.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { CouriersPanelComponent } from '../couriers-panel.component';
 import { FleetService } from '../../../core/services/fleet.service';
 import { SaveDriverRequest, SaveVehicleRequest } from '../../../core/models';
 import {
@@ -38,7 +39,7 @@ import { ToastService } from '@lvb/ui/toast/toast.service';
   selector: 'app-fleet-page',
   imports: [
     ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, ForbiddenStateComponent, StatusBadgeComponent,
-    SelectComponent, DataTableComponent, TableCellDefDirective, FormFieldComponent, CmPhoneDirective,
+    SelectComponent, DataTableComponent, TableCellDefDirective, FormFieldComponent, CmPhoneDirective, CouriersPanelComponent,
   ],
   templateUrl: './fleet-page.component.html',
 })
@@ -49,7 +50,7 @@ export class FleetPageComponent {
   private readonly feedback = inject(FormFeedbackService);
   protected readonly i18n = inject(I18nService);
 
-  protected readonly tabs: TabDef[] = [{ id: 'vehicles', label: 'Véhicules' }, { id: 'drivers', label: 'Chauffeurs' }];
+  protected readonly tabs: TabDef[] = [{ id: 'vehicles', label: 'Véhicules' }, { id: 'drivers', label: 'Chauffeurs' }, { id: 'couriers', label: 'Livreurs' }];
   protected readonly activeTab = signal('vehicles');
 
   date(iso: string | null): string {

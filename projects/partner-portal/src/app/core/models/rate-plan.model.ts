@@ -40,9 +40,9 @@ export interface RatePlanParameters {
  * server-side (`rental_rate_plan_versions`).
  */
 export interface RatePlan {
-  id: number;
+  id?: number;
   uuid: string;
-  partner_id: number;
+  partner_id?: number;
   name: string;
   mode: RatePlanMode;
   version: number;

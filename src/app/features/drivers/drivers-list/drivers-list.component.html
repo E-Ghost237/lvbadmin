@@ -1,9 +1,16 @@
 <app-breadcrumbs [crumbs]="[{ label: 'Livreurs' }]" />
 
-<div class="mb-5">
-  <h1 class="text-xl font-semibold">Livreurs</h1>
-  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Annuaire et validation des dossiers KYC.</p>
+<div class="mb-5 flex items-start justify-between gap-3 flex-wrap">
+  <div>
+    <h1 class="text-xl font-semibold">Livreurs</h1>
+    <p class="text-sm mt-0.5" style="color: var(--text-muted)">Annuaire et validation des dossiers KYC.</p>
+  </div>
+  <button type="button" class="btn btn-primary btn-sm" (click)="newCourierOpen.set(true)">+ Nouveau livreur</button>
 </div>
+
+<app-modal [open]="newCourierOpen()" title="Nouveau livreur" size="lg" (closed)="newCourierOpen.set(false)">
+  <app-courier-form [saving]="creatingCourier()" (save)="createCourier($event)" />
+</app-modal>
 
 <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
