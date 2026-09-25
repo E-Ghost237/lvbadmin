@@ -3,7 +3,7 @@ import { firstValueFrom } from 'rxjs';
 import { AuthService } from '@lvb/auth/auth.service';
 import { PartnerRole, PartnerStatus } from '@lvb/models/enums';
 import { Partner, PartnerDocument } from '@lvb/models/partner.model';
-import { computeReadiness, partnerCan } from '@lvb/utils/partner-access';
+import { computeReadiness, isDossierPermission, partnerCan } from '@lvb/utils/partner-access';
 import { PartnerProfileService } from './partner-profile.service';
 
 export type PartnerContextState = 'idle' | 'loading' | 'ready' | 'no-partner' | 'error';
@@ -67,6 +67,8 @@ export class PartnerContextService {
       default: return true; // idle/loading/error — never lock out on uncertainty
     }
     if (this.status() === 'ACTIF' && this.role() === null) return true;
+    // Onboarding: the role can't be resolved yet, but the only member is the owner — let the dossier screens open (the server still checks).
+    if (this.role() === null && (this.status() === 'EN_ATTENTE_VALIDATION' || this.status() === 'VALIDE')) return isDossierPermission(permission);
     return partnerCan(this.role(), this.status(), permission);
   }
 

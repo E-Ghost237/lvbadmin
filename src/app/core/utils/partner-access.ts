@@ -25,6 +25,11 @@ const BY_ROLE: Record<PartnerRole, ReadonlySet<string>> = {
 /** Permissions usable while the dossier is still being onboarded (backend `requireContext(..., dossier: true)`). */
 const DOSSIER_PERMISSIONS = new Set(['profile.read', 'profile.write', 'documents.read', 'documents.write']);
 
+/** While the dossier is being onboarded only the owner (RESPONSABLE) is attached, and the role can't be read yet (team list needs ACTIF). */
+export function isDossierPermission(permission: string): boolean {
+  return DOSSIER_PERMISSIONS.has(permission);
+}
+
 export function roleAllows(role: PartnerRole | null, permission: string): boolean {
   if (!role) return false;
   return ALL_ROLES_READ.has(permission) || BY_ROLE[role].has(permission);
