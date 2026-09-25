@@ -114,12 +114,17 @@
         <p class="text-sm font-medium mb-3">Déposer un document</p>
         <div class="flex flex-col gap-3">
           <app-select [options]="documentTypeOptions" placeholder="Type de document" [value]="uploadType()" (valueChange)="onUploadTypeChange($event)" />
+          @if (numberField()) {
+            <app-field [label]="numberLabel()" [control]="docNumber" required [advisory]="numberAdvisory()" hint="Le numéro est envoyé à LVB avec le document et vérifié par un administrateur.">
+              <input class="input" [formControl]="docNumber" autocomplete="off" />
+            </app-field>
+          }
           <app-file-drop (fileSelected)="onUploadFileSelected($event)" />
           <div>
             <label class="field-label">Date d’expiration (optionnel)</label>
             <input type="date" class="input" [value]="uploadExpiry()" (input)="onUploadExpiryInput($any($event.target).value)" />
           </div>
-          <button type="button" class="btn btn-primary btn-sm self-start" [disabled]="uploading() || !uploadType()" (click)="submitUpload()">Déposer</button>
+          <button type="button" class="btn btn-primary btn-sm self-start" [disabled]="uploading()" (click)="submitUpload()">Déposer</button>
         </div>
       </div>
       }

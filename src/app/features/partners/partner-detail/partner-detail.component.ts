@@ -99,7 +99,10 @@ export class PartnerDetailComponent {
 
   selectTab(id: string): void {
     this.activeTab.set(id);
-    if (id === 'documents' && this.documents().length === 0) this.fetchDocuments();
+    if (id === 'documents') {
+      if (this.documents().length === 0) this.fetchDocuments();
+      this.fetchChangeRequests(); // lets the Numéro column show a value waiting for approval
+    }
     if (id === 'changes' && this.changeRequests().length === 0) this.fetchChangeRequests();
     if (id === 'team' && this.members().length === 0) this.fetchMembers();
     if (id === 'audit' && this.auditEntries().length === 0) this.fetchAudit();
@@ -257,8 +260,23 @@ export class PartnerDetailComponent {
 
   // --- Documents (PRT-M02) ---------------------------------------------
 
+  /**
+   * RCCM and FISCAL documents carry a registration number that lives on the profile
+   * (set only through an approved change request). Show it beside the file so the reviewer
+   * can compare them — or the pending value waiting for approval.
+   */
+  protected declaredNumber(doc: PartnerDocument): string {
+    const field = doc.type_document === 'RCCM' ? 'rccm' : doc.type_document === 'FISCAL' ? 'numero_contribuable' : null;
+    if (!field) return '—';
+    const current = (this.partner() as unknown as Record<string, string | null> | null)?.[field];
+    if (current) return current;
+    const pending = this.changeRequests().find((c) => c.statut === 'EN_ATTENTE' && c.valeurs_apres[field]);
+    return pending ? `${pending.valeurs_apres[field]} — à approuver (onglet Demandes)` : 'Non renseigné';
+  }
+
   protected readonly documentColumns: ColumnDef<PartnerDocument>[] = [
     { key: 'type_document', label: 'Type', cell: (r) => DOCUMENT_TYPE_LABELS[r.type_document] },
+    { key: 'numero', label: 'Numéro déclaré', cell: (r) => this.declaredNumber(r) },
     { key: 'version', label: 'Version', align: 'right' },
     { key: 'statut_verification', label: 'Statut' },
     { key: 'expire_le', label: 'Expire le', cell: (r) => formatDate(r.expire_le) },

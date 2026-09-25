@@ -5,8 +5,9 @@ import { CmPhoneDirective } from '@lvb/ui/cm-phone/cm-phone.directive';
 import { PartnerContextService } from '../../../core/services/partner-context.service';
 import { I18nService } from '@lvb/i18n/i18n.service';
 import { FormFeedbackService } from '@lvb/ui/form-feedback/form-feedback.service';
+import { ActivatedRoute } from '@angular/router';
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PartnerProfileService } from '../../../core/services/partner-profile.service';
 import { InvitePartnerUserRequest, RequestPartnerProfileChangeRequest } from '../../../core/models';
 import { Partner, PartnerChangeRequest, PartnerDocument, PartnerInvitation, PartnerMember } from '@lvb/models/partner.model';
@@ -62,6 +63,7 @@ export class ProfilePageComponent {
   protected readonly canUpload = computed(() => this.ctx.can('documents.write'));
   protected readonly canManageUsers = computed(() => this.ctx.can('users.manage'));
   private readonly i18n = inject(I18nService);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly tabs: TabDef[] = [
     { id: 'profile', label: 'Profil' }, { id: 'documents', label: 'Documents' }, { id: 'team', label: 'Équipe' },
@@ -80,7 +82,19 @@ export class ProfilePageComponent {
     return formatDate(iso);
   }
 
+  // RCCM / FISCAL documents carry a registration number that LVB validates together with the file.
+  protected readonly docNumber = new FormControl('', { nonNullable: true, validators: [Validators.maxLength(100)] });
+  protected readonly numberField = computed<'rccm' | 'numero_contribuable' | null>(() =>
+    this.uploadType() === 'RCCM' ? 'rccm' : this.uploadType() === 'FISCAL' ? 'numero_contribuable' : null);
+  protected readonly numberAdvisory = computed<'rccm' | 'niu' | null>(() => (this.numberField() === 'rccm' ? 'rccm' : this.numberField() ? 'niu' : null));
+  protected readonly numberLabel = computed(() => (this.numberField() === 'rccm' ? 'Numéro RCCM' : 'Numéro contribuable (NIU)'));
+
   constructor() {
+    const q = this.route.snapshot.queryParamMap;
+    if (q.get('tab') === 'documents' || q.get('tab') === 'team') queueMicrotask(() => this.selectTab(q.get('tab')!));
+    this.openChangeWhenLoaded = q.get('change') === '1';
+    const wanted = q.get('type');
+    if (wanted && this.documentTypeOptions.some((o) => o.value === wanted)) queueMicrotask(() => this.onUploadTypeChange(wanted));
     effect(() => {
       // Read-only roles see the data but can't edit it.
       if (this.canWrite()) { this.profileForm.enable({ emitEvent: false }); this.changeForm.enable({ emitEvent: false }); }
@@ -134,6 +148,7 @@ export class ProfilePageComponent {
       next: (p) => {
         this.loadingProfile.set(false);
         this.profile.set(p);
+        if (this.openChangeWhenLoaded) { this.openChangeWhenLoaded = false; this.openChangeForm(); }
         this.profileForm.reset({
           nom_commercial: p.nom_commercial, telephone: p.telephone, email: p.email ?? '',
           adresse_physique: p.adresse_physique, ville: p.ville, secteur_activite: p.secteur_activite ?? '',
@@ -176,6 +191,8 @@ export class ProfilePageComponent {
       error: (err: ProblemDetails) => { this.savingProfile.set(false); this.feedback.serverError(this.profileForm, 'Échec', err); },
     });
   }
+
+  private openChangeWhenLoaded = false;
 
   openChangeForm(): void {
     const p = this.profile();
@@ -248,6 +265,12 @@ export class ProfilePageComponent {
 
   onUploadTypeChange(value: string): void {
     this.uploadType.set(value as PartnerDocumentType | '');
+    const field = this.numberField();
+    const current = field ? ((this.profile() as unknown as Record<string, string | null> | null)?.[field] ?? '') : '';
+    this.docNumber.setValue(current ?? '');
+    this.docNumber.setValidators(field && !current ? [Validators.required, Validators.maxLength(100)] : [Validators.maxLength(100)]);
+    this.docNumber.markAsUntouched();
+    this.docNumber.updateValueAndValidity();
   }
 
   onUploadExpiryInput(value: string): void {
@@ -261,19 +284,45 @@ export class ProfilePageComponent {
   submitUpload(): void {
     const type = this.uploadType();
     const file = this.uploadFile();
-    if (!type || !file) return;
+    if (!type) { this.feedback.blocked('Choisissez d’abord le type de document.', 'Dépôt incomplet'); return; }
+    if (!file) { this.feedback.blocked('Sélectionnez le fichier à déposer (PDF, JPG ou PNG).', 'Dépôt incomplet'); return; }
+    const field = this.numberField();
+    if (field && this.docNumber.invalid) {
+      this.docNumber.markAsTouched();
+      this.feedback.blocked(`${this.numberLabel()} : renseignez le numéro figurant sur le document.`, 'Dépôt incomplet');
+      return;
+    }
+    const number = this.docNumber.value.trim();
+    const known = field ? (((this.profile() as unknown as Record<string, string | null> | null)?.[field]) ?? '') : '';
     this.uploading.set(true);
     this.profileSvc.uploadDocument(type, file, this.uploadExpiry() || undefined).subscribe({
       next: () => {
-        this.uploading.set(false);
+        this.toast.success('Document déposé');
         this.uploadType.set('');
         this.uploadExpiry.set('');
         this.uploadFile.set(null);
-        this.toast.success('Document déposé');
         this.fetchDocuments();
-        void this.ctx.refresh();
+        // The number is a sensitive field: it goes to LVB as a change request, alongside the document.
+        if (field && number && number !== known) {
+          this.profileSvc.requestProfileChange({ [field]: number } as RequestPartnerProfileChangeRequest).subscribe({
+            next: () => {
+              this.uploading.set(false);
+              this.toast.success(`${this.numberLabel()} envoyé`, 'LVB vérifiera le numéro avec le document.');
+              this.fetchChangeRequests();
+              void this.ctx.refresh();
+            },
+            error: (err: ProblemDetails) => {
+              this.uploading.set(false);
+              this.feedback.serverError(null, 'Document déposé, mais le numéro n’a pas été envoyé', err);
+              void this.ctx.refresh();
+            },
+          });
+        } else {
+          this.uploading.set(false);
+          void this.ctx.refresh();
+        }
       },
-      error: (err: ProblemDetails) => { this.uploading.set(false); this.toast.error('Échec du dépôt', err.detail); },
+      error: (err: ProblemDetails) => { this.uploading.set(false); this.feedback.serverError(null, 'Échec du dépôt', err); },
     });
   }
 

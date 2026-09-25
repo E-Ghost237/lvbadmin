@@ -66,6 +66,8 @@ const COPY: Record<string, StatusCopy> = {
                     <span>
                       {{ item.label }}
                       @if (!item.ok && item.detail) { <span class="text-xs" style="color: var(--text-muted)"> — {{ item.detail }}</span> }
+                      @if (!item.ok && !item.detail) { <span class="text-xs" style="color: var(--text-muted)"> — à renseigner</span> }
+                      @if (!item.ok) { <a class="text-xs ml-2 underline" style="color: var(--brand)" routerLink="/profile" [queryParams]="params(item.key)">Compléter</a> }
                     </span>
                   </li>
                 }
@@ -73,7 +75,7 @@ const COPY: Record<string, StatusCopy> = {
               @if (ctx.readiness().ready) {
                 <p class="text-xs mt-3" style="color: var(--status-good)">Dossier complet. Il ne reste qu’à attendre la validation LVB.</p>
               } @else {
-                <a routerLink="/profile" class="btn btn-primary btn-sm mt-4 inline-flex">Compléter mon dossier</a>
+                <a routerLink="/profile" [queryParams]="firstMissingParams()" class="btn btn-primary btn-sm mt-4 inline-flex">Compléter mon dossier</a>
               }
             </div>
           }
@@ -91,6 +93,19 @@ export class OnboardingPageComponent {
   protected readonly copy = computed(() => COPY[this.ctx.status() ?? ''] ?? null);
   protected readonly showChecklist = computed(() => ['EN_ATTENTE_VALIDATION', 'VALIDE'].includes(this.ctx.status() ?? ''));
   protected readonly checklist = computed(() => [...this.ctx.readiness().documents, ...this.ctx.readiness().fields]);
+
+  private static readonly DOC_KEYS = ['RCCM', 'FISCAL', 'ID_RESPONSABLE', 'CONTRAT_LVB'];
+
+  /** Where the owner must go to fix one checklist item (a document upload, or the sensitive-field change request). */
+  protected params(key: string): Record<string, string> {
+    if (OnboardingPageComponent.DOC_KEYS.includes(key)) return { tab: 'documents', type: key };
+    return { tab: 'profile', change: '1' };
+  }
+
+  protected firstMissingParams(): Record<string, string> {
+    const first = this.checklist().find((i) => !i.ok);
+    return first ? this.params(first.key) : {};
+  }
 
   constructor() {
     // Always show fresh progress when landing here (documents may have just been verified).
