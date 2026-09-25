@@ -28,6 +28,7 @@ test:
     - npm ci --prefer-offline --no-audit --fund=false
   script:
     - npx ng build           # catches SSR/production build errors early
+    - npx ng build partner-portal
     - npx ng test --watch=false
 
 # The image is built on the target host itself (`docker compose up -d --build`)

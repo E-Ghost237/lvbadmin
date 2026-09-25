@@ -15,6 +15,7 @@ export const FR: Record<string, string> = {
   'partner.nav.bookings': 'Réservations',
   'partner.nav.wallet': 'Portefeuille',
   'partner.nav.onboarding': 'Mon dossier',
+  'partner.nav.planning': 'Planning',
   'partner.nav.orders': 'Commandes',
 
   'nav.dashboard': 'Supervision',

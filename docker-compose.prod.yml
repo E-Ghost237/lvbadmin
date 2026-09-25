@@ -10,3 +10,13 @@ services:
     restart: unless-stopped
     ports:
       - "${LVBADMIN_HTTP_PORT:-5050}:4000"
+
+  partner-portal:
+    build:
+      context: .
+      dockerfile: Dockerfile.partner
+    image: lvb-partner-portal:latest
+    container_name: lvb-partner-portal
+    restart: unless-stopped
+    ports:
+      - "${PARTNER_PORTAL_HTTP_PORT:-5051}:80"

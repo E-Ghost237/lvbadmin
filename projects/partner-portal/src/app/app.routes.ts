@@ -35,6 +35,11 @@ export const routes: Routes = [
         loadChildren: () => import('./features/fleet/fleet.routes').then((m) => m.FLEET_ROUTES),
       },
       {
+        path: 'planning',
+        canActivate: [partnerGuard('booking.read')],
+        loadChildren: () => import('./features/planning/planning.routes').then((m) => m.PLANNING_ROUTES),
+      },
+      {
         path: 'marketplace',
         canActivate: [partnerGuard('marketplace.offer.read')],
         loadChildren: () => import('./features/marketplace/marketplace.routes').then((m) => m.MARKETPLACE_ROUTES),

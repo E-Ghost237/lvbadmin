@@ -49,6 +49,10 @@ export class WalletService {
     return this.http.get<{ items: PartnerWithdrawal[] }>(`${this.baseUrl}/partner/wallet/withdrawals`);
   }
 
+  getWithdrawal(uuid: string): Observable<PartnerWithdrawal> {
+    return this.http.get<PartnerWithdrawal>(`${this.baseUrl}/partner/wallet/withdrawals/${uuid}`);
+  }
+
   requestWithdrawal(req: RequestWithdrawalRequest): Observable<PartnerWithdrawal> {
     return this.http.post<PartnerWithdrawal>(`${this.baseUrl}/partner/wallet/withdrawals`, req, {
       context: withIdempotencyKey(newIdempotencyKey()),

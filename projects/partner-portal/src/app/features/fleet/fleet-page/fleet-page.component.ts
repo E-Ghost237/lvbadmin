@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormFeedbackService } from '@lvb/ui/form-feedback/form-feedback.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ResourcePanelComponent } from '../resource-panel.component';
 import { CouriersPanelComponent } from '../couriers-panel.component';
 import { FleetService } from '../../../core/services/fleet.service';
 import { SaveDriverRequest, SaveVehicleRequest } from '../../../core/models';
@@ -39,7 +40,7 @@ import { ToastService } from '@lvb/ui/toast/toast.service';
   selector: 'app-fleet-page',
   imports: [
     ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, ForbiddenStateComponent, StatusBadgeComponent,
-    SelectComponent, DataTableComponent, TableCellDefDirective, FormFieldComponent, CmPhoneDirective, CouriersPanelComponent,
+    SelectComponent, DataTableComponent, TableCellDefDirective, FormFieldComponent, CmPhoneDirective, CouriersPanelComponent, ResourcePanelComponent,
   ],
   templateUrl: './fleet-page.component.html',
 })
@@ -62,7 +63,18 @@ export class FleetPageComponent {
     this.fetchVehicles();
   }
 
+  protected readonly managed = signal<{ resource: 'vehicles' | 'drivers'; uuid: string; label: string } | null>(null);
+  protected readonly vehicleSelectOptions = () => this.vehicles().map((v): SelectOption => ({ value: v.uuid, label: v.registration }));
+
+  manage(resource: 'vehicles' | 'drivers', uuid: string, label: string): void {
+    this.managed.set(null);
+    // Re-create the panel so it reloads for the newly chosen resource.
+    setTimeout(() => this.managed.set({ resource, uuid, label }));
+    if (resource === 'drivers' && this.vehicles().length === 0) this.fetchVehicles();
+  }
+
   selectTab(id: string): void {
+    this.managed.set(null);
     this.activeTab.set(id);
     if (id === 'drivers' && this.drivers().length === 0 && !this.loadingDrivers()) this.fetchDrivers();
   }

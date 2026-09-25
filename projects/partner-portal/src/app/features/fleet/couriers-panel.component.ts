@@ -1,6 +1,7 @@
 import { Component, inject, signal, viewChild } from '@angular/core';
 import { CourierAccount, CreateCourierRequest } from '@lvb/models/courier.model';
 import { ProblemDetails } from '@lvb/models/common.model';
+import { ModalComponent } from '@lvb/ui/modal/modal.component';
 import { CourierFormComponent } from '@lvb/ui/courier-form/courier-form.component';
 import { ForbiddenStateComponent } from '@lvb/ui/forbidden-state/forbidden-state.component';
 import { StatusBadgeComponent } from '@lvb/ui/status-badge/status-badge.component';
@@ -12,7 +13,7 @@ import { CourierService } from '../../core/services/courier.service';
 /** Delivery couriers of the organisation: list + create. Approval of the KYC dossier stays with LVB. */
 @Component({
   selector: 'app-couriers-panel',
-  imports: [CourierFormComponent, DataTableComponent, TableCellDefDirective, StatusBadgeComponent, ForbiddenStateComponent],
+  imports: [CourierFormComponent, DataTableComponent, TableCellDefDirective, StatusBadgeComponent, ForbiddenStateComponent, ModalComponent],
   template: `
     @if (forbidden()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission fleet.driver.manage." />
@@ -28,12 +29,25 @@ import { CourierService } from '../../core/services/courier.service';
       }
       <div class="card">
         <app-data-table
-          [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [trackBy]="trackBy"
+          [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [trackBy]="trackBy" [rowClickable]="true" (rowClick)="open($event)"
           emptyTitle="Aucun livreur" emptyHint="Créez un livreur : il recevra ses accès par email et complétera son dossier KYC."
         >
           <ng-template appCell="statut" let-row><app-status-badge domain="account" [status]="row.statut" /></ng-template>
         </app-data-table>
       </div>
+      <app-modal [open]="detail() !== null" title="Livreur" size="md" (closed)="detail.set(null)">
+        @if (detail(); as c) {
+          <div class="grid grid-cols-2 gap-3 text-sm">
+            <div><p class="field-label">Nom</p><p>{{ c.prenom ?? '' }} {{ c.nom }}</p></div>
+            <div><p class="field-label">Matricule</p><p>{{ c.matricule }}</p></div>
+            <div><p class="field-label">Téléphone</p><p>{{ c.telephone }}</p></div>
+            <div><p class="field-label">Email</p><p>{{ c.email ?? '—' }}</p></div>
+            <div><p class="field-label">Compte</p><app-status-badge domain="account" [status]="c.statut" /></div>
+            <div><p class="field-label">En service</p><p>{{ c.statut_operationnel }}</p></div>
+          </div>
+        }
+        <div modal-footer><button type="button" class="btn btn-secondary" (click)="detail.set(null)">Fermer</button></div>
+      </app-modal>
       @if (cursor()) {
         <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loading()" (click)="fetch(cursor()!)">Charger plus</button>
       }
@@ -49,6 +63,7 @@ export class CouriersPanelComponent {
   protected readonly loading = signal(true);
   protected readonly forbidden = signal(false);
   protected readonly cursor = signal<string | null>(null);
+  protected readonly detail = signal<CourierAccount | null>(null);
   protected readonly formOpen = signal(false);
   protected readonly saving = signal(false);
   protected readonly trackBy = (r: CourierAccount) => r.uuid;
@@ -78,6 +93,11 @@ export class CouriersPanelComponent {
         else this.toast.error('Chargement impossible', err.detail);
       },
     });
+  }
+
+  open(row: CourierAccount): void {
+    this.detail.set(row);
+    this.api.get(row.uuid).subscribe({ next: (c) => this.detail.set(c), error: () => undefined });
   }
 
   create(req: CreateCourierRequest): void {

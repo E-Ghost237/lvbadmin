@@ -71,6 +71,9 @@
       }
 
       <div class="card">
+        @if (simulating(); as sp) {
+          <app-rate-plan-simulator [planUuid]="sp.uuid" [name]="sp.name" [mode]="sp.mode" (closed)="simulating.set(null)" />
+        }
         <app-data-table
           [columns]="ratePlanColumns" [rows]="ratePlans()" [loading]="loadingRatePlans() && ratePlans().length === 0"
           [trackBy]="trackByRatePlanUuid" emptyTitle="Aucun tarif" emptyHint="Créez un tarif pour pouvoir publier une offre."
@@ -78,6 +81,7 @@
           <ng-template appCell="actions" let-row>
             <div class="flex gap-1.5 justify-end">
               <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openEditRatePlanForm(row)">Modifier</button>
+              <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="simulating.set(row)">Simuler</button>
               @if (!row.active) {
                 <button type="button" class="btn btn-secondary btn-sm !py-1" [disabled]="activatingRatePlan() === row.uuid" (click)="activateRatePlan(row)">Activer</button>
               }

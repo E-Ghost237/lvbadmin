@@ -103,7 +103,7 @@
 
       <div class="card">
         <app-data-table
-          [columns]="withdrawalColumns" [rows]="withdrawals()" [loading]="loadingWithdrawals() && withdrawals().length === 0"
+          [columns]="withdrawalColumns" [rowClickable]="true" (rowClick)="openWithdrawal($event)" [rows]="withdrawals()" [loading]="loadingWithdrawals() && withdrawals().length === 0"
           [trackBy]="trackByWithdrawalUuid" emptyTitle="Aucun retrait" emptyHint="Aucune demande de retrait pour l’instant."
         >
           <ng-template appCell="status" let-row><app-status-badge domain="partnerWithdrawal" [status]="row.status" /></ng-template>
@@ -112,3 +112,19 @@
     }
   </div>
 }
+
+<app-modal [open]="withdrawalDetail() !== null" title="Détail du retrait" size="md" (closed)="withdrawalDetail.set(null)">
+  @if (withdrawalDetail(); as w) {
+    <div class="grid grid-cols-2 gap-3 text-sm">
+      <div><p class="field-label">Montant</p><p>{{ xaf(w.amount_xaf) }}</p></div>
+      <div><p class="field-label">Statut</p><app-status-badge domain="partnerWithdrawal" [status]="w.status" /></div>
+      <div><p class="field-label">Demandé le</p><p>{{ dateTime(w.created_at) }}</p></div>
+      <div><p class="field-label">Dernière mise à jour</p><p>{{ dateTime(w.updated_at) }}</p></div>
+      <div class="col-span-2"><p class="field-label">Référence opérateur</p><p>{{ w.operator_reference ?? '—' }}</p></div>
+      @if (w.reason) { <div class="col-span-2"><p class="field-label">Motif</p><p>{{ w.reason }}</p></div> }
+      <div class="col-span-2"><p class="field-label">Compte de paiement</p><p class="font-mono text-xs">{{ w.payout_account_uuid }}</p></div>
+    </div>
+    @if (loadingWithdrawalDetail()) { <p class="text-xs mt-3" style="color: var(--text-muted)">Actualisation…</p> }
+  }
+  <div modal-footer><button type="button" class="btn btn-secondary" (click)="withdrawalDetail.set(null)">Fermer</button></div>
+</app-modal>

@@ -22,6 +22,10 @@ export class CourierService {
     return this.http.get<UuidCursorPage<CourierAccount>>(`${this.baseUrl}/partner/couriers`, { params });
   }
 
+  get(uuid: string): Observable<CourierAccount> {
+    return this.http.get<CourierAccount>(`${this.baseUrl}/partner/couriers/${uuid}`);
+  }
+
   create(req: CreateCourierRequest): Observable<CourierAccount> {
     return this.http.post<CourierAccount>(`${this.baseUrl}/partner/couriers`, req, { context: withIdempotencyKey(newIdempotencyKey()) });
   }

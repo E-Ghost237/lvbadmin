@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { intRange, requireOneOf, xafAmount } from '@lvb/utils/validators';
+import { RatePlanSimulatorComponent } from '../rate-plan-simulator.component';
 import { PartnerContextService } from '../../../core/services/partner-context.service';
 import { FormFeedbackService } from '@lvb/ui/form-feedback/form-feedback.service';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -72,6 +73,7 @@ interface OfferAction {
   imports: [
     ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, ForbiddenStateComponent, StatusBadgeComponent,
     SelectComponent, DataTableComponent, TableCellDefDirective, FormFieldComponent,
+    RatePlanSimulatorComponent,
   ],
   templateUrl: './marketplace-page.component.html',
 })
@@ -86,6 +88,7 @@ export class MarketplacePageComponent {
   protected readonly i18n = inject(I18nService);
 
   protected readonly ctx = inject(PartnerContextService);
+  protected readonly simulating = signal<RatePlan | null>(null);
   protected readonly canPricing = this.ctx.can('pricing.manage');
   protected readonly canCreateOffer = this.ctx.can('marketplace.offer.create');
   protected readonly canUpdateOffer = this.ctx.can('marketplace.offer.update');

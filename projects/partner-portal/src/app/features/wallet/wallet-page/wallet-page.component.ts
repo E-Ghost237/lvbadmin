@@ -19,6 +19,7 @@ import { SelectComponent, SelectOption } from '@lvb/ui/select/select.component';
 import { ColumnDef, DataTableComponent } from '@lvb/ui/table/data-table.component';
 import { TableCellDefDirective } from '@lvb/ui/table/table-cell-def.directive';
 import { FormFieldComponent } from '@lvb/ui/field/form-field.component';
+import { ModalComponent } from '@lvb/ui/modal/modal.component';
 import { ToastService } from '@lvb/ui/toast/toast.service';
 
 const PROVIDER_OPTIONS: SelectOption[] = [
@@ -39,6 +40,7 @@ const PROVIDER_OPTIONS: SelectOption[] = [
   imports: [
     ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, ForbiddenStateComponent, StatusBadgeComponent,
     StatTileComponent, SelectComponent, DataTableComponent, TableCellDefDirective, FormFieldComponent,
+    ModalComponent,
   ],
   templateUrl: './wallet-page.component.html',
 })
@@ -210,6 +212,18 @@ export class WalletPageComponent {
   protected readonly verifiedAccountOptions = () => this.payoutAccounts()
     .filter((a) => a.verified)
     .map((a): SelectOption => ({ value: a.uuid, label: `${this.providerLabel(a.provider)} •••• ${a.account_last_four}` }));
+
+  protected readonly withdrawalDetail = signal<PartnerWithdrawal | null>(null);
+  protected readonly loadingWithdrawalDetail = signal(false);
+
+  openWithdrawal(row: PartnerWithdrawal): void {
+    this.withdrawalDetail.set(row);
+    this.loadingWithdrawalDetail.set(true);
+    this.wallet.getWithdrawal(row.uuid).subscribe({
+      next: (w) => { this.loadingWithdrawalDetail.set(false); this.withdrawalDetail.set(w); },
+      error: (err: ProblemDetails) => { this.loadingWithdrawalDetail.set(false); this.toast.error('Détail indisponible', err.detail); },
+    });
+  }
 
   fetchWithdrawals(): void {
     this.loadingWithdrawals.set(true);

@@ -7,6 +7,12 @@
 
 <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
+@if (managed(); as m) {
+  <div class="mt-5">
+    <app-resource-panel [resource]="m.resource" [uuid]="m.uuid" [label]="m.label" [vehicles]="vehicleSelectOptions()" (closed)="managed.set(null)" />
+  </div>
+}
+
 <div class="mt-5">
   @if (activeTab() === 'vehicles') {
     @if (forbiddenVehicles()) {
@@ -75,7 +81,10 @@
         >
           <ng-template appCell="status" let-row><app-status-badge domain="rentalVehicle" [status]="row.status" /></ng-template>
           <ng-template appCell="actions" let-row>
-            <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openEditVehicleForm(row)">Modifier</button>
+            <div class="flex gap-1.5 justify-end">
+              <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="manage('vehicles', row.uuid, row.registration)">Gérer</button>
+              <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openEditVehicleForm(row)">Modifier</button>
+            </div>
           </ng-template>
         </app-data-table>
       </div>
@@ -149,7 +158,10 @@
         >
           <ng-template appCell="status" let-row><app-status-badge domain="rentalDriver" [status]="row.status" /></ng-template>
           <ng-template appCell="actions" let-row>
-            <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openEditDriverForm(row)">Modifier</button>
+            <div class="flex gap-1.5 justify-end">
+              <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="manage('drivers', row.uuid, row.first_name + ' ' + row.last_name)">Gérer</button>
+              <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openEditDriverForm(row)">Modifier</button>
+            </div>
           </ng-template>
         </app-data-table>
       </div>
