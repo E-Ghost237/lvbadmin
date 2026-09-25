@@ -30,10 +30,10 @@
               />
             </app-field>
             <app-field [label]="i18n.t('auth.login.password')" [control]="credentialsForm.controls.password" required>
-              <input
+              <app-password-toggle><input
                 type="password" class="input" formControlName="password" autocomplete="current-password"
                 [class.input-invalid]="credentialsForm.controls.password.invalid && credentialsForm.controls.password.touched"
-              />
+              /></app-password-toggle>
             </app-field>
             <div class="flex justify-end -mt-2">
               <a routerLink="/forgot-password" class="link text-xs">{{ i18n.t('auth.login.forgot') }}</a>

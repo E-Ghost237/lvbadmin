@@ -8,12 +8,13 @@ import { ProblemDetails } from '@lvb/models/common.model';
 import { digitCode, emailAddress } from '@lvb/utils/validators';
 import { AlertBannerComponent } from '@lvb/ui/alert-banner/alert-banner.component';
 import { FormFieldComponent } from '@lvb/ui/field/form-field.component';
+import { PasswordToggleComponent } from '@lvb/ui/password-toggle/password-toggle.component';
 
 type Step = 'CREDENTIALS' | 'MFA';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, FormFieldComponent, AlertBannerComponent],
+  imports: [ReactiveFormsModule, RouterLink, FormFieldComponent, AlertBannerComponent, PasswordToggleComponent],
   templateUrl: './login.component.html',
 })
 export class LoginComponent {

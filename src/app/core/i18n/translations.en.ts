@@ -168,6 +168,8 @@ export const EN: Record<string, string> = {
   'feedback.error.title': 'Action not possible',
   'feedback.error.ref': 'Ref. {ref}',
 
+  'auth.password.show': 'Show password',
+  'auth.password.hide': 'Hide password',
   'auth.login.title': 'Sign in',
   'auth.login.subtitle': 'Restricted to LVB staff',
   'auth.login.email': 'Email',

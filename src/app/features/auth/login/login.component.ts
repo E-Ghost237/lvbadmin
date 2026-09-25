@@ -7,12 +7,13 @@ import { ProblemDetails } from '../../../core/models';
 import { digitCode, emailAddress } from '../../../core/utils/validators';
 import { AlertBannerComponent, FormFieldComponent, FormFeedbackService,
 } from '../../../shared/ui';
+import { PasswordToggleComponent } from '../../../shared/ui/password-toggle/password-toggle.component';
 
 type Step = 'CREDENTIALS' | 'MFA';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, FormFieldComponent, AlertBannerComponent],
+  imports: [ReactiveFormsModule, RouterLink, FormFieldComponent, AlertBannerComponent, PasswordToggleComponent],
   templateUrl: './login.component.html',
 })
 export class LoginComponent {

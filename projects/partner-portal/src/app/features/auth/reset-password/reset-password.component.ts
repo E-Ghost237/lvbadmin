@@ -8,11 +8,12 @@ import { ProblemDetails } from '@lvb/models/common.model';
 import { matchControls, passwordPolicy } from '@lvb/utils/validators';
 import { AlertBannerComponent } from '@lvb/ui/alert-banner/alert-banner.component';
 import { FormFieldComponent } from '@lvb/ui/field/form-field.component';
+import { PasswordToggleComponent } from '@lvb/ui/password-toggle/password-toggle.component';
 
 /** UC-AUT-05 — second half: completing the reset from the signed link's `?token=`. */
 @Component({
   selector: 'app-reset-password',
-  imports: [ReactiveFormsModule, RouterLink, FormFieldComponent, AlertBannerComponent],
+  imports: [ReactiveFormsModule, RouterLink, FormFieldComponent, AlertBannerComponent, PasswordToggleComponent],
   templateUrl: './reset-password.component.html',
 })
 export class ResetPasswordComponent {

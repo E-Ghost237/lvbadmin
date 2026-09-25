@@ -7,11 +7,12 @@ import { ProblemDetails } from '../../../core/models';
 import { matchControls, passwordPolicy } from '../../../core/utils/validators';
 import { AlertBannerComponent, FormFieldComponent, FormFeedbackService,
 } from '../../../shared/ui';
+import { PasswordToggleComponent } from '../../../shared/ui/password-toggle/password-toggle.component';
 
 /** UC-AUT-05 — second half: completing the reset from the signed link's `?token=`. */
 @Component({
   selector: 'app-reset-password',
-  imports: [ReactiveFormsModule, RouterLink, FormFieldComponent, AlertBannerComponent],
+  imports: [ReactiveFormsModule, RouterLink, FormFieldComponent, AlertBannerComponent, PasswordToggleComponent],
   templateUrl: './reset-password.component.html',
 })
 export class ResetPasswordComponent {

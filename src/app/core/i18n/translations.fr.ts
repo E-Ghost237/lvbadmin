@@ -168,6 +168,8 @@ export const FR: Record<string, string> = {
   'feedback.error.title': 'Action impossible',
   'feedback.error.ref': 'Réf. {ref}',
 
+  'auth.password.show': 'Afficher le mot de passe',
+  'auth.password.hide': 'Masquer le mot de passe',
   'auth.login.title': 'Connexion',
   'auth.login.subtitle': 'Accès réservé au personnel LVB',
   'auth.login.email': 'Email',

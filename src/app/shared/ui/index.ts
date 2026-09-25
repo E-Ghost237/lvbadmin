@@ -13,6 +13,7 @@ export * from './confirm/confirm-host.component';
 export * from './toast/toast.service';
 export * from './form-feedback/form-feedback.service';
 export * from './cm-phone/cm-phone.directive';
+export * from './password-toggle/password-toggle.component';
 export * from './courier-form/courier-form.component';
 export * from './toast/toast-container.component';
 export * from './tabs/tabs.component';
