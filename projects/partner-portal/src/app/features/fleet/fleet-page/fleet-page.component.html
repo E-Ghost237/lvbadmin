@@ -68,9 +68,7 @@
                   <app-field label="Largeur (cm)" [control]="vehicleForm.controls.width_cm"><input type="number" min="1" class="input" formControlName="width_cm" /></app-field>
                   <app-field label="Hauteur (cm)" [control]="vehicleForm.controls.height_cm"><input type="number" min="1" class="input" formControlName="height_cm" /></app-field>
                 }
-                @if (editingVehicle()) {
-                  <app-field label="Statut" [control]="vehicleForm.controls.status"><app-select [options]="vehicleStatusOptions" formControlName="status" /></app-field>
-                }
+                <app-field label="Statut" [control]="vehicleForm.controls.status" hint="Un véhicule doit être Actif pour être publié dans une offre."><app-select [options]="vehicleStatusOptions" [allowClear]="false" formControlName="status" /></app-field>
                 <app-field class="sm:col-span-3" label="État / remarques" [control]="vehicleForm.controls.condition"><textarea class="input" rows="2" formControlName="condition"></textarea></app-field>
               </div>
             }
@@ -90,6 +88,9 @@
           <ng-template appCell="status" let-row><app-status-badge domain="rentalVehicle" [status]="row.status" /></ng-template>
           <ng-template appCell="actions" let-row>
             <div class="flex gap-1.5 justify-end">
+              @if (row.status !== 'ACTIF' && !row.compliance_suspended) {
+                <button type="button" class="btn btn-primary btn-sm !py-1" [disabled]="activatingVehicle() === row.uuid" (click)="activateVehicle(row)">Activer</button>
+              }
               <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="manage('vehicles', row.uuid, row.registration)">Gérer</button>
               <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openEditVehicleForm(row)">Modifier</button>
             </div>

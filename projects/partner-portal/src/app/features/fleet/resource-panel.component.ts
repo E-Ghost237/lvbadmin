@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ProblemDetails } from '@lvb/models/common.model';
 import { FormFeedbackService } from '@lvb/ui/form-feedback/form-feedback.service';
@@ -178,7 +178,7 @@ interface ExcRow { date: string; closed: boolean; opens: string; closes: string 
     </div>
   `,
 })
-export class ResourcePanelComponent {
+export class ResourcePanelComponent implements OnInit {
   private readonly ops = inject(FleetOpsService);
   private readonly fb = inject(FormBuilder);
   private readonly toast = inject(ToastService);
@@ -200,7 +200,8 @@ export class ResourcePanelComponent {
   protected readonly vehicleOptions = computed(() => this.vehicles());
   protected readonly dt = formatDouala;
 
-  constructor() {
+  // Required inputs are not readable in the constructor (NG0950) — load once they are bound.
+  ngOnInit(): void {
     this.loadDocs();
   }
 

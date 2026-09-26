@@ -192,13 +192,24 @@ export class FleetPageComponent {
     this.fetchVehicles();
   }
 
+  protected readonly activatingVehicle = signal<string | null>(null);
+
+  /** One-click activation: a vehicle in "Brouillon" cannot be published in an offer until it is Actif. */
+  activateVehicle(v: Vehicle): void {
+    this.activatingVehicle.set(v.uuid);
+    this.fleet.updateVehicle(v.uuid, { status: 'ACTIF' }).subscribe({
+      next: () => { this.activatingVehicle.set(null); this.toast.success('Véhicule activé', `${v.registration} peut maintenant être publié dans une offre.`); this.fetchVehicles(); },
+      error: (err: ProblemDetails) => { this.activatingVehicle.set(null); this.feedback.serverError(null, 'Activation impossible', err); },
+    });
+  }
+
   openNewVehicleForm(): void {
     this.editingVehicle.set(null);
     this.vehicleProfile.set(profileFor(''));
     this.vehicleForm.reset({
       vehicle_type: '', registration: '', brand: '', model: '', license_category: '', capacity_kg: null, volume: null, year: null,
       color: '', chassis_number: '', seats: null, fuel: '', transmission: '', mileage: null, length_cm: null, width_cm: null,
-      height_cm: null, condition: '', status: '',
+      height_cm: null, condition: '', status: 'ACTIF',
     });
     this.showVehicleMore.set(false);
     this.vehicleFormOpen.set(true);
