@@ -5,8 +5,7 @@ import { API_BASE_URL } from '@lvb/http/api.config';
 
 /**
  * One courier or driver of the organisation with their last known position.
- * Contract requested from the backend team — see `GET /v1/partner/fleet/positions`:
- * only units attached to the caller's partner, `booking.read`-level access, no other partner's data.
+ * `GET /v1/partner/fleet/positions` — only units attached to the caller's partner (`booking.read`).
  */
 export interface PartnerFleetPosition {
   uuid: string;
@@ -17,7 +16,8 @@ export interface PartnerFleetPosition {
   matricule: string | null;
   /** MOTO, VELO, TRICYCLE, VOITURE, CAMIONNETTE, PIETON… or a rental vehicle type code. */
   vehicle_type: string | null;
-  statut_operationnel: 'DISPONIBLE' | 'EN_MISSION' | 'PAUSE' | 'HORS_LIGNE';
+  /** Couriers: DISPONIBLE / EN_MISSION / PAUSE / HORS_LIGNE. Rental chauffeurs: their fleet status (ACTIF, INDISPONIBLE, EN_CONGE, SUSPENDU, EN_ATTENTE_VALIDATION). */
+  statut_operationnel: string;
   lat: number | null;
   lng: number | null;
   position_updated_at: string | null;

@@ -3,9 +3,22 @@ import { ProblemDetails } from '@lvb/models/common.model';
 import { FleetUnit, MapPanelComponent, unitKindFor } from '@lvb/ui/map-panel/map-panel.component';
 import { FleetLiveService, PartnerFleetPosition } from '../../../core/services/fleet-live.service';
 
-const STATUS_LABEL: Record<string, string> = {
-  DISPONIBLE: 'En ligne — disponible', EN_MISSION: 'En livraison', PAUSE: 'En pause', HORS_LIGNE: 'Hors ligne',
-};
+/** Map colour class + wording for a unit. Chauffeurs report their fleet status, not the courier online/offline states. */
+function presentStatus(p: PartnerFleetPosition): { status: string; label: string } {
+  const s = p.statut_operationnel;
+  switch (s) {
+    case 'DISPONIBLE': return { status: 'DISPONIBLE', label: 'En ligne — disponible' };
+    case 'EN_MISSION': return { status: 'EN_MISSION', label: p.kind === 'CHAUFFEUR' ? 'En mission' : 'En livraison' };
+    case 'PAUSE': return { status: 'PAUSE', label: 'En pause' };
+    case 'HORS_LIGNE': return { status: 'HORS_LIGNE', label: 'Hors ligne' };
+    case 'ACTIF': return { status: 'DISPONIBLE', label: 'Actif' };
+    case 'EN_CONGE': return { status: 'PAUSE', label: 'En congé' };
+    case 'INDISPONIBLE': return { status: 'HORS_LIGNE', label: 'Indisponible' };
+    case 'SUSPENDU': return { status: 'HORS_LIGNE', label: 'Suspendu' };
+    case 'EN_ATTENTE_VALIDATION': return { status: 'HORS_LIGNE', label: 'En attente de validation LVB' };
+    default: return { status: 'HORS_LIGNE', label: s };
+  }
+}
 const POLL_MS = 20_000;
 
 /**
@@ -30,7 +43,7 @@ const POLL_MS = 20_000;
         @case ('loading') { <div class="skeleton h-80"></div> }
         @case ('unavailable') {
           <p class="text-sm px-3 py-6 text-center rounded-(--radius-md)" style="background: var(--surface-2); color: var(--text-muted)">
-            Le suivi en direct n’est pas encore activé pour votre organisation. Il apparaîtra ici dès que LVB l’aura mis en service.
+            Le suivi en direct n’est pas disponible pour votre compte (il est réservé aux membres de l’organisation habilités).
           </p>
         }
         @case ('error') {
@@ -38,7 +51,7 @@ const POLL_MS = 20_000;
         }
         @default {
           @if (units().length === 0) {
-            <p class="text-xs mb-2" style="color: var(--text-muted)">Aucun livreur ou chauffeur avec une position pour l’instant.</p>
+            <p class="text-xs mb-2" style="color: var(--text-muted)">Aucun livreur ou chauffeur n’a encore partagé sa position — les icônes apparaissent dès que leur application envoie le GPS.</p>
           }
           <app-map-panel [bbox]="bbox()" [units]="units()" class="block h-80 sm:h-105">
             <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background:#2E9E44"></span> Disponible</div>
@@ -64,8 +77,8 @@ export class PartnerFleetMapComponent {
     .filter((p): p is PartnerFleetPosition & { lat: number; lng: number } => p.lat !== null && p.lng !== null)
     .map((p) => ({
       id: p.uuid, point: { lat: p.lat, lng: p.lng }, kind: unitKindFor(p.vehicle_type),
-      name: [p.prenom, p.nom].filter(Boolean).join(' '), phone: p.telephone, status: p.statut_operationnel,
-      statusLabel: STATUS_LABEL[p.statut_operationnel] ?? p.statut_operationnel,
+      name: [p.prenom, p.nom].filter(Boolean).join(' '), phone: p.telephone, status: presentStatus(p).status,
+      statusLabel: presentStatus(p).label,
       subtitle: [p.kind === 'CHAUFFEUR' ? 'Chauffeur' : 'Livreur', p.matricule].filter(Boolean).join(' · '),
       updatedAt: p.position_updated_at,
     })));
@@ -73,9 +86,9 @@ export class PartnerFleetMapComponent {
   protected readonly counts = computed(() => {
     const l = this.items();
     return {
-      online: l.filter((p) => p.statut_operationnel === 'DISPONIBLE').length,
-      mission: l.filter((p) => p.statut_operationnel === 'EN_MISSION').length,
-      offline: l.filter((p) => p.statut_operationnel === 'HORS_LIGNE').length,
+      online: l.filter((p) => presentStatus(p).status === 'DISPONIBLE').length,
+      mission: l.filter((p) => presentStatus(p).status === 'EN_MISSION').length,
+      offline: l.filter((p) => ['HORS_LIGNE', 'PAUSE'].includes(presentStatus(p).status)).length,
     };
   });
 
