@@ -445,6 +445,21 @@ export class MarketplacePageComponent {
   protected readonly bookingStatusFilter = signal<BookingStatus | ''>('');
   protected readonly updatingBooking = signal<string | null>(null);
 
+  protected offerTitle(uuid: string | null): string {
+    return this.offers().find((o) => o.uuid === uuid)?.title ?? '—';
+  }
+
+  protected bookingVehicle(b: Booking): string {
+    if (b.vehicle) return `${b.vehicle.registration}${b.vehicle.brand ? ' — ' + b.vehicle.brand + (b.vehicle.model ? ' ' + b.vehicle.model : '') : ''}`;
+    const v = this.vehicles().find((x) => x.uuid === b.vehicle_uuid);
+    return v ? `${v.registration} — ${v.brand} ${v.model}` : '—';
+  }
+
+  protected bookingDriver(b: Booking): string {
+    if (b.driver) return `${b.driver.first_name} ${b.driver.last_name}${b.driver.phone ? ' · ' + b.driver.phone : ''}`;
+    return b.with_driver ? (b.driver_assigned ? 'Affecté' : 'À affecter') : 'Sans chauffeur';
+  }
+
   protected readonly bookingDetail = signal<Booking | null>(null);
   protected readonly loadingBookingDetail = signal(false);
   protected readonly showDisputeForm = signal(false);

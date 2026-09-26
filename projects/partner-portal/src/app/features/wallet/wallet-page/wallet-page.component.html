@@ -122,7 +122,7 @@
       <div><p class="field-label">Dernière mise à jour</p><p>{{ dateTime(w.updated_at) }}</p></div>
       <div class="col-span-2"><p class="field-label">Référence opérateur</p><p>{{ w.operator_reference ?? '—' }}</p></div>
       @if (w.reason) { <div class="col-span-2"><p class="field-label">Motif</p><p>{{ w.reason }}</p></div> }
-      <div class="col-span-2"><p class="field-label">Compte de paiement</p><p class="font-mono text-xs">{{ w.payout_account_uuid }}</p></div>
+      <div class="col-span-2"><p class="field-label">Compte de paiement</p><p>{{ labels.label('payoutAccount', w.payout_account_uuid, 'Compte de paiement') }}</p></div>
     </div>
     @if (loadingWithdrawalDetail()) { <p class="text-xs mt-3" style="color: var(--text-muted)">Actualisation…</p> }
   }

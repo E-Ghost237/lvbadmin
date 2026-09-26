@@ -81,6 +81,11 @@ export class FleetOpsService {
     });
   }
 
+  /** Vehicle/driver detail. A driver includes the vehicles they are currently authorised on (with `authorization_uuid`). */
+  getResource(resource: FleetResource, uuid: string): Observable<Record<string, unknown>> {
+    return this.http.get<Record<string, unknown>>(`${this.baseUrl}/partner/${resource}/${uuid}`);
+  }
+
   // --- Rate-plan simulation --------------------------------------------------------
   simulate(ratePlanUuid: string, req: SimulateRequest): Observable<SimulationResult> {
     return this.http.post<SimulationResult>(`${this.baseUrl}/partner/rate-plans/${ratePlanUuid}/simulate`, req);

@@ -128,17 +128,17 @@
     <div class="card p-5 max-w-lg">
       <p class="text-sm font-medium mb-3">Ajustement manuel du portefeuille</p>
 
-      <label class="field-label">Partenaire (UUID)</label>
-      <div class="flex items-center gap-2">
-        <input
-          class="input flex-1" placeholder="uuid du partenaire" [value]="adjustPartnerUuidInput()"
-          (input)="onAdjustPartnerUuidInput($any($event.target).value)" (keydown.enter)="lookupAdjustPartner()"
-        />
-        <button type="button" class="btn btn-secondary btn-sm shrink-0" [disabled]="loadingAdjustPartner()" (click)="lookupAdjustPartner()">Charger</button>
-      </div>
+      <label class="field-label">Partenaire</label>
+      <app-select [options]="partnerOptions()" placeholder="Choisir un partenaire" [allowClear]="false" [value]="adjustPartnerUuidInput()" (valueChange)="onAdjustPartnerPicked($event)" />
 
       @if (adjustPartner(); as p) {
-        <p class="text-xs mt-2" style="color: var(--status-good)">{{ p.nom_commercial }}</p>
+        <div class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm rounded-(--radius-sm) px-3 py-2.5" style="background: var(--surface-2)">
+          <div class="col-span-2 font-medium">{{ p.nom_commercial }}</div>
+          <div><span class="field-label">Ville</span><p>{{ p.ville }}</p></div>
+          <div><span class="field-label">Statut</span><app-status-badge domain="partner" [status]="p.statut_partenaire" /></div>
+          <div><span class="field-label">Responsable</span><p>{{ p.responsable_nom }}</p></div>
+          <div><span class="field-label">Téléphone</span><p>{{ p.responsable_telephone }}</p></div>
+        </div>
 
         <div class="flex flex-col gap-3 mt-4 pt-4" style="border-top: 1px solid var(--border)">
           <div>
@@ -179,9 +179,9 @@
   }
 </div>
 
-<app-modal [open]="confirmingWithdrawal() !== null" title="Confirmer le paiement" [subtitle]="confirmingWithdrawal()?.uuid ?? ''" [hasFooter]="false" (closed)="closeConfirmForm()">
+<app-modal [open]="confirmingWithdrawal() !== null" title="Confirmer le paiement" [subtitle]="confirmingWithdrawal() ? xaf(confirmingWithdrawal()!.amount_xaf) + ' — demandé le ' + dateTime(confirmingWithdrawal()!.created_at) : ''" [hasFooter]="false" (closed)="closeConfirmForm()">
   @if (confirmingWithdrawal(); as row) {
-    <p class="text-sm mb-3">{{ xaf(row.amount_xaf) }} — compte {{ row.payout_account_uuid }}</p>
+    <p class="text-sm mb-3">{{ xaf(row.amount_xaf) }} à verser sur le compte de paiement du partenaire (référence {{ row.payout_account_uuid.slice(0, 8) }}…)</p>
     <div class="flex flex-col gap-3">
       <div>
         <label class="field-label">Référence opérateur</label>

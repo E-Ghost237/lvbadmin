@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { intRange, requireOneOf, xafAmount } from '@lvb/utils/validators';
+import { LabelsService } from '../../../core/services/labels.service';
 import { RatePlanSimulatorComponent } from '../rate-plan-simulator.component';
 import { PartnerContextService } from '../../../core/services/partner-context.service';
 import { FormFeedbackService } from '@lvb/ui/form-feedback/form-feedback.service';
@@ -103,7 +104,10 @@ export class MarketplacePageComponent {
     return formatXaf(amount ?? null);
   }
 
+  protected readonly labels = inject(LabelsService);
+
   constructor() {
+    this.labels.ensure('vehicle', 'ratePlan');
     if (this.canPricing) {
       this.fetchRatePlans();
       this.fetchVehicles();
@@ -274,7 +278,9 @@ export class MarketplacePageComponent {
 
   protected readonly offerColumns: ColumnDef<MarketplaceOffer>[] = [
     { key: 'title', label: 'Offre' },
-    { key: 'category_id', label: 'Catégorie', cell: (r) => `Catégorie #${r.category_id}` },
+    // The backend's offer rows carry only a numeric category id (no name, no uuid), so the category can't be named here yet.
+    { key: 'vehicle_uuid', label: 'Véhicule', cell: (r) => (r.vehicle_uuid ? this.labels.label('vehicle', r.vehicle_uuid) : (r.vehicle_category ?? '—')) },
+    { key: 'rate_plan_uuid', label: 'Tarif', cell: (r) => this.labels.label('ratePlan', r.rate_plan_uuid) },
     { key: 'city', label: 'Ville' },
     { key: 'status', label: 'Statut' },
     { key: 'actions', label: '' },
@@ -319,7 +325,8 @@ export class MarketplacePageComponent {
       next: (page) => {
         this.categoriesLoaded.set(true);
         this.categories.set(page.items);
-        this.categoryOptions.set(page.items.filter((c) => c.active).map((c) => ({ value: c.uuid, label: c.name })));
+        this.categoryOptions.set(// The public feed only lists active categories and omits the `active` flag entirely (the admin feed includes it).
+        page.items.filter((c) => (c as { active?: boolean }).active !== false).map((c) => ({ value: c.uuid, label: c.name })));
       },
       error: (err: ProblemDetails) => { this.categoriesLoaded.set(true); this.categoriesError.set(err.detail); },
     });

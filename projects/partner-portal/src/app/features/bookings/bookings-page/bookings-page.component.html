@@ -28,7 +28,7 @@
   }
 }
 
-<app-modal [open]="detail() !== null || loadingDetail()" title="Réservation" [subtitle]="detail()?.uuid ?? ''" size="lg" [hasFooter]="false" (closed)="closeDetail()">
+<app-modal [open]="detail() !== null || loadingDetail()" title="Réservation" [subtitle]="detail() ? dateTime(detail()!.starts_at) + ' → ' + dateTime(detail()!.ends_at) : ''" size="lg" [hasFooter]="false" (closed)="closeDetail()">
   @if (loadingDetail()) {
     <div class="skeleton h-40"></div>
   } @else if (detail(); as b) {
@@ -37,9 +37,9 @@
       <div><span class="field-label">Paiement</span><div class="mt-1"><app-status-badge domain="bookingPayment" [status]="b.payment_status" /></div></div>
       <div><span class="field-label">Début</span><p>{{ dateTime(b.starts_at) }}</p></div>
       <div><span class="field-label">Fin</span><p>{{ dateTime(b.ends_at) }}</p></div>
-      <div><span class="field-label">Offre</span><p class="font-mono text-xs">{{ b.offer_uuid ?? '—' }}</p></div>
-      <div><span class="field-label">Véhicule</span><p class="font-mono text-xs">{{ b.vehicle_uuid ?? '—' }}</p></div>
-      <div><span class="field-label">Chauffeur demandé</span><p>{{ b.with_driver ? (b.driver_assigned ? 'Oui — affecté' : 'Oui — non affecté') : 'Non' }}</p></div>
+      <div><span class="field-label">Offre</span><p>{{ labels.label('offer', b.offer_uuid) }}</p></div>
+      <div><span class="field-label">Véhicule</span><p>{{ vehicleLabel(b) }}</p></div>
+      <div><span class="field-label">Chauffeur</span><p>{{ driverLabel(b) }}</p></div>
       <div><span class="field-label">Montant total</span><p>{{ xaf(b.total_amount) }}</p></div>
       <div><span class="field-label">Commission</span><p>{{ xaf(b.commission_amount) }}</p></div>
       @if (b.dispute_status) {

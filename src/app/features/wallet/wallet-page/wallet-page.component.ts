@@ -67,6 +67,7 @@ export class WalletPageComponent {
 
   selectTab(id: string): void {
     this.activeTab.set(id);
+    if (id === 'adjustments') this.loadPartnerOptions();
   }
 
   dateTime(iso: string | null): string {
@@ -226,10 +227,32 @@ export class WalletPageComponent {
     return false;
   });
 
-  onAdjustPartnerUuidInput(value: string): void {
-    this.adjustPartnerUuidInput.set(value);
-    this.adjustPartner.set(null);
+  /** Partners to pick from, by name — nobody should have to copy a uuid. */
+  protected readonly partnerOptions = signal<SelectOption[]>([]);
+  private readonly partnersByUuid = new Map<string, Partner>();
+  private partnersRequested = false;
+
+  loadPartnerOptions(): void {
+    if (this.partnersRequested) return;
+    this.partnersRequested = true;
+    const step = (cursor?: number, pages = 0): void => {
+      this.partners.list({ cursor, limit: 100 }).subscribe({
+        next: (page) => {
+          for (const p of page.items) this.partnersByUuid.set(p.uuid, p);
+          this.partnerOptions.set([...this.partnersByUuid.values()].map((p) => ({ value: p.uuid, label: `${p.nom_commercial} — ${p.ville}` })));
+          if (page.next_cursor && pages < 9) step(page.next_cursor, pages + 1);
+        },
+        error: (err: ProblemDetails) => { this.partnersRequested = false; this.toast.error('Liste des partenaires indisponible', err.detail); },
+      });
+    };
+    step();
+  }
+
+  onAdjustPartnerPicked(uuid: string): void {
+    this.adjustPartnerUuidInput.set(uuid);
     this.adjustResult.set(null);
+    this.adjustPartner.set(this.partnersByUuid.get(uuid) ?? null);
+    if (uuid && !this.adjustPartner()) this.lookupAdjustPartner();
   }
 
   lookupAdjustPartner(): void {

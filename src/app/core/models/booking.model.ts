@@ -61,4 +61,10 @@ export interface Booking {
   pricing: Record<string, unknown>;
   cancellation_policy: Record<string, unknown>;
   history?: BookingHistoryEntry[];
+  /** Detail call only — resolved by the backend so screens never have to show raw uuids. */
+  vehicle?: { uuid: string; registration: string; brand?: string; model?: string; vehicle_type?: string; color?: string } | null;
+  driver?: { uuid: string; first_name: string; last_name: string; phone: string | null } | null;
+  pickup?: { lat: number; lng: number; address?: string } | null;
+  destination?: { lat: number; lng: number; address?: string } | null;
+  rating?: { score: number; comment: string | null; created_at: string } | null;
 }

@@ -28,6 +28,7 @@ function endAfterStart(group: AbstractControl): ValidationErrors | null {
   return e > s ? null : { range: true };
 }
 
+interface AuthRow { authorization_uuid: string; registration: string; brand: string; model: string; category: string; from: string; until: string | null }
 interface DayRow { weekday: number; label: string; open: boolean; opens: string; closes: string; extra: WeeklyHours[] }
 interface ExcRow { date: string; closed: boolean; opens: string; closes: string }
 
@@ -145,7 +146,7 @@ interface ExcRow { date: string; closed: boolean; opens: string; closes: string 
         }
 
         @case ('auth') {
-          <p class="text-xs mb-3" style="color: var(--text-muted)">Autorisez ce chauffeur à conduire un véhicule précis ou une catégorie de véhicules. Le serveur ne liste pas les autorisations : conservez le code retourné pour pouvoir en révoquer une.</p>
+          <p class="text-xs mb-3" style="color: var(--text-muted)">Autorisez ce chauffeur à conduire un véhicule précis ou une catégorie de véhicules.</p>
           <form [formGroup]="authForm" (ngSubmit)="submitAuth()" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <app-field label="Véhicule" [control]="authForm.controls.vehicle_uuid" hint="Ou une catégorie ci-contre">
               <app-select [options]="vehicleOptions()" formControlName="vehicle_uuid" />
@@ -156,20 +157,22 @@ interface ExcRow { date: string; closed: boolean; opens: string; closes: string 
             @if (authError()) { <p class="field-error sm:col-span-2">{{ authError() }}</p> }
             <div class="sm:col-span-2"><button type="submit" class="btn btn-primary btn-sm" [disabled]="savingAuth()">Autoriser</button></div>
           </form>
-          @if (authorizations().length) {
-            <p class="text-sm font-medium mt-5 mb-2">Autorisations créées pendant cette session</p>
-            <ul class="flex flex-col gap-1.5">
-              @for (a of authorizations(); track a.uuid) {
-                <li class="flex items-center justify-between gap-3 text-sm"><span class="font-mono text-xs">{{ a.uuid }}</span>
-                  <button type="button" class="btn btn-danger-ghost btn-sm !py-0.5" (click)="revoke(a.uuid)">Révoquer</button></li>
+          <p class="text-sm font-medium mt-5 mb-2">Véhicules autorisés pour ce chauffeur</p>
+          @if (loadingAuth()) { <div class="skeleton h-10"></div> }
+          @else if (authorizations().length === 0) { <p class="text-sm" style="color: var(--text-muted)">Aucune autorisation active.</p> }
+          @else {
+            <ul class="flex flex-col gap-2">
+              @for (a of authorizations(); track a.authorization_uuid) {
+                <li class="flex items-center justify-between gap-3 text-sm">
+                  <span>
+                    <span class="font-medium">{{ a.registration || a.category || 'Véhicule' }}</span>@if (a.brand) { <span> — {{ a.brand }} {{ a.model }}</span> }
+                    <span class="block text-xs" style="color: var(--text-muted)">Depuis le {{ dt(a.from) }}{{ a.until ? ' jusqu’au ' + dt(a.until) : ' — sans limite de durée' }}</span>
+                  </span>
+                  <button type="button" class="btn btn-danger-ghost btn-sm !py-0.5" (click)="revoke(a)">Révoquer</button>
+                </li>
               }
             </ul>
           }
-          <div class="mt-4 flex flex-wrap items-end gap-2">
-            <div class="flex-1 min-w-64"><label class="field-label">Révoquer par code d’autorisation</label>
-              <input class="input font-mono text-xs" [value]="revokeCode()" (input)="revokeCode.set($any($event.target).value)" placeholder="uuid de l’autorisation" /></div>
-            <button type="button" class="btn btn-secondary btn-sm" (click)="revoke(revokeCode())">Révoquer</button>
-          </div>
         }
       }
     </div>
@@ -204,6 +207,7 @@ export class ResourcePanelComponent {
   open(id: string): void {
     this.section.set(id as 'documents' | 'hours' | 'maintenance' | 'auth');
     if (id === 'hours' && !this.hoursLoaded) this.loadHours();
+    if (id === 'auth') this.loadAuthorizations();
   }
 
   private fail(title: string, err: ProblemDetails, form?: Parameters<FormFeedbackService['serverError']>[0]): void {
@@ -355,8 +359,8 @@ export class ResourcePanelComponent {
   // --- Authorisations (drivers) ----------------------------------------------------
   protected readonly savingAuth = signal(false);
   protected readonly authError = signal('');
-  protected readonly authorizations = signal<{ uuid: string }[]>([]);
-  protected readonly revokeCode = signal('');
+  protected readonly loadingAuth = signal(false);
+  protected readonly authorizations = signal<AuthRow[]>([]);
   protected readonly authForm = this.fb.nonNullable.group({
     vehicle_uuid: [''],
     vehicle_category: ['', [Validators.maxLength(120)]],
@@ -378,19 +382,30 @@ export class ResourcePanelComponent {
       ...(v.vehicle_uuid ? { vehicle_uuid: v.vehicle_uuid } : { vehicle_category: v.vehicle_category.trim() }),
       starts_at: localToIso(v.starts_at), ends_at: v.ends_at ? localToIso(v.ends_at) : null,
     }).subscribe({
-      next: (a) => { this.savingAuth.set(false); this.authorizations.update((l) => [...l, { uuid: a.uuid }]); this.authForm.reset({ vehicle_uuid: '', vehicle_category: '', starts_at: '', ends_at: '' }); this.toast.success('Chauffeur autorisé', `Code : ${a.uuid}`); },
+      next: () => { this.savingAuth.set(false); this.authForm.reset({ vehicle_uuid: '', vehicle_category: '', starts_at: '', ends_at: '' }); this.toast.success('Chauffeur autorisé'); this.loadAuthorizations(); },
       error: (err: ProblemDetails) => { this.savingAuth.set(false); this.authError.set(err.detail); this.fail('Autorisation refusée', err, this.authForm); },
     });
   }
 
-  async revoke(code: string): Promise<void> {
-    const c = code.trim().toLowerCase();
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(c)) {
-      this.feedback.blocked('Code d’autorisation invalide : il doit s’agir d’un identifiant (uuid).', 'Révocation impossible'); return;
-    }
-    if (!(await this.confirm.ask({ title: 'Révoquer cette autorisation ?', message: c, danger: true, confirmLabel: 'Révoquer' }))) return;
-    this.ops.revokeAuthorization(this.uuid(), c).subscribe({
-      next: () => { this.authorizations.update((l) => l.filter((a) => a.uuid !== c)); this.revokeCode.set(''); this.toast.success('Autorisation révoquée'); },
+  private loadAuthorizations(): void {
+    this.loadingAuth.set(true);
+    this.ops.getResource('drivers', this.uuid()).subscribe({
+      next: (d) => {
+        this.loadingAuth.set(false);
+        const list = Array.isArray(d['vehicles']) ? (d['vehicles'] as Record<string, unknown>[]) : [];
+        this.authorizations.set(list.map((v): AuthRow => ({
+          authorization_uuid: String(v['authorization_uuid']), registration: (v['registration'] as string) ?? '', brand: (v['brand'] as string) ?? '',
+          model: (v['model'] as string) ?? '', category: (v['category'] as string) ?? '', from: (v['authorized_from'] as string) ?? '', until: (v['authorized_until'] as string | null) ?? null,
+        })));
+      },
+      error: () => { this.loadingAuth.set(false); this.authorizations.set([]); },
+    });
+  }
+
+  async revoke(a: AuthRow): Promise<void> {
+    if (!(await this.confirm.ask({ title: 'Révoquer cette autorisation ?', message: `${a.registration || a.category} — ${this.label()}`, danger: true, confirmLabel: 'Révoquer' }))) return;
+    this.ops.revokeAuthorization(this.uuid(), a.authorization_uuid).subscribe({
+      next: () => { this.toast.success('Autorisation révoquée'); this.loadAuthorizations(); },
       error: (err: ProblemDetails) => this.fail('Révocation refusée', err),
     });
   }

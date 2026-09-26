@@ -19,6 +19,7 @@ import { SelectComponent, SelectOption } from '@lvb/ui/select/select.component';
 import { ColumnDef, DataTableComponent } from '@lvb/ui/table/data-table.component';
 import { TableCellDefDirective } from '@lvb/ui/table/table-cell-def.directive';
 import { FormFieldComponent } from '@lvb/ui/field/form-field.component';
+import { LabelsService } from '../../../core/services/labels.service';
 import { ModalComponent } from '@lvb/ui/modal/modal.component';
 import { ToastService } from '@lvb/ui/toast/toast.service';
 
@@ -216,7 +217,10 @@ export class WalletPageComponent {
   protected readonly withdrawalDetail = signal<PartnerWithdrawal | null>(null);
   protected readonly loadingWithdrawalDetail = signal(false);
 
+  protected readonly labels = inject(LabelsService);
+
   openWithdrawal(row: PartnerWithdrawal): void {
+    this.labels.ensure('payoutAccount');
     this.withdrawalDetail.set(row);
     this.loadingWithdrawalDetail.set(true);
     this.wallet.getWithdrawal(row.uuid).subscribe({

@@ -5,6 +5,7 @@ import { FleetService } from '../../../core/services/fleet.service';
 import { BOOKING_STATUS_VALUES, BOOKING_TERMINAL_STATUSES, Booking, BookingStatus } from '@lvb/models/booking.model';
 import { ProblemDetails } from '@lvb/models/common.model';
 import { formatDateTime, formatXaf } from '@lvb/utils/formatters';
+import { LabelsService } from '../../../core/services/labels.service';
 import { PartnerContextService } from '../../../core/services/partner-context.service';
 import { I18nService } from '@lvb/i18n/i18n.service';
 import { BreadcrumbsComponent } from '@lvb/ui/breadcrumbs/breadcrumbs.component';
@@ -70,7 +71,8 @@ export class BookingsPageComponent {
     value: s, label: this.i18n.t('status.booking.' + s),
   }));
   protected readonly columns: ColumnDef<Booking>[] = [
-    { key: 'uuid', label: 'Réservation', cell: (r) => `${r.uuid.slice(0, 8)}…` },
+    { key: 'vehicle_uuid', label: 'Véhicule', cell: (r) => this.labels.label('vehicle', r.vehicle_uuid) },
+    { key: 'offer_uuid', label: 'Offre', cell: (r) => this.labels.label('offer', r.offer_uuid) },
     { key: 'status', label: 'Statut' },
     { key: 'starts_at', label: 'Début', cell: (r) => this.dateTime(r.starts_at) },
     { key: 'total_amount', label: 'Montant', cell: (r) => this.xaf(r.total_amount) },
@@ -91,7 +93,21 @@ export class BookingsPageComponent {
   protected readonly showAssignDriverForm = signal(false);
   protected readonly assignDriverUuid = signal('');
 
+  protected readonly labels = inject(LabelsService);
+
+  /** Vehicle of a booking: the backend's resolved object on the detail call, else the fleet list. */
+  protected vehicleLabel(b: Booking): string {
+    if (b.vehicle) return `${b.vehicle.registration}${b.vehicle.brand ? ' — ' + b.vehicle.brand + (b.vehicle.model ? ' ' + b.vehicle.model : '') : ''}`;
+    return this.labels.label('vehicle', b.vehicle_uuid);
+  }
+
+  protected driverLabel(b: Booking): string {
+    if (b.driver) return `${b.driver.first_name} ${b.driver.last_name}${b.driver.phone ? ' · ' + b.driver.phone : ''}`;
+    return b.with_driver ? (b.driver_assigned ? 'Affecté' : 'À affecter') : 'Sans chauffeur';
+  }
+
   constructor() {
+    this.labels.ensure('vehicle', 'offer');
     this.fetch();
     this.fetchDrivers();
   }

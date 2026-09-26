@@ -218,7 +218,7 @@
   }
 </div>
 
-<app-modal [open]="bookingDetail() !== null || loadingBookingDetail()" title="Réservation" [subtitle]="bookingDetail()?.uuid ?? ''" size="lg" [hasFooter]="false" (closed)="closeBookingDetail()">
+<app-modal [open]="bookingDetail() !== null || loadingBookingDetail()" title="Réservation" [subtitle]="bookingDetail() ? dateTime(bookingDetail()!.starts_at) + ' → ' + dateTime(bookingDetail()!.ends_at) : ''" size="lg" [hasFooter]="false" (closed)="closeBookingDetail()">
   @if (loadingBookingDetail()) {
     <div class="skeleton h-40"></div>
   } @else if (bookingDetail(); as b) {
@@ -229,9 +229,9 @@
       <div><span class="field-label">Fin</span><p>{{ dateTime(b.ends_at) }}</p></div>
       <div><span class="field-label">Expiration de l’acompte</span><p>{{ dateTime(b.hold_expires_at) }}</p></div>
       <div><span class="field-label">Terminée le</span><p>{{ b.completed_at ? dateTime(b.completed_at) : '—' }}</p></div>
-      <div><span class="field-label">Offre</span><p class="font-mono text-xs">{{ b.offer_uuid ?? '—' }}</p></div>
-      <div><span class="field-label">Véhicule</span><p class="font-mono text-xs">{{ b.vehicle_uuid ?? '—' }}</p></div>
-      <div><span class="field-label">Chauffeur demandé</span><p>{{ b.with_driver ? (b.driver_assigned ? 'Oui — affecté' : 'Oui — non affecté') : 'Non' }}</p></div>
+      <div><span class="field-label">Offre</span><p>{{ offerTitle(b.offer_uuid) }}</p></div>
+      <div><span class="field-label">Véhicule</span><p>{{ bookingVehicle(b) }}</p></div>
+      <div><span class="field-label">Chauffeur</span><p>{{ bookingDriver(b) }}</p></div>
       <div>
         <span class="field-label">Litige</span>
         <div class="mt-1">
