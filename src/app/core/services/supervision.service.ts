@@ -16,6 +16,11 @@ export interface SupervisionDriver {
   insurance_expires_at: string | null;
   lat: number | null;
   lng: number | null;
+  /** Not sent by the backend yet — read when present so the map can show the person and the right vehicle icon. */
+  nom?: string | null;
+  prenom?: string | null;
+  telephone?: string | null;
+  vehicle_type?: string | null;
 }
 
 export interface SupervisionOrder {

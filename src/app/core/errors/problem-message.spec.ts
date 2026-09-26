@@ -83,4 +83,23 @@ describe('fieldLabel', () => {
     expect(fieldLabel('roles.0', 'fr')).toBe('Rôles');
     expect(fieldLabel('some_unknown_field', 'fr')).toBe('Some unknown field');
   });
+
+  it('turns failed dispatch criteria (RG-050) into readable reasons instead of field errors', () => {
+    const p = buildFriendlyProblem({
+      status: 409, code: 'ERR-4093', detail: 'Livreur non éligible à cette commande.',
+      errors: [
+        { field: '', message: 'Critère RG-050 #3 non satisfait', code: 'RG-050-3' },
+        { field: '', message: 'Critère RG-050 #5 non satisfait', code: 'RG-050-5' },
+      ],
+    }, 'fr');
+    expect(p.message).toContain('Livreur non éligible');
+    expect(p.message).toContain('plus de 2 minutes');
+    expect(p.message).toContain('véhicule');
+    expect(p.fieldErrors).toEqual([]);
+  });
+
+  it('gives the English wording for a failed COD ceiling', () => {
+    const p = buildFriendlyProblem({ status: 409, code: 'ERR-4093', errors: [{ field: '', message: 'x', code: 'RG-050-6' }] }, 'en');
+    expect(p.message).toContain('cash-on-delivery ceiling');
+  });
 });

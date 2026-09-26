@@ -1,20 +1,46 @@
-import { Component, DestroyRef, ElementRef, afterNextRender, effect, inject, input, output, viewChild } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Component, DestroyRef, ElementRef, afterNextRender, effect, inject, input, output, signal, viewChild } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject, catchError, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 import * as L from 'leaflet';
+import { API_BASE_URL } from '../../../core/http/api.config';
 import { GeoPoint } from '../../../core/models';
 
+/** `GET /v1/lieux` — places and points of interest in Douala and Yaoundé (public). */
+interface Lieu { id: number; nom: string; type: string; quartier: string | null; ville: string; latitude: number; longitude: number }
+
 /**
- * There is no geocoding/address-search endpoint anywhere in the backend
- * (checked every module's routes) — `POST /v1/quotes` requires raw
- * lat/lng, full stop. So pickup/dropoff selection is a literal map click,
- * not an address form. Free OSM road tiles, no API key.
+ * Pickup/drop-off selection: a map click, or a search over the backend's places catalogue
+ * (`GET /v1/lieux`, Douala & Yaoundé) that drops the pin on the chosen place. `POST /v1/quotes`
+ * itself only needs lat/lng. Free OSM road tiles, no API key.
  */
 @Component({
   selector: 'app-location-picker',
   template: `
     <div class="relative w-full h-full overflow-hidden rounded-(--radius-md)" style="background: var(--surface-2)">
       <div #mapEl class="absolute inset-0"></div>
+      <div class="absolute left-2 right-2 top-2 z-[500]">
+        <input
+          type="search" class="input !py-1.5 text-sm shadow" placeholder="Rechercher un lieu (quartier, marché, hôpital…)"
+          aria-label="Rechercher un lieu" autocomplete="off" [value]="query()" (input)="onQuery($any($event.target).value)"
+        />
+        @if (results().length > 0) {
+          <ul class="mt-1 rounded-(--radius-md) overflow-hidden shadow-lg max-h-56 overflow-y-auto" style="background: var(--surface-1); border: 1px solid var(--border-strong)">
+            @for (r of results(); track r.id) {
+              <li>
+                <button type="button" class="w-full text-left px-3 py-2 text-sm hover:opacity-80" (click)="choose(r)">
+                  <span class="font-medium">{{ r.nom }}</span>
+                  <span class="block text-xs" style="color: var(--text-muted)">{{ r.quartier ? r.quartier + ' · ' : '' }}{{ r.ville }} · {{ r.type }}</span>
+                </button>
+              </li>
+            }
+          </ul>
+        } @else if (searched() && query().trim().length >= 2) {
+          <p class="mt-1 px-3 py-2 text-xs rounded-(--radius-md)" style="background: var(--surface-1); border: 1px solid var(--border-strong); color: var(--text-muted)">Aucun lieu trouvé — cliquez sur la carte pour placer le point.</p>
+        }
+      </div>
       @if (!value()) {
-        <div class="absolute inset-x-0 top-2 flex justify-center pointer-events-none">
+        <div class="absolute inset-x-0 bottom-2 flex justify-center pointer-events-none">
           <span class="px-2.5 py-1 rounded-full text-[11px] font-medium" style="background: var(--surface-1); border: 1px solid var(--border-strong)">Cliquez sur la carte pour placer le point</span>
         </div>
       }
@@ -44,7 +70,33 @@ export class LocationPickerComponent {
     iconSize: [28, 36], iconAnchor: [14, 36],
   });
 
+  private readonly http = inject(HttpClient);
+  private readonly baseUrl = inject(API_BASE_URL);
+  private readonly search$ = new Subject<string>();
+  protected readonly query = signal('');
+  protected readonly results = signal<Lieu[]>([]);
+  protected readonly searched = signal(false);
+
+  protected onQuery(v: string): void {
+    this.query.set(v);
+    if (v.trim().length < 2) { this.results.set([]); this.searched.set(false); }
+    this.search$.next(v.trim());
+  }
+
+  protected choose(r: Lieu): void {
+    this.results.set([]);
+    this.query.set(r.nom);
+    this.map?.setView([r.latitude, r.longitude], Math.max(this.map.getZoom(), 16));
+    this.valueChange.emit({ lat: r.latitude, lng: r.longitude });
+  }
+
   constructor() {
+    this.search$.pipe(
+      debounceTime(300), distinctUntilChanged(),
+      switchMap((q) => (q.length < 2 ? of(null) : this.http.get<{ data: Lieu[] }>(`${this.baseUrl}/lieux`, { params: { q, limit: 8 } }).pipe(catchError(() => of(null))))),
+      takeUntilDestroyed(),
+    ).subscribe((res) => { this.results.set(res?.data ?? []); this.searched.set(res !== null); });
+
     afterNextRender(() => {
       const map = L.map(this.mapEl().nativeElement).setView([this.center().lat, this.center().lng], this.zoom());
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

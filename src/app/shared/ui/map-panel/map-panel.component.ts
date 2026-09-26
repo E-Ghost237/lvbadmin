@@ -1,6 +1,11 @@
 import { Component, DestroyRef, ElementRef, afterNextRender, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
 import * as L from 'leaflet';
 import { GeoPoint } from '../../../core/models';
+import { FleetUnit, UnitLayer } from './unit-layer';
+
+export type { FleetUnit } from './unit-layer';
+export { unitKindFor } from './unit-icons';
+export type { UnitKind } from './unit-icons';
 
 export interface MapMarker {
   id: string;
@@ -74,6 +79,8 @@ export class MapPanelComponent {
   readonly markers = input<MapMarker[]>([]);
   readonly zones = input<MapZoneShape[]>([]);
   readonly lines = input<MapLine[]>([]);
+  /** Moving couriers/drivers drawn as vehicle icons with a hover card. */
+  readonly units = input<FleetUnit[]>([]);
 
   readonly markerClick = output<string>();
 
@@ -93,6 +100,7 @@ export class MapPanelComponent {
   private hybridOverlay: L.TileLayer | undefined;
   private markerLayer: L.LayerGroup | undefined;
   private lineLayer: L.LayerGroup | undefined;
+  private unitLayer: UnitLayer | undefined;
   private zoneLayer: L.LayerGroup | undefined;
   private resizeObserver: ResizeObserver | undefined;
 
@@ -113,6 +121,7 @@ export class MapPanelComponent {
       this.resizeObserver.observe(this.host.nativeElement);
 
       this.destroyRef.onDestroy(() => {
+        this.unitLayer?.destroy();
         this.resizeObserver?.disconnect();
         this.map?.remove();
       });
@@ -126,6 +135,11 @@ export class MapPanelComponent {
     effect(() => {
       const bounds = this.boundsFromBbox();
       if (this.map) this.map.fitBounds(bounds, { padding: [12, 12] });
+    });
+
+    effect(() => {
+      const units = this.units();
+      this.unitLayer?.update(units);
     });
 
     effect(() => {
@@ -147,6 +161,8 @@ export class MapPanelComponent {
     this.zoneLayer = L.layerGroup().addTo(map);
     this.lineLayer = L.layerGroup().addTo(map);
     this.markerLayer = L.layerGroup().addTo(map);
+    this.unitLayer = new UnitLayer(map);
+    this.unitLayer.update(this.units());
     this.applyBaseLayer(this.baseLayer());
     this.renderOverlays(this.markers(), this.zones(), this.lines());
   }

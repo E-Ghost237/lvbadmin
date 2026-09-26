@@ -123,6 +123,12 @@
             <app-field label="Catégorie" [control]="offerForm.controls.category_uuid" required>
               <app-select [options]="categoryOptions()" formControlName="category_uuid" />
             </app-field>
+            @if (categoriesLoaded() && categoryOptions().length === 0) {
+              <p class="text-xs sm:col-span-2 px-3 py-2 rounded-(--radius-sm)" style="background: var(--status-warning-bg); color: var(--status-warning)">
+                @if (categoriesError()) { Les catégories n’ont pas pu être chargées : {{ categoriesError() }} }
+                @else { Aucune catégorie d’offre n’existe encore. Elles sont créées par LVB (application d’administration → Marketplace → Catégories) : demandez à LVB d’en ajouter une, puis rouvrez ce formulaire. }
+              </p>
+            }
           }
           <app-field label="Titre" [control]="offerForm.controls.title" required><input class="input" formControlName="title" /></app-field>
           <app-field label="Description" [control]="offerForm.controls.description" required><textarea class="input" rows="3" formControlName="description"></textarea></app-field>

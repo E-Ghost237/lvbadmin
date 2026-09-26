@@ -74,6 +74,38 @@ export class KycReviewComponent {
     });
   }
 
+  protected readonly openingType = signal<KycDocumentType | null>(null);
+
+  /** Opens (or downloads) the file the driver submitted, so the reviewer sees it before validating. */
+  viewDocument(type: KycDocumentType, download = false): void {
+    // Open the tab synchronously (inside the click) so pop-up blockers allow it, then point it at the file.
+    const tab = download ? null : window.open('', '_blank');
+    this.openingType.set(type);
+    this.drivers.kycDocumentFile(this.uuid, type).subscribe({
+      next: (blob) => {
+        this.openingType.set(null);
+        const url = URL.createObjectURL(blob);
+        if (download) {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${this.documentLabels[type]}-${this.uuid.slice(0, 8)}`;
+          a.click();
+        } else if (tab) {
+          tab.location.href = url;
+        } else {
+          window.open(url, '_blank');
+        }
+        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      },
+      error: (err: ProblemDetails) => {
+        tab?.close();
+        this.openingType.set(null);
+        if (err.status === 404) this.toast.warning('Fichier introuvable', 'Ce document n’a pas de fichier enregistré : le livreur ne l’a pas encore envoyé ou l’envoi a échoué.');
+        else this.toast.error('Ouverture impossible', err.detail);
+      },
+    });
+  }
+
   goToDriver(): void {
     this.router.navigate(['/drivers', this.uuid]);
   }

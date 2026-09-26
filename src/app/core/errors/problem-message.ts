@@ -168,6 +168,30 @@ function kindFor(status: number): ProblemKind {
 
 const MAX_LISTED_FIELDS = 6;
 
+/** Dispatch eligibility (RG-050) — the backend reports each failed criterion as `RG-050-<n>` in `errors[].code`. */
+const ELIGIBILITY_REASONS: Record<number, [string, string]> = {
+  1: ['le compte du livreur n’est pas actif ou il n’est pas « disponible » dans l’application', 'the driver’s account is not active, or the driver is not set to “available” in the app'],
+  2: ['un document du livreur est expiré (permis ou assurance)', 'one of the driver’s documents has expired (licence or insurance)'],
+  3: ['la position du livreur date de plus de 2 minutes — l’application doit rester ouverte et connectée', 'the driver’s position is older than 2 minutes — the app must stay open and online'],
+  4: ['le livreur est trop loin du point de ramassage', 'the driver is too far from the pickup point'],
+  5: ['le véhicule du livreur ne peut pas transporter ce colis (poids ou volume) ou aucun véhicule actif n’est enregistré', 'the driver’s vehicle cannot carry this parcel (weight or volume), or no active vehicle is registered'],
+  6: ['le plafond d’encaissement à la livraison (COD) du livreur serait dépassé', 'the driver’s cash-on-delivery ceiling would be exceeded'],
+  7: ['le livreur a déjà le nombre maximal de missions en cours', 'the driver already has the maximum number of missions in progress'],
+  8: ['le livreur a déjà refusé cette commande', 'the driver has already refused this order'],
+  9: ['le livreur se trouve dans une zone interdite', 'the driver is in a forbidden zone'],
+};
+
+/** Failed dispatch criteria found in `errors[]`, as readable reasons. */
+export function eligibilityReasons(errors: ProblemInput['errors'], locale: ErrorLocale): string[] {
+  const out: string[] = [];
+  for (const item of errors ?? []) {
+    const m = /^RG-050-(\d)$/.exec(item.code ?? '');
+    const reason = m ? ELIGIBILITY_REASONS[Number(m[1])] : undefined;
+    if (reason) out.push(reason[locale === 'fr' ? 0 : 1]);
+  }
+  return out;
+}
+
 /**
  * Turns a raw API failure into a message a user can act on, plus the list of
  * fields the server refused (so forms can mark them).
@@ -181,7 +205,9 @@ export function buildFriendlyProblem(input: ProblemInput, locale: ErrorLocale): 
 
   const fieldErrors: FieldIssue[] = [];
   const seen = new Set<string>();
+  const eligibility = eligibilityReasons(input.errors, locale);
   for (const item of input.errors ?? []) {
+    if (/^RG-050-\d$/.test(item.code ?? '')) continue; // shown as eligibility reasons, not as form fields
     const key = `${item.field}|${item.message}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -193,7 +219,9 @@ export function buildFriendlyProblem(input: ProblemInput, locale: ErrorLocale): 
   }
 
   let message: string;
-  if (fieldErrors.length > 0) {
+  if (eligibility.length > 0) {
+    message = `${fr ? 'Livreur non éligible : ' : 'Driver not eligible: '}${eligibility.join(' ; ')}.`;
+  } else if (fieldErrors.length > 0) {
     const listed = fieldErrors.slice(0, MAX_LISTED_FIELDS).map((f) => `${f.label} (${f.reason})`).join(' ; ');
     const more = fieldErrors.length > MAX_LISTED_FIELDS ? (fr ? ` et ${fieldErrors.length - MAX_LISTED_FIELDS} autre(s)` : ` and ${fieldErrors.length - MAX_LISTED_FIELDS} more`) : '';
     message = `${fr ? 'Corrigez les champs suivants' : 'Please fix the following fields'} : ${listed}${more}.`;

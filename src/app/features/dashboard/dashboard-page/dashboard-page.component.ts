@@ -1,11 +1,12 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { DriversService } from '../../../core/services/drivers.service';
 import { OrderRoute, SupervisionAlert, SupervisionAlertType, SupervisionDashboard, SupervisionService } from '../../../core/services/supervision.service';
 import { GeoPoint, ProblemDetails } from '../../../core/models';
 import { formatRelative, formatXaf } from '../../../core/utils/formatters';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
-  BreadcrumbsComponent, ForbiddenStateComponent, FormFieldComponent, MapLine, MapMarker,
+  BreadcrumbsComponent, ForbiddenStateComponent, FormFieldComponent, FleetUnit, MapLine, MapMarker, unitKindFor,
   MapPanelComponent, ModalComponent, StatTileComponent, ToastService, i18nKeyFor, FormFeedbackService,
 } from '../../../shared/ui';
 
@@ -40,6 +41,9 @@ export class DashboardPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly feedback = inject(FormFeedbackService);
   private readonly i18n = inject(I18nService);
+  private readonly driversApi = inject(DriversService);
+  /** user_uuid → identity, because the supervision feed carries only the matricule. */
+  private readonly directory = signal<Record<string, { name: string; phone: string }>>({});
 
   protected readonly loading = signal(true);
   protected readonly forbidden = signal(false);
@@ -109,7 +113,36 @@ export class DashboardPageComponent {
     ]);
   });
 
-  protected readonly mapMarkers = computed<MapMarker[]>(() => [...this.orderMarkers(), ...this.driverMarkers()]);
+  protected readonly mapMarkers = computed<MapMarker[]>(() => this.orderMarkers());
+
+  /** Couriers drawn as moving vehicle icons with a hover card (name, phone, status). */
+  protected readonly driverUnits = computed<FleetUnit[]>(() => {
+    const d = this.dashboard();
+    if (!d) return [];
+    const dir = this.directory();
+    return d.drivers
+      .filter((drv): drv is typeof drv & { lat: number; lng: number } => drv.lat !== null && drv.lng !== null)
+      .map((drv): FleetUnit => {
+        const person = dir[drv.user_uuid];
+        const name = [drv.prenom, drv.nom].filter(Boolean).join(' ') || person?.name || drv.matricule;
+        return {
+          id: drv.user_uuid, point: { lat: drv.lat, lng: drv.lng }, kind: unitKindFor(drv.vehicle_type),
+          name, phone: drv.telephone ?? person?.phone ?? null, status: drv.operational_status,
+          statusLabel: this.i18n.t(i18nKeyFor('driverOp', drv.operational_status)), subtitle: drv.matricule,
+          updatedAt: drv.position_updated_at,
+        };
+      });
+  });
+
+  private loadDirectory(cursor?: string, pages = 0): void {
+    this.driversApi.list({ cursor, limit: 100 }).subscribe({
+      next: (page) => {
+        this.directory.update((m) => ({ ...m, ...Object.fromEntries(page.items.map((x) => [x.uuid, { name: `${x.prenom ?? ''} ${x.nom}`.trim(), phone: x.telephone }])) }));
+        if (page.next_cursor && pages < 9) this.loadDirectory(page.next_cursor, pages + 1);
+      },
+      error: () => undefined, // the map still works with matricules only
+    });
+  }
 
   protected readonly mapLines = computed<MapLine[]>(() => {
     const d = this.dashboard();
@@ -198,6 +231,7 @@ export class DashboardPageComponent {
 
   constructor() {
     this.fetch();
+    this.loadDirectory();
     const timer = setInterval(() => {
       if (this.live() && !document.hidden && !this.loading() && !this.forbidden()) this.fetch(true);
     }, POLL_MS);

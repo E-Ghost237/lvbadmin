@@ -310,13 +310,18 @@ export class MarketplacePageComponent {
     cancellation_description: ['', [Validators.required, Validators.maxLength(2000)]],
   }, { validators: [requireOneOf(['vehicle_uuid', 'vehicle_category'], 'vehicle')] });
 
+  protected readonly categoriesLoaded = signal(false);
+  protected readonly categoriesError = signal('');
+
   fetchCategories(): void {
+    this.categoriesError.set('');
     this.offerSvc.listCategories().subscribe({
       next: (page) => {
+        this.categoriesLoaded.set(true);
         this.categories.set(page.items);
         this.categoryOptions.set(page.items.filter((c) => c.active).map((c) => ({ value: c.uuid, label: c.name })));
       },
-      error: () => undefined,
+      error: (err: ProblemDetails) => { this.categoriesLoaded.set(true); this.categoriesError.set(err.detail); },
     });
   }
 

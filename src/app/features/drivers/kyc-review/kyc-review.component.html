@@ -25,6 +25,10 @@
           <app-status-badge domain="account" [status]="doc.statut === 'VALIDE' ? 'ACTIF' : doc.statut === 'REJETE' ? 'SUSPENDU' : 'EN_ATTENTE_VALIDATION'" />
         </div>
         @if (doc.motif_rejet) { <p class="text-xs mt-1.5" style="color: var(--status-critical)">{{ doc.motif_rejet }}</p> }
+        <div class="flex gap-2 mt-3">
+          <button type="button" class="btn btn-secondary btn-sm" [disabled]="openingType() === doc.type" (click)="viewDocument(doc.type)">Voir le fichier</button>
+          <button type="button" class="btn btn-ghost btn-sm" [disabled]="openingType() === doc.type" (click)="viewDocument(doc.type, true)">Télécharger</button>
+        </div>
         @if (doc.statut === 'EN_ATTENTE') {
           <div class="flex gap-2 mt-3">
             <button type="button" class="btn btn-primary btn-sm" [disabled]="decidingType() === doc.type" (click)="validate(doc.type)">Valider</button>

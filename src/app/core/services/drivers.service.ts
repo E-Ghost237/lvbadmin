@@ -123,6 +123,11 @@ export class DriversService {
     return this.http.get<CursorPage<KycDossierSummary>>(`${this.baseUrl}/admin/kyc`, { params });
   }
 
+  /** The stored file of one KYC document (streamed inline from private storage; `drivers.kyc.review`). */
+  kycDocumentFile(uuid: string, type: KycDocumentType): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/admin/kyc/${uuid}/documents/${type}`, { responseType: 'blob' });
+  }
+
   kycDossier(uuid: string): Observable<KycDossier> {
     return this.http.get<KycDossier>(`${this.baseUrl}/admin/kyc/${uuid}`);
   }
