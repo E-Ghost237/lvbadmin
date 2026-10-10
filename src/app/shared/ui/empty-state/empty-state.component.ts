@@ -5,8 +5,8 @@ import { I18nService } from '../../../core/i18n/i18n.service';
   selector: 'app-empty-state',
   template: `
     <div class="flex flex-col items-center justify-center gap-3 py-16 text-center px-6">
-      <div class="flex h-12 w-12 items-center justify-center rounded-full" style="background: var(--surface-2)">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <div class="flex h-12 w-12 items-center justify-center rounded-[14px]" style="background: var(--brand-50)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
         </svg>
       </div>

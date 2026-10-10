@@ -363,4 +363,27 @@ export const FR: Record<string, string> = {
   'permission.withdrawals.manage': 'Gérer les retraits livreurs',
   'permission.finance.reconcile': 'Gérer le rapprochement financier',
   'permission.settings.manage': 'Gérer les paramètres système',
+
+  // Navigation groups (sidebar sections)
+  'nav.group.operations': 'Opérations',
+  'nav.group.network': 'Réseau & offres',
+  'nav.group.steering': 'Pilotage',
+  'nav.group.admin': 'Administration',
+
+  // Auth screen visual panel
+  'auth.visual.headline.1': 'Chaque colis, suivi',
+  'auth.visual.headline.2': 'du dépôt à la porte.',
+  'auth.visual.f1': 'Suivi des colis en temps réel',
+  'auth.visual.f2': 'Supervision des livreurs et des tournées',
+  'auth.visual.f3': 'Pilotage financier, rapports et audit',
+
+  // Partner navigation groups & auth visual
+  'partner.nav.group.activity': 'Activité',
+  'partner.nav.group.resources': 'Ressources',
+  'partner.nav.group.file': 'Mon dossier',
+  'partner.auth.visual.headline.1': 'Votre boutique,',
+  'partner.auth.visual.headline.2': 'livrée sans effort.',
+  'partner.auth.visual.f1': 'Expédiez vos colis en quelques clics',
+  'partner.auth.visual.f2': 'Suivez vos livraisons en direct',
+  'partner.auth.visual.f3': 'Portefeuille et facturation simplifiés',
 };

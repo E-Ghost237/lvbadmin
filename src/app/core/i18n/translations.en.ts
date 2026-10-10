@@ -363,4 +363,27 @@ export const EN: Record<string, string> = {
   'permission.withdrawals.manage': 'Manage driver withdrawals',
   'permission.finance.reconcile': 'Manage financial reconciliation',
   'permission.settings.manage': 'Manage system settings',
+
+  // Navigation groups (sidebar sections)
+  'nav.group.operations': 'Operations',
+  'nav.group.network': 'Network & offers',
+  'nav.group.steering': 'Steering',
+  'nav.group.admin': 'Administration',
+
+  // Auth screen visual panel
+  'auth.visual.headline.1': 'Every parcel, tracked',
+  'auth.visual.headline.2': 'from depot to doorstep.',
+  'auth.visual.f1': 'Real-time parcel tracking',
+  'auth.visual.f2': 'Courier & route supervision',
+  'auth.visual.f3': 'Finance, reporting & audit control',
+
+  // Partner navigation groups & auth visual
+  'partner.nav.group.activity': 'Activity',
+  'partner.nav.group.resources': 'Resources',
+  'partner.nav.group.file': 'My file',
+  'partner.auth.visual.headline.1': 'Your shop,',
+  'partner.auth.visual.headline.2': 'delivered effortlessly.',
+  'partner.auth.visual.f1': 'Ship your parcels in a few clicks',
+  'partner.auth.visual.f2': 'Track your deliveries live',
+  'partner.auth.visual.f3': 'Simple wallet & billing',
 };

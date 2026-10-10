@@ -30,10 +30,10 @@ export interface ColumnDef<T> {
           <tr style="border-bottom: 1px solid var(--border)">
             @for (col of columns(); track col.key) {
               <th
-                class="text-left font-medium px-4 py-2.5 whitespace-nowrap select-none text-xs uppercase tracking-wide"
+                class="text-left font-semibold px-4 py-2.5 whitespace-nowrap select-none text-[11px] uppercase tracking-[0.07em]"
                 [style.width]="col.width" [style.textAlign]="col.align || 'left'"
                 [class.cursor-pointer]="col.sortable"
-                style="color: var(--text-muted)"
+                style="color: var(--text-muted); background: color-mix(in srgb, var(--surface-2) 60%, transparent)"
                 (click)="col.sortable && toggleSort(col.key)"
               >
                 <span class="inline-flex items-center gap-1">
@@ -54,7 +54,7 @@ export interface ColumnDef<T> {
           <tbody>
             @for (row of rows(); track trackByFn()(row)) {
               <tr
-                style="border-bottom: 1px solid var(--border)" class="transition-colors hover:bg-(--surface-2)"
+                style="border-bottom: 1px solid var(--border)" class="transition-colors hover:bg-(--brand-50)"
                 [class.cursor-pointer]="rowClickable()"
                 (click)="rowClickable() && rowClick.emit(row)"
               >

@@ -1,72 +1,100 @@
-<div class="min-h-screen flex items-center justify-center p-4 sm:p-6" style="background: var(--surface-2)">
-  <div class="absolute top-5 right-5 sm:top-6 sm:right-6">
-    <button type="button" class="btn btn-ghost btn-sm" (click)="i18n.toggle()">{{ i18n.isEnglish() ? 'FR' : 'EN' }}</button>
+<div class="auth-shell">
+  <div class="auth-visual">
+    <img src="/img/auth-admin.jpg" alt="" aria-hidden="true" />
+    <div class="auth-visual-content">
+      <img src="/logo/Logo_lvb_trimmed.png" alt="LVB" class="h-9 w-auto brightness-0 invert" />
+      <div class="flex flex-col gap-9">
+        <h2 class="auth-headline">
+          {{ i18n.t('auth.visual.headline.1') }}<br />
+          <em>{{ i18n.t('auth.visual.headline.2') }}</em>
+        </h2>
+        <div class="flex flex-col gap-2.5 max-w-sm">
+          <div class="auth-feature">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+            {{ i18n.t('auth.visual.f1') }}
+          </div>
+          <div class="auth-feature">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+            {{ i18n.t('auth.visual.f2') }}
+          </div>
+          <div class="auth-feature">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+            {{ i18n.t('auth.visual.f3') }}
+          </div>
+        </div>
+        <p class="text-xs" style="color: rgba(255, 255, 255, 0.55)">© {{ currentYear }} La Vie est Belle Sarl — Confidentiel, diffusion restreinte.</p>
+      </div>
+    </div>
   </div>
 
-  <div class="w-full max-w-sm flex flex-col items-center">
-    <div class="flex flex-col items-center gap-3 mb-8">
-      <img src="/logo/Logo_lvb_trimmed.png" alt="LVB" class="h-34 w-auto shrink-0" />
-      <div class="text-center">
-        <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ i18n.t('app.tagline') }}</p>
-      </div>
+  <div class="auth-panel">
+    <div class="absolute top-5 right-5">
+      <button type="button" class="btn btn-ghost btn-sm" (click)="i18n.toggle()">{{ i18n.isEnglish() ? 'FR' : 'EN' }}</button>
     </div>
 
-    <div class="w-full rounded-(--radius-lg) overflow-hidden" style="background: var(--surface-1); border: 1px solid var(--border); box-shadow: var(--shadow-md)">
-      <div class="h-1 w-full" style="background: linear-gradient(90deg, var(--brand) 0%, var(--accent) 100%)"></div>
-      <div class="p-8 sm:p-10">
-        @if (step() === 'CREDENTIALS') {
-          <h1 class="text-xl font-semibold">{{ i18n.t('auth.login.title') }}</h1>
-          <p class="text-sm mt-1 mb-6" style="color: var(--text-muted)">{{ i18n.t('auth.login.subtitle') }}</p>
+    <div class="auth-card">
+      <div class="auth-logo-line">
+        <span class="auth-logo-mark">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" /><path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" /></svg>
+        </span>
+        <div>
+          <p class="text-[15px] font-extrabold leading-tight" style="font-family: var(--font-heading)">{{ i18n.t('app.name') }}</p>
+          <p class="text-xs" style="color: var(--text-muted)">{{ i18n.t('app.tagline') }}</p>
+        </div>
+      </div>
 
-          @if (errorMessage()) {
-            <div class="mb-4"><app-alert-banner kind="danger">{{ errorMessage() }}</app-alert-banner></div>
-          }
+      @if (step() === 'CREDENTIALS') {
+        <h1 class="text-2xl font-extrabold" style="font-family: var(--font-heading)">{{ i18n.t('auth.login.title') }}</h1>
+        <p class="text-sm mt-1 mb-7" style="color: var(--text-muted)">{{ i18n.t('auth.login.subtitle') }}</p>
 
-          <form [formGroup]="credentialsForm" (ngSubmit)="submitCredentials()" class="flex flex-col gap-4" novalidate>
-            <app-field [label]="i18n.t('auth.login.email')" [control]="credentialsForm.controls.email" required>
-              <input
-                type="email" class="input" formControlName="email" autocomplete="username" placeholder="prenom.nom@lvb.cm"
-                [class.input-invalid]="credentialsForm.controls.email.invalid && credentialsForm.controls.email.touched"
-              />
-            </app-field>
-            <app-field [label]="i18n.t('auth.login.password')" [control]="credentialsForm.controls.password" required>
-              <app-password-toggle><input
-                type="password" class="input" formControlName="password" autocomplete="current-password"
-                [class.input-invalid]="credentialsForm.controls.password.invalid && credentialsForm.controls.password.touched"
-              /></app-password-toggle>
-            </app-field>
-            <div class="flex justify-end -mt-2">
-              <a routerLink="/forgot-password" class="link text-xs">{{ i18n.t('auth.login.forgot') }}</a>
-            </div>
-            <button type="submit" class="btn btn-primary w-full" [disabled]="submitting()">
-              @if (submitting()) {
-                <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10" opacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg>
-              }
-              {{ i18n.t('auth.login.submit') }}
-            </button>
-          </form>
-        } @else {
-          <h1 class="text-xl font-semibold">{{ i18n.t('auth.mfa.title') }}</h1>
-          <p class="text-sm mt-1 mb-6" style="color: var(--text-muted)">{{ i18n.t('auth.mfa.subtitle') }}</p>
-
-          @if (errorMessage()) {
-            <div class="mb-4"><app-alert-banner kind="danger">{{ errorMessage() }}</app-alert-banner></div>
-          }
-
-          <form [formGroup]="mfaForm" (ngSubmit)="submitMfa()" class="flex flex-col gap-4" novalidate>
-            <app-field [label]="i18n.t('auth.mfa.code')" [control]="mfaForm.controls.code" required>
-              <input
-                type="text" inputmode="numeric" maxlength="6" class="input text-center text-lg tracking-[0.5em] font-semibold" formControlName="code" autocomplete="one-time-code"
-                [class.input-invalid]="mfaForm.controls.code.invalid && mfaForm.controls.code.touched"
-              />
-            </app-field>
-            <button type="submit" class="btn btn-primary w-full" [disabled]="submitting()">{{ i18n.t('auth.mfa.submit') }}</button>
-            <button type="button" class="btn btn-ghost w-full" (click)="backToCredentials()">{{ i18n.t('action.back') }}</button>
-          </form>
+        @if (errorMessage()) {
+          <div class="mb-4"><app-alert-banner kind="danger">{{ errorMessage() }}</app-alert-banner></div>
         }
-      </div>
-    </div>
 
-    <p class="mt-2 text-xs text-center" style="color: var(--text-muted)">© {{ currentYear }} La Vie est Belle Sarl — Confidentiel, diffusion restreinte.</p>
+        <form [formGroup]="credentialsForm" (ngSubmit)="submitCredentials()" class="flex flex-col gap-4" novalidate>
+          <app-field [label]="i18n.t('auth.login.email')" [control]="credentialsForm.controls.email" required>
+            <input
+              type="email" class="input" formControlName="email" autocomplete="username" placeholder="prenom.nom@lvb.cm"
+              [class.input-invalid]="credentialsForm.controls.email.invalid && credentialsForm.controls.email.touched"
+            />
+          </app-field>
+          <app-field [label]="i18n.t('auth.login.password')" [control]="credentialsForm.controls.password" required>
+            <app-password-toggle><input
+              type="password" class="input" formControlName="password" autocomplete="current-password"
+              [class.input-invalid]="credentialsForm.controls.password.invalid && credentialsForm.controls.password.touched"
+            /></app-password-toggle>
+          </app-field>
+          <div class="flex justify-end -mt-2">
+            <a routerLink="/forgot-password" class="link text-xs">{{ i18n.t('auth.login.forgot') }}</a>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg w-full" [disabled]="submitting()">
+            @if (submitting()) {
+              <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10" opacity="0.25" /><path d="M12 2a10 10 0 0 1 10 10" /></svg>
+            }
+            {{ i18n.t('auth.login.submit') }}
+          </button>
+        </form>
+      } @else {
+        <h1 class="text-2xl font-extrabold" style="font-family: var(--font-heading)">{{ i18n.t('auth.mfa.title') }}</h1>
+        <p class="text-sm mt-1 mb-7" style="color: var(--text-muted)">{{ i18n.t('auth.mfa.subtitle') }}</p>
+
+        @if (errorMessage()) {
+          <div class="mb-4"><app-alert-banner kind="danger">{{ errorMessage() }}</app-alert-banner></div>
+        }
+
+        <form [formGroup]="mfaForm" (ngSubmit)="submitMfa()" class="flex flex-col gap-4" novalidate>
+          <app-field [label]="i18n.t('auth.mfa.code')" [control]="mfaForm.controls.code" required>
+            <input
+              type="text" inputmode="numeric" maxlength="6" class="input text-center text-lg tracking-[0.5em] font-semibold" formControlName="code" autocomplete="one-time-code"
+              [class.input-invalid]="mfaForm.controls.code.invalid && mfaForm.controls.code.touched"
+            />
+          </app-field>
+          <button type="submit" class="btn btn-primary btn-lg w-full" [disabled]="submitting()">{{ i18n.t('auth.mfa.submit') }}</button>
+          <button type="button" class="btn btn-ghost w-full" (click)="backToCredentials()">{{ i18n.t('action.back') }}</button>
+        </form>
+      }
+
+      <p class="mt-8 text-xs text-center lg:hidden" style="color: var(--text-muted)">© {{ currentYear }} La Vie est Belle Sarl — Confidentiel, diffusion restreinte.</p>
+    </div>
   </div>
 </div>
