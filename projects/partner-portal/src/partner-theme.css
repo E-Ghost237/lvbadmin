@@ -1,0 +1,29 @@
+/* ---------------------------------------------------------------------
+ * Partner portal — leaf-green accent theme, layered over the shared
+ * LVB Horizon tokens (src/styles.css). Gives the partner-facing app its
+ * own personality while staying on the same design system.
+ * ------------------------------------------------------------------- */
+.btn-primary {
+  background: linear-gradient(135deg, #9ada3d 0%, #6bb01c 60%, #57940f 100%);
+  color: #10240a;
+  box-shadow: 0 1px 2px rgba(63, 122, 23, 0.4), 0 4px 14px rgba(116, 191, 31, 0.32);
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+  box-shadow: 0 2px 4px rgba(63, 122, 23, 0.4), 0 8px 20px rgba(116, 191, 31, 0.4);
+}
+
+.btn-secondary:hover:not(:disabled) { border-color: var(--accent-600); color: var(--accent-ink); background: var(--accent-50); }
+
+.link { color: var(--accent-600); }
+
+.input:focus, .select:focus, .textarea:focus {
+  border-color: var(--accent-600);
+  box-shadow: 0 0 0 4px var(--accent-50);
+}
+
+.checkbox, .radio { accent-color: var(--accent-600); }
+
+::selection { background: var(--accent-100); }
+
+:focus-visible { outline-color: var(--accent-600); }

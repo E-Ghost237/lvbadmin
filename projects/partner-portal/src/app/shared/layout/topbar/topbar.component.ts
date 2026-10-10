@@ -9,13 +9,15 @@ type Theme = 'light' | 'dark' | 'system';
   selector: 'app-topbar',
   imports: [RouterLink],
   template: `
-    <header class="flex items-center gap-3 h-18 px-4 lg:px-6 shrink-0" style="background: var(--sidebar-bg)">
+    <header class="lvb-topbar flex items-center gap-3 h-16 px-4 lg:px-6 shrink-0 relative z-30">
       <button type="button" class="lg:hidden btn btn-ghost btn-sm !px-1.5 topbar-icon-btn" (click)="openMobileMenu.emit()" aria-label="Ouvrir le menu">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18" /></svg>
       </button>
 
+      <p class="hidden md:block text-[13px] font-medium" style="color: var(--text-muted)">{{ todayLabel() }}</p>
+
       <div class="ml-auto flex items-center gap-1.5">
-        <button type="button" class="btn btn-ghost btn-sm topbar-icon-btn" (click)="i18n.toggle()" [attr.aria-label]="'Changer de langue'">
+        <button type="button" class="btn btn-ghost btn-sm topbar-icon-btn" (click)="i18n.toggle()" aria-label="Changer de langue">
           {{ i18n.isEnglish() ? 'FR' : 'EN' }}
         </button>
 
@@ -27,18 +29,21 @@ type Theme = 'light' | 'dark' | 'system';
           }
         </button>
 
+        <span class="mx-1 h-5 w-px" style="background: var(--border-strong)"></span>
+
         <div class="relative">
-          <button type="button" class="flex items-center gap-2 rounded-(--radius-sm) px-1.5 py-1 topbar-icon-btn" (click)="toggleProfile()">
-            <span class="h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-semibold" style="background: var(--accent); color: var(--sidebar-bg)">{{ userInitials() }}</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden sm:block" style="color: var(--sidebar-text)"><path d="m6 9 6 6 6-6" /></svg>
+          <button type="button" class="flex items-center gap-2 rounded-full p-1 topbar-icon-btn" (click)="toggleProfile()">
+            <span class="h-8 w-8 rounded-full flex items-center justify-center text-[11px] font-bold ring-2 ring-offset-2" style="background: var(--accent); color: #06152b; --tw-ring-color: var(--accent-100); --tw-ring-offset-color: var(--surface-1)">{{ userInitials() }}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="hidden sm:block" style="color: var(--text-muted)"><path d="m6 9 6 6 6-6" /></svg>
           </button>
           @if (profileOpen()) {
-            <div class="absolute right-0 mt-2 w-56 card shadow-(--shadow-lg) z-40 overflow-hidden">
-              <div class="px-4 py-3" style="border-bottom: 1px solid var(--border)">
-                <p class="text-sm font-medium truncate">{{ userLabel() }}</p>
+            <div class="absolute right-0 mt-2 w-60 card shadow-(--shadow-lg) z-40 overflow-hidden">
+              <div class="px-4 py-3" style="border-bottom: 1px solid var(--border); background: var(--surface-2)">
+                <p class="text-sm font-semibold truncate">{{ userLabel() }}</p>
+                <p class="text-xs truncate" style="color: var(--text-muted)">{{ userEmail() }}</p>
               </div>
-              <a routerLink="/account" class="block px-4 py-2.5 text-sm hover:bg-(--surface-2)" (click)="profileOpen.set(false)">{{ i18n.t('nav.account') }}</a>
-              <button type="button" class="w-full text-left px-4 py-2.5 text-sm hover:bg-(--surface-2)" style="color: var(--status-critical)" (click)="logout()">
+              <a routerLink="/account" class="block px-4 py-2.5 text-sm font-medium hover:bg-(--surface-2)" (click)="profileOpen.set(false)">{{ i18n.t('nav.account') }}</a>
+              <button type="button" class="w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-(--status-critical-bg)" style="color: var(--status-critical)" (click)="logout()">
                 {{ i18n.t('action.logout') }}
               </button>
             </div>
@@ -46,10 +51,6 @@ type Theme = 'light' | 'dark' | 'system';
         </div>
       </div>
     </header>
-    <style>
-      .topbar-icon-btn { color: var(--sidebar-text); }
-      .topbar-icon-btn:hover { background: var(--sidebar-bg-elevated); color: var(--sidebar-text-active); }
-    </style>
   `,
 })
 export class TopbarComponent {
@@ -70,6 +71,12 @@ export class TopbarComponent {
   });
   protected readonly userInitials = computed(() => (this.userLabel().slice(0, 2) || '?').toUpperCase());
   protected readonly themeLabel = computed(() => ({ light: 'Thème clair', dark: 'Thème sombre', system: 'Thème automatique' })[this.theme()]);
+
+  protected readonly todayLabel = computed(() => {
+    const locale = this.i18n.isEnglish() ? 'en-GB' : 'fr-FR';
+    const label = new Intl.DateTimeFormat(locale, { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+    return label.charAt(0).toUpperCase() + label.slice(1);
+  });
 
   constructor(private readonly host: ElementRef<HTMLElement>) {}
 

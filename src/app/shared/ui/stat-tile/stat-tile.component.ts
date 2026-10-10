@@ -6,14 +6,14 @@ export type StatTileTone = 'neutral' | 'good' | 'warning' | 'critical';
 @Component({
   selector: 'app-stat-tile',
   template: `
-    <div class="card p-4 flex flex-col gap-1.5">
+    <div class="card p-4 flex flex-col gap-1.5 transition-shadow hover:shadow-(--shadow-md)">
       <div class="flex items-center justify-between gap-2">
-        <p class="text-xs font-medium" style="color: var(--text-muted)">{{ label() }}</p>
+        <p class="text-[11px] font-semibold uppercase tracking-[0.07em]" style="color: var(--text-muted)">{{ label() }}</p>
         @if (badge()) {
           <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" [style.color]="toneColor()" [style.background]="toneBg()">{{ badge() }}</span>
         }
       </div>
-      <p class="text-2xl font-semibold tabular-nums" [style.color]="valueColor()">{{ formattedValue() }}</p>
+      <p class="text-[26px] leading-8 font-extrabold tabular-nums" style="font-family: var(--font-heading); letter-spacing: -0.02em" [style.color]="valueColor()">{{ formattedValue() }}</p>
       <div class="flex items-center justify-between gap-2 min-h-[18px]">
         @if (target() !== undefined) {
           <p class="text-[11px]" style="color: var(--text-muted)">Cible : {{ formatValue(target()!) }}</p>

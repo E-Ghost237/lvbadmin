@@ -26,6 +26,7 @@ export class ResetPasswordComponent {
   protected readonly submitting = signal(false);
   protected readonly done = signal(false);
   protected readonly errorMessage = signal('');
+  protected readonly currentYear = new Date().getFullYear();
 
   protected readonly form = this.fb.nonNullable.group({
     password: ['', [Validators.required, passwordPolicy()]],
