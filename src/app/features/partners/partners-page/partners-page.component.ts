@@ -10,9 +10,21 @@ import { formatDate } from '../../../core/utils/formatters';
 import { e164Phone, emailAddress, personName, xafAmount } from '../../../core/utils/validators';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
-  BreadcrumbsComponent, ColumnDef, DataTableComponent, ForbiddenStateComponent, FormFieldComponent, ModalComponent,
-  SearchInputComponent, SelectComponent, SelectOption, StatusBadgeComponent, TableCellDefDirective, ToastService,
-  ToggleComponent, FormFeedbackService, CmPhoneDirective,
+  CmPhoneDirective,
+  ColumnDef,
+  DataTableComponent,
+  ForbiddenStateComponent,
+  FormFeedbackService,
+  FormFieldComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SearchInputComponent,
+  SelectComponent,
+  SelectOption,
+  StatusBadgeComponent,
+  TableCellDefDirective,
+  ToastService,
+  ToggleComponent,
 } from '../../../shared/ui';
 
 const PARTNER_STATUS_VALUES: PartnerStatus[] = [
@@ -23,10 +35,19 @@ const PARTNER_STATUS_VALUES: PartnerStatus[] = [
 @Component({
   selector: 'app-partners-page',
   imports: [
-    ReactiveFormsModule, BreadcrumbsComponent, ForbiddenStateComponent, StatusBadgeComponent, SearchInputComponent,
-    ModalComponent, FormFieldComponent, DataTableComponent, TableCellDefDirective, ToggleComponent, SelectComponent,
-    CmPhoneDirective,
-  ],
+  CmPhoneDirective,
+  DataTableComponent,
+  ForbiddenStateComponent,
+  FormFieldComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  ReactiveFormsModule,
+  SearchInputComponent,
+  SelectComponent,
+  StatusBadgeComponent,
+  TableCellDefDirective,
+  ToggleComponent,
+],
   templateUrl: './partners-page.component.html',
 })
 export class PartnersPageComponent {

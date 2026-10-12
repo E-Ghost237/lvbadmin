@@ -1,40 +1,53 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Commandes' }]" />
+<div class="page">
+  <app-page-header [crumbs]="[{ label: 'Commandes' }]">
+    <div page-head-text>
+      <h1 class="page-title">Commandes & Finance</h1>
+      <p class="page-sub">Vos livraisons en tant que client LVB et le résumé financier associé.</p>
+    </div>
+  </app-page-header>
 
-<div class="mb-5">
-  <h1 class="text-xl font-semibold">Commandes & Finance</h1>
-  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Vos livraisons en tant que client LVB et le résumé financier associé.</p>
-</div>
+  <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
-<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
-
-<div class="mt-5">
   @if (activeTab() === 'orders') {
     @if (forbiddenOrders()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission orders.read." />
     } @else {
-      <div class="flex gap-3 mb-4">
-        <div class="max-w-xs flex-1">
+      <div class="toolbar">
+        <div class="flex-1 min-w-48 max-w-xs">
           <app-select [options]="statusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="statusFilter()" (valueChange)="onStatusFilterChange($event)" />
         </div>
-        <div class="max-w-xs flex-1">
+        <div class="flex-1 min-w-48 max-w-xs">
           <app-select [options]="paymentMethodOptions" placeholder="Tous les modes de paiement" ariaLabel="Filtrer par paiement" [value]="paymentMethodFilter()" (valueChange)="onPaymentMethodFilterChange($event)" />
         </div>
+        <span class="toolbar-spacer"></span>
+        @if (orders().length) { <span class="count-chip">{{ orders().length }} commande(s)</span> }
       </div>
 
-      <div class="card">
-        <app-data-table
-          [columns]="columns" [rows]="orders()" [loading]="loadingOrders() && orders().length === 0"
-          [trackBy]="trackByUuid" emptyTitle="Aucune commande" emptyHint="Aucune commande ne correspond à ce filtre."
-        >
-          <ng-template appCell="statut" let-row><app-status-badge domain="order" [status]="row.statut" /></ng-template>
-          <ng-template appCell="actions" let-row>
-            <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openDetail(row.uuid)">Détails</button>
-          </ng-template>
-        </app-data-table>
-      </div>
-      @if (nextCursor()) {
-        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingOrders()" (click)="fetchOrders(nextCursor()!)">Charger plus</button>
-      }
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Commandes</h2>
+            <p class="card-sub">Suivi des livraisons créées avec votre compte</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
+          <app-data-table
+            [columns]="columns" [rows]="orders()" [loading]="loadingOrders() && orders().length === 0"
+            [trackBy]="trackByUuid" emptyTitle="Aucune commande" emptyHint="Aucune commande ne correspond à ce filtre."
+          >
+            <ng-template appCell="statut" let-row><app-status-badge domain="order" [status]="row.statut" /></ng-template>
+            <ng-template appCell="actions" let-row>
+              <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openDetail(row.uuid)">Détails</button>
+            </ng-template>
+          </app-data-table>
+        </div>
+        @if (nextCursor()) {
+          <div class="card-foot">
+            <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="loadingOrders()" (click)="fetchOrders(nextCursor()!)">Charger plus</button>
+          </div>
+        }
+      </section>
     }
   }
 
@@ -42,22 +55,28 @@
     @if (forbiddenFinance()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission finance.read." />
     } @else if (loadingFinance()) {
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div>
+      <div class="stat-grid">
+        <div class="skeleton h-28"></div><div class="skeleton h-28"></div><div class="skeleton h-28"></div><div class="skeleton h-28"></div>
       </div>
     } @else if (finance(); as f) {
-      <div class="flex justify-end mb-3">
+      <div class="toolbar">
+        <div>
+          <p class="section-label">Résumé financier</p>
+          <p class="text-xs mt-1" style="color: var(--text-muted)">Montants facturés, encaissés et remboursés sur la période</p>
+        </div>
+        <span class="toolbar-spacer"></span>
         @if (canExport) {
-        <button type="button" class="btn btn-secondary btn-sm" [disabled]="exportingCsv()" (click)="exportFinanceCsv()">Exporter en CSV</button>
+          <button type="button" class="btn btn-secondary btn-sm" [disabled]="exportingCsv()" (click)="exportFinanceCsv()">Exporter en CSV</button>
         }
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+
+      <div class="stat-grid">
         <app-stat-tile label="Total facturé" [value]="f.total_facture_xaf" unit="XAF" />
         <app-stat-tile label="Total payé" [value]="f.total_paye_xaf" unit="XAF" />
         <app-stat-tile label="Total remboursé" [value]="f.total_rembourse_xaf" unit="XAF" />
         <app-stat-tile label="Net payé" [value]="f.net_paye_xaf" unit="XAF" />
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="stat-grid">
         <app-stat-tile label="Paiements réussis" [value]="f.paiements_reussis" />
         <app-stat-tile label="Paiements échoués" [value]="f.paiements_echoues" />
         <app-stat-tile label="Encaissé COD" [value]="f.encaisse_cod_xaf" unit="XAF" />
@@ -71,13 +90,13 @@
   @if (loadingDetail()) {
     <div class="skeleton h-40"></div>
   } @else if (detail(); as d) {
-    <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-      <div><span class="field-label">Statut</span><div class="mt-1"><app-status-badge domain="order" [status]="d.statut" /></div></div>
-      <div><span class="field-label">Ville</span><p>{{ d.ville }}</p></div>
-      <div><span class="field-label">Destinataire</span><p>{{ d.destinataire_nom }} — {{ d.destinataire_telephone }}</p></div>
-      <div><span class="field-label">Prix</span><p>{{ xaf(d.prix_final_xaf) }}</p></div>
-      <div><span class="field-label">Créée le</span><p>{{ dateTime(d.cree_le) }}</p></div>
-      <div><span class="field-label">Livrée le</span><p>{{ d.livree_le ? dateTime(d.livree_le) : '—' }}</p></div>
+    <div class="kv-grid kv-grid-2">
+      <div class="kv-item"><span class="kv-label">Statut</span><app-status-badge domain="order" [status]="d.statut" /></div>
+      <div class="kv-item"><span class="kv-label">Ville</span><span class="kv-value">{{ d.ville }}</span></div>
+      <div class="kv-item"><span class="kv-label">Destinataire</span><span class="kv-value">{{ d.destinataire_nom }} — {{ d.destinataire_telephone }}</span></div>
+      <div class="kv-item"><span class="kv-label">Prix</span><span class="kv-value tabular-nums font-semibold">{{ xaf(d.prix_final_xaf) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Créée le</span><span class="kv-value">{{ dateTime(d.cree_le) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Livrée le</span><span class="kv-value">{{ d.livree_le ? dateTime(d.livree_le) : '—' }}</span></div>
     </div>
 
     @if (d.recu_disponible) {
@@ -86,12 +105,15 @@
 
     @if (d.suivi.length > 0) {
       <div class="mt-5 pt-4" style="border-top: 1px solid var(--border)">
-        <p class="text-sm font-medium mb-3">Suivi</p>
-        <div class="flex flex-col gap-2">
+        <p class="section-label mb-3">Suivi</p>
+        <div class="timeline">
           @for (event of d.suivi; track $index) {
-            <div class="text-xs flex items-center gap-2">
-              <span style="color: var(--text-muted)" class="shrink-0 w-40">{{ dateTime(event.horodatage) }}</span>
-              <span>{{ event.statut }}</span>
+            <div class="timeline-item">
+              <span class="timeline-dot"></span>
+              <div class="min-w-0">
+                <p class="timeline-time">{{ dateTime(event.horodatage) }}</p>
+                <p class="text-sm mt-0.5">{{ event.statut }}</p>
+              </div>
             </div>
           }
         </div>
@@ -100,12 +122,12 @@
 
     @if (d.reclamations.length > 0) {
       <div class="mt-5 pt-4" style="border-top: 1px solid var(--border)">
-        <p class="text-sm font-medium mb-3">Réclamations</p>
-        <div class="flex flex-col gap-2">
+        <p class="section-label mb-3">Réclamations</p>
+        <div class="stack">
           @for (claim of d.reclamations; track claim.uuid) {
-            <div class="text-xs">
-              <span class="font-medium">{{ claim.categorie }}</span> — {{ claim.statut }}
-              <p style="color: var(--text-muted)">{{ claim.description }}</p>
+            <div class="list-row flex-col items-stretch !gap-1">
+              <span class="text-xs"><span class="font-semibold">{{ claim.categorie }}</span> — {{ claim.statut }}</span>
+              <p class="text-xs" style="color: var(--text-muted)">{{ claim.description }}</p>
             </div>
           }
         </div>

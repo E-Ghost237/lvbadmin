@@ -1,41 +1,55 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Livreurs', link: '/drivers' }, { label: 'Dossier KYC' }]" />
-
-@if (loading()) {
-  <div class="skeleton h-60 mt-4"></div>
-} @else if (dossier(); as d) {
-  <div class="flex items-center justify-between mb-5">
-    <div>
-      <h1 class="text-xl font-semibold">{{ d.prenom }} {{ d.nom }}</h1>
-      <p class="text-sm mt-0.5" style="color: var(--text-muted)">{{ d.matricule || '—' }}</p>
-    </div>
-    <div class="flex items-center gap-2">
+<div class="page">
+  @if (loading()) {
+    <div class="skeleton h-60"></div>
+  } @else if (dossier(); as d) {
+    <app-page-header [crumbs]="[{ label: 'Livreurs', link: '/drivers' }, { label: 'Dossier KYC' }]">
+      <span page-head-lead class="avatar-initials" aria-hidden="true">{{ (d.prenom ?? '').slice(0,1) }}{{ d.nom.slice(0,1) }}</span>
+      <div page-head-text>
+        <h1 class="page-title">{{ d.prenom }} {{ d.nom }}</h1>
+        <p class="page-sub">{{ d.matricule || '—' }} · vérification des pièces justificatives</p>
+      </div>
       <app-status-badge domain="account" [status]="d.statut_compte" />
       @if (d.statut_compte !== 'ACTIF' && allDocumentsValidated(d)) {
         <button type="button" class="btn btn-primary btn-sm" [disabled]="approving()" (click)="approveDriver()">Approuver le livreur</button>
       }
       <button type="button" class="btn btn-secondary btn-sm" (click)="goToDriver()">Voir la fiche livreur</button>
-    </div>
-  </div>
+    </app-page-header>
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-    @for (doc of d.documents; track doc.type) {
-      <div class="card p-4">
-        <div class="flex items-center justify-between">
-          <p class="text-sm font-medium">{{ documentLabels[doc.type] }}</p>
-          <app-status-badge domain="account" [status]="doc.statut === 'VALIDE' ? 'ACTIF' : doc.statut === 'REJETE' ? 'SUSPENDU' : 'EN_ATTENTE_VALIDATION'" />
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">Pièces du dossier</h2>
+          <p class="card-sub">Validez ou rejetez chaque document — l’approbation exige des pièces validées</p>
         </div>
-        @if (doc.motif_rejet) { <p class="text-xs mt-1.5" style="color: var(--status-critical)">{{ doc.motif_rejet }}</p> }
-        <div class="flex gap-2 mt-3">
-          <button type="button" class="btn btn-secondary btn-sm" [disabled]="openingType() === doc.type" (click)="viewDocument(doc.type)">Voir le fichier</button>
-          <button type="button" class="btn btn-ghost btn-sm" [disabled]="openingType() === doc.type" (click)="viewDocument(doc.type, true)">Télécharger</button>
+        <div class="card-actions">
+          <span class="count-chip">{{ d.documents.length }} pièce(s)</span>
         </div>
-        @if (doc.statut === 'EN_ATTENTE') {
-          <div class="flex gap-2 mt-3">
-            <button type="button" class="btn btn-primary btn-sm" [disabled]="decidingType() === doc.type" (click)="validate(doc.type)">Valider</button>
-            <button type="button" class="btn btn-danger-ghost btn-sm" [disabled]="decidingType() === doc.type" (click)="reject(doc.type)">Rejeter</button>
-          </div>
-        }
       </div>
-    }
-  </div>
-}
+      <div class="card-body">
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          @for (doc of d.documents; track doc.type) {
+            <article class="card card-hover p-4 flex flex-col gap-3">
+              <div class="flex items-start justify-between gap-2">
+                <p class="text-sm font-semibold">{{ documentLabels[doc.type] }}</p>
+                <app-status-badge domain="account" [status]="doc.statut === 'VALIDE' ? 'ACTIF' : doc.statut === 'REJETE' ? 'SUSPENDU' : 'EN_ATTENTE_VALIDATION'" />
+              </div>
+              @if (doc.motif_rejet) {
+                <p class="text-xs rounded-(--radius-sm) px-2.5 py-2" style="color: var(--status-critical); background: var(--status-critical-bg)">{{ doc.motif_rejet }}</p>
+              }
+              <div class="flex gap-2 mt-auto pt-3" style="border-top: 1px solid var(--border)">
+                <button type="button" class="btn btn-secondary btn-sm" [disabled]="openingType() === doc.type" (click)="viewDocument(doc.type)">Voir le fichier</button>
+                <button type="button" class="btn btn-ghost btn-sm" [disabled]="openingType() === doc.type" (click)="viewDocument(doc.type, true)">Télécharger</button>
+              </div>
+              @if (doc.statut === 'EN_ATTENTE') {
+                <div class="flex gap-2">
+                  <button type="button" class="btn btn-primary btn-sm" [disabled]="decidingType() === doc.type" (click)="validate(doc.type)">Valider</button>
+                  <button type="button" class="btn btn-danger-ghost btn-sm" [disabled]="decidingType() === doc.type" (click)="reject(doc.type)">Rejeter</button>
+                </div>
+              }
+            </article>
+          }
+        </div>
+      </div>
+    </section>
+  }
+</div>

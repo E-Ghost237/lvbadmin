@@ -27,21 +27,22 @@ export interface ColumnDef<T> {
     <div class="overflow-x-auto thin-scroll">
       <table class="w-full text-sm border-collapse">
         <thead>
-          <tr style="border-bottom: 1px solid var(--border)">
+          <tr>
             @for (col of columns(); track col.key) {
               <th
-                class="text-left font-semibold px-4 py-2.5 whitespace-nowrap select-none text-[11px] uppercase tracking-[0.07em]"
+                class="dt-head-cell"
                 [style.width]="col.width" [style.textAlign]="col.align || 'left'"
                 [class.cursor-pointer]="col.sortable"
-                style="color: var(--text-muted); background: color-mix(in srgb, var(--surface-2) 60%, transparent)"
+                [attr.aria-sort]="col.sortable ? (sortKey() === col.key ? (sortDir() === 'asc' ? 'ascending' : 'descending') : 'none') : null"
                 (click)="col.sortable && toggleSort(col.key)"
               >
-                <span class="inline-flex items-center gap-1">
+                <span class="inline-flex items-center gap-1.5" [class.flex-row-reverse]="col.align === 'right'">
                   {{ col.label }}
                   @if (col.sortable) {
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
                          [style.opacity]="sortKey() === col.key ? 1 : 0.35"
-                         [style.transform]="sortKey() === col.key && sortDir() === 'desc' ? 'rotate(180deg)' : 'none'">
+                         [style.transform]="sortKey() === col.key && sortDir() === 'desc' ? 'rotate(180deg)' : 'none'"
+                         aria-hidden="true">
                       <path d="m18 15-6-6-6 6" />
                     </svg>
                   }
@@ -54,12 +55,13 @@ export interface ColumnDef<T> {
           <tbody>
             @for (row of rows(); track trackByFn()(row)) {
               <tr
-                style="border-bottom: 1px solid var(--border)" class="transition-colors hover:bg-(--brand-50)"
+                class="dt-row"
+                style="border-bottom: 1px solid var(--border)"
                 [class.cursor-pointer]="rowClickable()"
                 (click)="rowClickable() && rowClick.emit(row)"
               >
                 @for (col of columns(); track col.key) {
-                  <td class="px-4 py-3 align-middle" [style.textAlign]="col.align || 'left'">
+                  <td class="dt-cell" [style.textAlign]="col.align || 'left'">
                     @if (templateFor(col.key); as tpl) {
                       <ng-container *ngTemplateOutlet="tpl; context: { $implicit: row, row: row }"></ng-container>
                     } @else {

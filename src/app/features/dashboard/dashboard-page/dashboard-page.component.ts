@@ -6,8 +6,19 @@ import { GeoPoint, ProblemDetails } from '../../../core/models';
 import { formatRelative, formatXaf } from '../../../core/utils/formatters';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
-  BreadcrumbsComponent, ForbiddenStateComponent, FormFieldComponent, FleetUnit, MapLine, MapMarker, unitKindFor,
-  MapPanelComponent, ModalComponent, StatTileComponent, ToastService, i18nKeyFor, FormFeedbackService,
+  FleetUnit,
+  ForbiddenStateComponent,
+  FormFeedbackService,
+  FormFieldComponent,
+  MapLine,
+  MapMarker,
+  MapPanelComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  StatTileComponent,
+  ToastService,
+  i18nKeyFor,
+  unitKindFor,
 } from '../../../shared/ui';
 
 const ALERT_TYPE_LABELS: Record<SupervisionAlertType, string> = {
@@ -30,9 +41,14 @@ const OPERATIONAL_TONE: Record<string, MapMarker['tone']> = {
 @Component({
   selector: 'app-dashboard-page',
   imports: [
-    ReactiveFormsModule, BreadcrumbsComponent, StatTileComponent, MapPanelComponent,
-    ForbiddenStateComponent, ModalComponent, FormFieldComponent,
-  ],
+  ForbiddenStateComponent,
+  FormFieldComponent,
+  MapPanelComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  ReactiveFormsModule,
+  StatTileComponent,
+],
   templateUrl: './dashboard-page.component.html',
 })
 export class DashboardPageComponent {

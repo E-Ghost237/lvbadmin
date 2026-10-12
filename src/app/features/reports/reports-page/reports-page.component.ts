@@ -5,8 +5,14 @@ import { AdminExportStatus, ExportFormat, ExportResource, ReportsService } from 
 import { ProblemDetails } from '../../../core/models';
 import { formatDateTime } from '../../../core/utils/formatters';
 import {
-  BreadcrumbsComponent, FormFieldComponent, ForbiddenStateComponent, SelectComponent, SelectOption, TabDef,
-  TabsComponent, ToastService,
+  ForbiddenStateComponent,
+  FormFieldComponent,
+  PageHeaderComponent,
+  SelectComponent,
+  SelectOption,
+  TabDef,
+  TabsComponent,
+  ToastService,
 } from '../../../shared/ui';
 
 const STATUS_TONE: Record<KpiMeasurement['status'], string> = {
@@ -21,7 +27,14 @@ const FORMAT_OPTIONS: SelectOption[] = [{ value: 'csv', label: 'CSV' }, { value:
 
 @Component({
   selector: 'app-reports-page',
-  imports: [ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, ForbiddenStateComponent, SelectComponent],
+  imports: [
+  ForbiddenStateComponent,
+  FormFieldComponent,
+  PageHeaderComponent,
+  ReactiveFormsModule,
+  SelectComponent,
+  TabsComponent,
+],
   templateUrl: './reports-page.component.html',
 })
 export class ReportsPageComponent {

@@ -4,8 +4,14 @@ import { Parametre, ParametreType, SettingSummary, SettingsService } from '../..
 import { ProblemDetails } from '../../../core/models';
 import { formatDateTime } from '../../../core/utils/formatters';
 import {
-  AlertBannerComponent, BreadcrumbsComponent, ForbiddenStateComponent, FormFieldComponent, SelectComponent,
-  SelectOption, ToastService, FormFeedbackService,
+  AlertBannerComponent,
+  ForbiddenStateComponent,
+  FormFeedbackService,
+  FormFieldComponent,
+  PageHeaderComponent,
+  SelectComponent,
+  SelectOption,
+  ToastService,
 } from '../../../shared/ui';
 
 const PARAMETRE_TYPE_OPTIONS: SelectOption[] = [
@@ -16,9 +22,13 @@ const PARAMETRE_TYPE_OPTIONS: SelectOption[] = [
 @Component({
   selector: 'app-settings-page',
   imports: [
-    ReactiveFormsModule, BreadcrumbsComponent, FormFieldComponent, AlertBannerComponent, ForbiddenStateComponent,
-    SelectComponent,
-  ],
+  AlertBannerComponent,
+  ForbiddenStateComponent,
+  FormFieldComponent,
+  PageHeaderComponent,
+  ReactiveFormsModule,
+  SelectComponent,
+],
   templateUrl: './settings-page.component.html',
 })
 export class SettingsPageComponent {

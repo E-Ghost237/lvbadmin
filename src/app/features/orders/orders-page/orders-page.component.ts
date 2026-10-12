@@ -5,8 +5,18 @@ import { OrderChannel, OrderStatus, ORDER_STATUS_VALUES, PaymentMethod, ProblemD
 import { formatDateTime, formatXaf } from '../../../core/utils/formatters';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
-  BreadcrumbsComponent, ColumnDef, DataTableComponent, ForbiddenStateComponent, ModalComponent, SearchInputComponent,
-  SegmentedControlComponent, SegmentOption, SelectComponent, SelectOption, StatusBadgeComponent, TableCellDefDirective,
+  ColumnDef,
+  DataTableComponent,
+  ForbiddenStateComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SearchInputComponent,
+  SegmentOption,
+  SegmentedControlComponent,
+  SelectComponent,
+  SelectOption,
+  StatusBadgeComponent,
+  TableCellDefDirective,
   ToastService,
 } from '../../../shared/ui';
 
@@ -28,9 +38,16 @@ const UNASSIGNED_STATUSES: OrderStatus[] = ['EN_ATTENTE_AFFECTATION', 'EN_ATTENT
 @Component({
   selector: 'app-orders-page',
   imports: [
-    BreadcrumbsComponent, ForbiddenStateComponent, StatusBadgeComponent, SearchInputComponent, ModalComponent,
-    DataTableComponent, TableCellDefDirective, SegmentedControlComponent, SelectComponent,
-  ],
+  DataTableComponent,
+  ForbiddenStateComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SearchInputComponent,
+  SegmentedControlComponent,
+  SelectComponent,
+  StatusBadgeComponent,
+  TableCellDefDirective,
+],
   templateUrl: './orders-page.component.html',
 })
 export class OrdersPageComponent {

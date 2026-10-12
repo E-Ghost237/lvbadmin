@@ -9,8 +9,20 @@ import { GeoPoint, ProblemDetails } from '../../../core/models';
 import { cmMobilePhone, emailAddress, personName } from '../../../core/utils/validators';
 import { formatDateTime, formatXaf, humanizeSlug } from '../../../core/utils/formatters';
 import {
-  BreadcrumbsComponent, FormFieldComponent, LocationPickerComponent, ModalComponent, SearchInputComponent,
-  SegmentedControlComponent, SegmentOption, SelectComponent, SelectOption, TabDef, TabsComponent, ToastService, FormFeedbackService, CmPhoneDirective,
+  CmPhoneDirective,
+  FormFeedbackService,
+  FormFieldComponent,
+  LocationPickerComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SearchInputComponent,
+  SegmentOption,
+  SegmentedControlComponent,
+  SelectComponent,
+  SelectOption,
+  TabDef,
+  TabsComponent,
+  ToastService,
 } from '../../../shared/ui';
 
 type WizardStep = 1 | 2 | 3;
@@ -48,9 +60,18 @@ const DECOMPOSITION_LABELS: Record<string, string> = {
 @Component({
   selector: 'app-console',
   imports: [
-    DecimalPipe, ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent,
-    LocationPickerComponent, SearchInputComponent, ModalComponent, SegmentedControlComponent, SelectComponent, CmPhoneDirective,
-  ],
+  CmPhoneDirective,
+  DecimalPipe,
+  FormFieldComponent,
+  LocationPickerComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  ReactiveFormsModule,
+  SearchInputComponent,
+  SegmentedControlComponent,
+  SelectComponent,
+  TabsComponent,
+],
   templateUrl: './console.component.html',
 })
 export class ConsoleComponent {

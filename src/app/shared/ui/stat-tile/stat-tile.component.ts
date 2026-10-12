@@ -3,26 +3,31 @@ import { formatCompactNumber, formatPercent, formatXaf } from '../../../core/uti
 
 export type StatTileTone = 'neutral' | 'good' | 'warning' | 'critical';
 
+/**
+ * KPI tile: micro-label, big figure, optional target/trend footline and an
+ * extra content slot (sparkline, breakdown…). A 3px accent strip only
+ * appears when the value carries a tone, so neutral rows stay calm.
+ */
 @Component({
   selector: 'app-stat-tile',
   template: `
-    <div class="card p-4 flex flex-col gap-1.5 transition-shadow hover:shadow-(--shadow-md)">
-      <div class="flex items-center justify-between gap-2">
-        <p class="text-[11px] font-semibold uppercase tracking-[0.07em]" style="color: var(--text-muted)">{{ label() }}</p>
+    <div class="card stat-tile transition-shadow hover:shadow-(--shadow-md)" [style.--tone]="toneStrip()">
+      <div class="stat-tile-head">
+        <p class="stat-tile-label">{{ label() }}</p>
         @if (badge()) {
-          <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" [style.color]="toneColor()" [style.background]="toneBg()">{{ badge() }}</span>
+          <span class="stat-tile-badge" [style.color]="toneColor()" [style.background]="toneBg()">{{ badge() }}</span>
         }
       </div>
-      <p class="text-[26px] leading-8 font-extrabold tabular-nums" style="font-family: var(--font-heading); letter-spacing: -0.02em" [style.color]="valueColor()">{{ formattedValue() }}</p>
-      <div class="flex items-center justify-between gap-2 min-h-[18px]">
+      <p class="stat-tile-value" [style.color]="valueColor()">{{ formattedValue() }}</p>
+      <div class="stat-tile-foot">
         @if (target() !== undefined) {
-          <p class="text-[11px]" style="color: var(--text-muted)">Cible : {{ formatValue(target()!) }}</p>
+          <span>Cible : {{ formatValue(target()!) }}</span>
         }
         @if (trend() !== undefined) {
-          <p class="text-[11px] font-medium flex items-center gap-0.5" [style.color]="trend()! >= 0 ? 'var(--status-good)' : 'var(--status-critical)'">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" [style.transform]="trend()! < 0 ? 'rotate(180deg)' : 'none'"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+          <span class="inline-flex items-center gap-1 font-semibold" [style.color]="trend()! >= 0 ? 'var(--status-good)' : 'var(--status-critical)'">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" [style.transform]="trend()! < 0 ? 'rotate(180deg)' : 'none'" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
             {{ formatPercent(abs(trend()!)) }}
-          </p>
+          </span>
         }
       </div>
       <ng-content></ng-content>
@@ -50,6 +55,9 @@ export class StatTileComponent {
   readonly valueColor = computed(() => (this.tone() === 'neutral' ? 'var(--text-primary)' : `var(--status-${this.tone()})`));
   readonly toneColor = computed(() => `var(--status-${this.tone() === 'neutral' ? 'good' : this.tone()})`);
   readonly toneBg = computed(() => `var(--status-${this.tone() === 'neutral' ? 'good' : this.tone()}-bg)`);
+  readonly toneStrip = computed(() =>
+    this.tone() === 'neutral' ? 'transparent' : `color-mix(in srgb, var(--status-${this.tone()}) 70%, transparent)`,
+  );
 
   readonly formattedValue = computed(() => this.formatValue(this.value()));
 

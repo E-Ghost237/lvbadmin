@@ -6,8 +6,16 @@ import { DeviceSessionSummary, ProblemDetails } from '../../../core/models';
 import { NotificationCategory, NotificationPreference } from '../../../core/models/notification-preference.model';
 import { formatDateTime } from '../../../core/utils/formatters';
 import {
-  AlertBannerComponent, BreadcrumbsComponent, ConfirmService, FormFieldComponent, SelectComponent, SelectOption,
-  TabDef, TabsComponent, ToggleComponent, ToastService,
+  AlertBannerComponent,
+  ConfirmService,
+  FormFieldComponent,
+  PageHeaderComponent,
+  SelectComponent,
+  SelectOption,
+  TabDef,
+  TabsComponent,
+  ToastService,
+  ToggleComponent,
 } from '../../../shared/ui';
 
 const LANGUAGE_OPTIONS: SelectOption[] = [
@@ -24,9 +32,14 @@ const CATEGORY_LABEL: Record<NotificationCategory, string> = {
 @Component({
   selector: 'app-account-page',
   imports: [
-    ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, ToggleComponent,
-    AlertBannerComponent, SelectComponent,
-  ],
+  AlertBannerComponent,
+  FormFieldComponent,
+  PageHeaderComponent,
+  ReactiveFormsModule,
+  SelectComponent,
+  TabsComponent,
+  ToggleComponent,
+],
   templateUrl: './account-page.component.html',
 })
 export class AccountPageComponent {

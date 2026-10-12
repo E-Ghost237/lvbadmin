@@ -9,11 +9,11 @@ export interface ChipOption { value: string; label: string; hint?: string }
     <div class="flex flex-wrap gap-2" role="group" [attr.aria-label]="ariaLabel()">
       @for (o of options(); track o.value) {
         <button
-          type="button" class="px-3 py-1.5 rounded-full text-sm font-medium border" [title]="o.hint ?? ''"
+          type="button" class="chip" [title]="o.hint ?? ''"
           [attr.aria-pressed]="isOn(o.value)"
-          [style.background]="isOn(o.value) ? 'var(--brand)' : 'var(--surface-1)'"
+          [style.background]="isOn(o.value) ? 'var(--app-accent)' : 'var(--surface-1)'"
           [style.color]="isOn(o.value) ? 'white' : 'var(--text-secondary)'"
-          [style.border-color]="isOn(o.value) ? 'var(--brand)' : 'var(--border-strong)'"
+          [style.border-color]="isOn(o.value) ? 'var(--app-accent)' : 'var(--border-strong)'"
           (click)="toggle(o.value)"
         >{{ o.label }}</button>
       }

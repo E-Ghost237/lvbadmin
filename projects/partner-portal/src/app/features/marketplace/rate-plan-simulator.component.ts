@@ -27,13 +27,15 @@ function endAfterStart(g: AbstractControl): ValidationErrors | null {
   selector: 'app-rate-plan-simulator',
   imports: [ReactiveFormsModule, FormFieldComponent],
   template: `
-    <div class="card p-5 mb-4">
-      <div class="flex items-start justify-between gap-3 mb-3">
-        <div><p class="text-sm font-semibold">Simuler le tarif « {{ name() }} »</p>
-          <p class="text-xs" style="color: var(--text-muted)">Aperçu du prix pour une location : rien n’est enregistré.</p></div>
+    <div class="inset-panel">
+      <div class="inset-panel-head">
+        <div>
+          <p class="card-title">Simuler le tarif « {{ name() }} »</p>
+          <p class="card-sub">Aperçu du prix pour une location : rien n’est enregistré.</p>
+        </div>
         <button type="button" class="btn btn-ghost btn-sm" (click)="closed.emit()">Fermer</button>
       </div>
-      <form [formGroup]="form" (ngSubmit)="run()" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <form [formGroup]="form" (ngSubmit)="run()" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-4">
         <app-field label="Début" [control]="form.controls.starts_at" required><input type="datetime-local" class="input" formControlName="starts_at" /></app-field>
         <app-field label="Fin" [control]="form.controls.ends_at" required><input type="datetime-local" class="input" formControlName="ends_at" /></app-field>
         @if (form.hasError('range') && form.controls.ends_at.touched) { <p class="field-error sm:col-span-2">La fin doit être postérieure au début.</p> }
@@ -51,16 +53,17 @@ function endAfterStart(g: AbstractControl): ValidationErrors | null {
         <div class="sm:col-span-2"><button type="submit" class="btn btn-primary btn-sm" [disabled]="running()">Calculer</button></div>
       </form>
       @if (result(); as r) {
-        <div class="mt-4 pt-4 text-sm" style="border-top: 1px solid var(--border)">
-          <ul class="flex flex-col gap-1">
+        <div class="p-4 text-sm" style="border-top: 1px solid var(--border)">
+          <p class="section-label mb-2.5">Détail du calcul</p>
+          <ul class="flex flex-col gap-1.5">
             @for (c of components(r); track c[0]) {
-              <li class="flex justify-between"><span>{{ c[0] }}</span><span>{{ xaf(c[1]) }}</span></li>
+              <li class="flex justify-between gap-4"><span style="color: var(--text-secondary)">{{ c[0] }}</span><span class="tabular-nums">{{ xaf(c[1]) }}</span></li>
             }
-            @if (r.discount_amount) { <li class="flex justify-between"><span>Remise</span><span>− {{ xaf(r.discount_amount) }}</span></li> }
-            @if (r.tax_amount) { <li class="flex justify-between"><span>Taxe</span><span>{{ xaf(r.tax_amount) }}</span></li> }
-            <li class="flex justify-between font-semibold pt-1"><span>Total client</span><span>{{ xaf(r.total_amount) }}</span></li>
-            <li class="flex justify-between text-xs" style="color: var(--text-muted)"><span>Commission LVB</span><span>− {{ xaf(r.commission_amount) }}</span></li>
-            <li class="flex justify-between font-semibold" style="color: var(--status-good)"><span>Vous percevez</span><span>{{ xaf(r.partner_amount) }}</span></li>
+            @if (r.discount_amount) { <li class="flex justify-between gap-4"><span style="color: var(--text-secondary)">Remise</span><span class="tabular-nums">− {{ xaf(r.discount_amount) }}</span></li> }
+            @if (r.tax_amount) { <li class="flex justify-between gap-4"><span style="color: var(--text-secondary)">Taxe</span><span class="tabular-nums">{{ xaf(r.tax_amount) }}</span></li> }
+            <li class="flex justify-between gap-4 font-semibold pt-2 mt-1" style="border-top: 1px solid var(--border)"><span>Total client</span><span class="tabular-nums">{{ xaf(r.total_amount) }}</span></li>
+            <li class="flex justify-between gap-4 text-xs" style="color: var(--text-muted)"><span>Commission LVB</span><span class="tabular-nums">− {{ xaf(r.commission_amount) }}</span></li>
+            <li class="flex justify-between gap-4 font-bold" style="color: var(--status-good)"><span>Vous percevez</span><span class="tabular-nums">{{ xaf(r.partner_amount) }}</span></li>
           </ul>
         </div>
       }

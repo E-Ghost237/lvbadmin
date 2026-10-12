@@ -1,13 +1,13 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Rapports & KPI' }]" />
-
-<div class="mb-5">
-  <h1 class="text-xl font-semibold">Rapports & KPI</h1>
-  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Un KPI qui n’est pas instrumenté dans le code n’existe pas (§14.1).</p>
-</div>
+<div class="page">
+  <app-page-header
+    [crumbs]="[{ label: 'Rapports & KPI' }]"
+    title="Rapports & KPI"
+    subtitle="Un KPI qui n’est pas instrumenté dans le code n’existe pas (§14.1)."
+  />
 
 <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
-<div class="mt-5">
+<div class="flex flex-col gap-4">
   @if (activeTab() === 'kpi') {
     @if (forbiddenCatalog()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission analytics.view." />
@@ -16,38 +16,48 @@
         @for (i of [1,2,3,4,5,6,7,8]; track i) { <div class="skeleton h-24"></div> }
       </div>
     } @else if (catalog(); as c) {
-      <div class="flex items-center justify-between mb-3">
-        <p class="text-xs" style="color: var(--text-muted)">{{ c.instrumented_kpis }} KPI instrumentés · {{ c.day }} · {{ c.catalog_version }}</p>
-      </div>
-      <div class="flex flex-wrap gap-1.5 mb-4">
-        <button type="button" class="px-2.5 py-1 rounded-full text-xs font-medium" [style.background]="categoryFilter() === 'TOUTES' ? 'var(--brand)' : 'var(--surface-2)'" [style.color]="categoryFilter() === 'TOUTES' ? 'white' : 'var(--text-secondary)'" (click)="categoryFilter.set('TOUTES')">Toutes</button>
-        @for (cat of categories(); track cat) {
-          <button type="button" class="px-2.5 py-1 rounded-full text-xs font-medium capitalize" [style.background]="categoryFilter() === cat ? 'var(--brand)' : 'var(--surface-2)'" [style.color]="categoryFilter() === cat ? 'white' : 'var(--text-secondary)'" (click)="categoryFilter.set(cat)">{{ cat }}</button>
-        }
+      <div class="toolbar">
+        <div class="min-w-0">
+          <p class="section-label">Catalogue instrumenté</p>
+          <p class="text-xs mt-1" style="color: var(--text-muted)">{{ c.instrumented_kpis }} KPI · journée du {{ c.day }} · {{ c.catalog_version }}</p>
+        </div>
+        <span class="toolbar-spacer"></span>
+        <div class="toolbar-group">
+          <button type="button" class="pill-filter" [style.background]="categoryFilter() === 'TOUTES' ? 'var(--app-accent)' : 'var(--surface-2)'" [style.color]="categoryFilter() === 'TOUTES' ? 'white' : 'var(--text-secondary)'" (click)="categoryFilter.set('TOUTES')">Toutes</button>
+          @for (cat of categories(); track cat) {
+            <button type="button" class="pill-filter capitalize" [style.background]="categoryFilter() === cat ? 'var(--app-accent)' : 'var(--surface-2)'" [style.color]="categoryFilter() === cat ? 'white' : 'var(--text-secondary)'" (click)="categoryFilter.set(cat)">{{ cat }}</button>
+          }
+        </div>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         @for (m of filteredMeasurements(); track m.id) {
-          <div class="card p-4">
+          <article class="card card-hover p-4 flex flex-col gap-2">
             <div class="flex items-start justify-between gap-2">
-              <p class="text-xs font-semibold" style="color: var(--text-muted)">{{ m.id }}</p>
-              <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" [style.color]="statusTone[m.status]" [style.background]="'color-mix(in srgb, ' + statusTone[m.status] + ' 15%, transparent)'">{{ m.status }}</span>
+              <p class="text-[11px] font-semibold font-mono" style="color: var(--text-muted)">{{ m.id }}</p>
+              <span class="status-pill" [style.color]="statusTone[m.status]" [style.background]="'color-mix(in srgb, ' + statusTone[m.status] + ' 15%, transparent)'">{{ m.status }}</span>
             </div>
-            <p class="text-sm font-medium mt-1">{{ m.label }}</p>
-            <p class="text-2xl font-semibold tabular-nums mt-2">{{ m.value === null ? '—' : m.value }} <span class="text-xs font-normal" style="color: var(--text-muted)">{{ m.unit !== 'count' ? m.unit : '' }}</span></p>
-            <div class="text-[11px] mt-2 flex justify-between" style="color: var(--text-muted)">
+            <p class="text-sm font-medium">{{ m.label }}</p>
+            <p class="metric-value metric-value-lg">{{ m.value === null ? '—' : m.value }} <span class="text-xs font-medium" style="color: var(--text-muted)">{{ m.unit !== 'count' ? m.unit : '' }}</span></p>
+            <div class="flex justify-between text-[11px] pt-2" style="color: var(--text-muted); border-top: 1px solid var(--border)">
               <span>Cible : {{ m.target }}</span>
               <span>{{ m.frequency }}</span>
             </div>
-          </div>
+          </article>
         }
       </div>
     }
   }
 
   @if (activeTab() === 'exports') {
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-3xl">
-      <form [formGroup]="exportForm" (ngSubmit)="requestExport()" class="card p-5 flex flex-col gap-3">
-        <p class="text-sm font-medium">Nouvel export</p>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-4xl items-start">
+      <form [formGroup]="exportForm" (ngSubmit)="requestExport()" class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Nouvel export</h2>
+            <p class="card-sub">Génération asynchrone — lien valable 24 h</p>
+          </div>
+        </div>
+        <div class="card-body flex flex-col gap-3">
         <app-field label="Ressource" [control]="exportForm.controls.ressource" required>
           <app-select [options]="resourceOptions" [allowClear]="false" formControlName="ressource" />
         </app-field>
@@ -55,28 +65,36 @@
           <app-select [options]="formatOptions" [allowClear]="false" formControlName="format" />
         </app-field>
         <button type="submit" class="btn btn-primary self-start" [disabled]="requestingExport()">Demander l’export</button>
-        <p class="text-[11px]" style="color: var(--text-muted)">Génération asynchrone — lien de téléchargement valable jusqu’à 24 h.</p>
+        <p class="text-[11px]" style="color: var(--text-muted)">Le fichier est préparé en tâche de fond, puis téléchargeable depuis la liste ci-contre.</p>
+        </div>
       </form>
 
-      <div class="card p-4">
-        <p class="text-sm font-medium mb-3">Exports de cette session</p>
-        <div class="flex flex-col gap-2">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Exports de cette session</h2>
+            <p class="card-sub">Historique local — rechargez la page pour le vider</p>
+          </div>
+          @if (jobs().length) { <span class="count-chip">{{ jobs().length }}</span> }
+        </div>
+        <div class="card-body flex flex-col gap-2">
           @for (job of jobs(); track job.uuid) {
-            <div class="rounded-(--radius-sm) px-3 py-2.5" style="background: var(--surface-2)">
-              <div class="flex items-center justify-between">
-                <p class="text-xs font-medium">{{ job.resource }} · {{ job.format }}</p>
-                <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-full" style="background: var(--surface-1)">{{ job.status }}</span>
+            <div class="list-row">
+              <div class="min-w-0">
+                <p class="text-xs font-semibold">{{ job.resource }} · {{ job.format }}</p>
+                <p class="text-[11px] mt-0.5" style="color: var(--text-muted)">Demandé le {{ dateTime(job.requested_at) }}</p>
+                @if (job.status === 'PRET' && job.download_url) {
+                  <a [href]="job.download_url" class="link text-xs mt-1 inline-block">Télécharger ({{ job.rows }} lignes)</a>
+                }
               </div>
-              <p class="text-[11px] mt-0.5" style="color: var(--text-muted)">Demandé le {{ dateTime(job.requested_at) }}</p>
-              @if (job.status === 'PRET' && job.download_url) {
-                <a [href]="job.download_url" class="link text-xs mt-1 inline-block">Télécharger ({{ job.rows }} lignes)</a>
-              }
+              <span class="status-pill shrink-0" style="background: var(--surface-1); color: var(--text-secondary); border-color: var(--border)">{{ job.status }}</span>
             </div>
           } @empty {
-            <p class="text-xs text-center py-6" style="color: var(--text-muted)">Aucun export demandé.</p>
+            <div class="inline-empty">Aucun export demandé.</div>
           }
         </div>
-      </div>
+      </section>
     </div>
   }
+</div>
 </div>

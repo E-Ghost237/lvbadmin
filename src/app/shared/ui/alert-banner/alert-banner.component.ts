@@ -10,22 +10,22 @@ const ICONS: Record<BannerKind, string> = {
 };
 
 const CLASSES: Record<BannerKind, string> = {
-  info: 'text-(--brand-600) bg-(--brand-50) border-(--brand-100)',
-  warning: 'text-(--status-warning) bg-(--status-warning-bg) border-transparent',
-  danger: 'text-(--status-critical) bg-(--status-critical-bg) border-transparent',
-  success: 'text-(--status-good) bg-(--status-good-bg) border-transparent',
+  info: 'text-(--app-accent-ink) bg-(--app-accent-soft)',
+  warning: 'text-(--status-warning) bg-(--status-warning-bg)',
+  danger: 'text-(--status-critical) bg-(--status-critical-bg)',
+  success: 'text-(--status-good) bg-(--status-good-bg)',
 };
 
 @Component({
   selector: 'app-alert-banner',
   template: `
-    <div class="flex items-start gap-3 rounded-(--radius-md) border px-4 py-3 text-sm" [class]="classes()" role="status">
+    <div class="flex items-start gap-3 rounded-(--radius-md) px-4 py-3 text-sm border border-transparent" [class]="classes()" role="status">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mt-0.5 shrink-0" aria-hidden="true">
         <path [attr.d]="icon()" />
       </svg>
-      <div class="flex-1">
-        @if (title()) { <p class="font-medium">{{ title() }}</p> }
-        <div class="text-[13px] opacity-90"><ng-content></ng-content></div>
+      <div class="flex-1 min-w-0">
+        @if (title()) { <p class="font-semibold">{{ title() }}</p> }
+        <div class="text-[13px] leading-relaxed opacity-90"><ng-content></ng-content></div>
       </div>
     </div>
   `,

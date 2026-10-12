@@ -1,14 +1,13 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Livreurs', link: '/drivers' }, { label: driver()?.nom || uuid }]" />
-
-@if (loading()) {
-  <div class="skeleton h-40 mt-4"></div>
-} @else if (driver(); as d) {
-  <div class="flex items-center justify-between mb-5">
-    <div>
-      <h1 class="text-xl font-semibold">{{ d.prenom }} {{ d.nom }}</h1>
-      <p class="text-sm mt-0.5" style="color: var(--text-muted)">{{ d.telephone }} · {{ d.livreur?.matricule || d.matricule || '—' }}</p>
-    </div>
-    <div class="flex items-center gap-2">
+<div class="page">
+  @if (loading()) {
+    <div class="skeleton h-40"></div>
+  } @else if (driver(); as d) {
+    <app-page-header [crumbs]="[{ label: 'Livreurs', link: '/drivers' }, { label: driver()?.nom || uuid }]">
+      <span page-head-lead class="avatar-initials" aria-hidden="true">{{ (d.prenom ?? '').slice(0,1) }}{{ d.nom.slice(0,1) }}</span>
+      <div page-head-text>
+        <h1 class="page-title">{{ d.prenom }} {{ d.nom }}</h1>
+        <p class="page-sub">{{ d.telephone }} · {{ d.livreur?.matricule || d.matricule || '—' }}</p>
+      </div>
       <app-status-badge domain="account" [status]="d.statut" />
       @if (d.statut === 'SUSPENDU' || d.statut === 'SUSPENDU_DOCUMENT') {
         <button type="button" class="btn btn-secondary btn-sm" (click)="reactivate()">Réactiver</button>
@@ -17,44 +16,65 @@
       }
       <button type="button" class="btn btn-secondary btn-sm" (click)="openSanction()">Proposer une sanction</button>
       <button type="button" class="btn btn-secondary btn-sm" (click)="goToKyc()">Dossier KYC</button>
-    </div>
-  </div>
+    </app-page-header>
 
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-    <div class="card p-5">
-      <p class="text-sm font-semibold mb-3">Identité & véhicule</p>
-      <div class="grid grid-cols-2 gap-3 text-sm">
-        <div><p class="text-xs" style="color: var(--text-muted)">Statut opérationnel</p><p>{{ d.livreur?.statut_operationnel || '—' }}</p></div>
-        <div><p class="text-xs" style="color: var(--text-muted)">Inscrit le</p><p>{{ date(d.cree_le) }}</p></div>
-        <div><p class="text-xs" style="color: var(--text-muted)">Permis expire le</p><p>{{ date(d.livreur?.permis_expire_le ?? null) }}</p></div>
-        <div><p class="text-xs" style="color: var(--text-muted)">Assurance expire le</p><p>{{ date(d.livreur?.assurance_expire_le ?? null) }}</p></div>
-        @if (d.motif_suspension) {
-          <div class="col-span-2"><p class="text-xs" style="color: var(--text-muted)">Motif de suspension</p><p>{{ d.motif_suspension }}</p></div>
-        }
-      </div>
-    </div>
-
-    <div class="card p-5">
-      <p class="text-sm font-semibold mb-3">Score qualité</p>
-      @if (loadingQuality()) {
-        <div class="skeleton h-24"></div>
-      } @else if (qualityError()) {
-        <p class="text-xs" style="color: var(--text-muted)">{{ qualityError() }}</p>
-      } @else if (quality(); as q) {
-        <p class="text-3xl font-semibold tabular-nums" [style.color]="q.score < q.thresholds.deactivation_review_below ? 'var(--status-critical)' : q.score < q.thresholds.temporary_suspension_below ? 'var(--status-serious)' : q.score < q.thresholds.warning_below ? 'var(--status-warning)' : 'var(--status-good)'">
-          {{ q.score | number: '1.0-1' }} <span class="text-sm font-normal" style="color: var(--text-muted)">/ 100</span>
-        </p>
-        @if (q.recommendation) { <p class="text-xs mt-1" style="color: var(--status-serious)">Recommandation : {{ q.recommendation }}</p> }
-        <div class="grid grid-cols-2 gap-2 mt-4 text-xs">
-          <div class="flex justify-between"><span style="color: var(--text-muted)">Note client</span><span>{{ pct(q.components.rating) }}</span></div>
-          <div class="flex justify-between"><span style="color: var(--text-muted)">Acceptation</span><span>{{ pct(q.components.acceptance) }}</span></div>
-          <div class="flex justify-between"><span style="color: var(--text-muted)">Ponctualité</span><span>{{ pct(q.components.on_time) }}</span></div>
-          <div class="flex justify-between"><span style="color: var(--text-muted)">Incidents</span><span>{{ pct(q.components.incidents) }}</span></div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Identité & véhicule</h2>
+            <p class="card-sub">Informations déclarées à l’inscription</p>
+          </div>
         </div>
-      }
+        <div class="card-body">
+          <div class="kv-grid kv-grid-2">
+            <div class="kv-item"><span class="kv-label">Statut opérationnel</span><span class="kv-value">{{ d.livreur?.statut_operationnel || '—' }}</span></div>
+            <div class="kv-item"><span class="kv-label">Inscrit le</span><span class="kv-value">{{ date(d.cree_le) }}</span></div>
+            <div class="kv-item"><span class="kv-label">Permis expire le</span><span class="kv-value">{{ date(d.livreur?.permis_expire_le ?? null) }}</span></div>
+            <div class="kv-item"><span class="kv-label">Assurance expire le</span><span class="kv-value">{{ date(d.livreur?.assurance_expire_le ?? null) }}</span></div>
+            @if (d.motif_suspension) {
+              <div class="kv-item col-span-full"><span class="kv-label">Motif de suspension</span><span class="kv-value" style="color: var(--status-critical)">{{ d.motif_suspension }}</span></div>
+            }
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Score qualité</h2>
+            <p class="card-sub">Recalculé après chaque livraison</p>
+          </div>
+        </div>
+        <div class="card-body">
+          @if (loadingQuality()) {
+            <div class="skeleton h-24"></div>
+          } @else if (qualityError()) {
+            <div class="inline-empty">{{ qualityError() }}</div>
+          } @else if (quality(); as q) {
+            <p class="metric-value metric-value-lg" [style.color]="q.score < q.thresholds.deactivation_review_below ? 'var(--status-critical)' : q.score < q.thresholds.temporary_suspension_below ? 'var(--status-serious)' : q.score < q.thresholds.warning_below ? 'var(--status-warning)' : 'var(--status-good)'">
+              {{ q.score | number: '1.0-1' }} <span class="text-sm font-medium" style="color: var(--text-muted)">/ 100</span>
+            </p>
+            <div class="meter mt-2">
+              <span
+                class="meter-fill"
+                [style.width.%]="q.score"
+                [style.background]="q.score < q.thresholds.deactivation_review_below ? 'var(--status-critical)' : q.score < q.thresholds.temporary_suspension_below ? 'var(--status-serious)' : q.score < q.thresholds.warning_below ? 'var(--status-warning)' : 'var(--status-good)'"
+              ></span>
+            </div>
+            @if (q.recommendation) { <p class="text-xs mt-3 font-medium" style="color: var(--status-serious)">Recommandation : {{ q.recommendation }}</p> }
+            <div class="flex flex-col gap-2.5 mt-5 pt-4 text-xs" style="border-top: 1px solid var(--border)">
+              <div class="flex justify-between items-center gap-2"><span style="color: var(--text-muted)">Note client</span><span class="font-semibold tabular-nums">{{ pct(q.components.rating) }}</span></div>
+              <div class="flex justify-between items-center gap-2"><span style="color: var(--text-muted)">Acceptation</span><span class="font-semibold tabular-nums">{{ pct(q.components.acceptance) }}</span></div>
+              <div class="flex justify-between items-center gap-2"><span style="color: var(--text-muted)">Ponctualité</span><span class="font-semibold tabular-nums">{{ pct(q.components.on_time) }}</span></div>
+              <div class="flex justify-between items-center gap-2"><span style="color: var(--text-muted)">Incidents</span><span class="font-semibold tabular-nums">{{ pct(q.components.incidents) }}</span></div>
+            </div>
+          }
+        </div>
+      </section>
     </div>
-  </div>
-}
+  }
+</div>
 
 <app-modal [open]="sanctionOpen()" title="Sanction" subtitle="Procédure contradictoire : 7 jours avant confirmation." (closed)="sanctionOpen.set(false)">
   @if (!proposedSanction()) {

@@ -6,16 +6,34 @@ import { DriverOperationalStatus, ProblemDetails } from '../../../core/models';
 import { formatDate, formatPercent, formatXaf } from '../../../core/utils/formatters';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
-  BreadcrumbsComponent, ColumnDef, CourierFormComponent, ModalComponent, DataTableComponent, ForbiddenStateComponent, SearchInputComponent,
-  StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService, i18nKeyFor,
+  ColumnDef,
+  CourierFormComponent,
+  DataTableComponent,
+  ForbiddenStateComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SearchInputComponent,
+  StatusBadgeComponent,
+  TabDef,
+  TableCellDefDirective,
+  TabsComponent,
+  ToastService,
+  i18nKeyFor,
 } from '../../../shared/ui';
 
 @Component({
   selector: 'app-drivers-list',
   imports: [
-    BreadcrumbsComponent, TabsComponent, DataTableComponent, SearchInputComponent, StatusBadgeComponent,
-    ForbiddenStateComponent, TableCellDefDirective, CourierFormComponent, ModalComponent,
-  ],
+  CourierFormComponent,
+  DataTableComponent,
+  ForbiddenStateComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SearchInputComponent,
+  StatusBadgeComponent,
+  TableCellDefDirective,
+  TabsComponent,
+],
   templateUrl: './drivers-list.component.html',
 })
 export class DriversListComponent {

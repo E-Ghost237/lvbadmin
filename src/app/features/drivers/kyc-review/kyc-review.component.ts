@@ -2,7 +2,12 @@ import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DriversService, KycDocumentType, KycDossier } from '../../../core/services/drivers.service';
 import { ProblemDetails } from '../../../core/models';
-import { BreadcrumbsComponent, ConfirmService, StatusBadgeComponent, ToastService } from '../../../shared/ui';
+import {
+  ConfirmService,
+  PageHeaderComponent,
+  StatusBadgeComponent,
+  ToastService,
+} from '../../../shared/ui';
 
 const DOCUMENT_LABELS: Record<KycDocumentType, string> = {
   CNI_RECTO: 'CNI (recto)', CNI_VERSO: 'CNI (verso)', PERMIS_CONDUIRE: 'Permis de conduire',
@@ -12,7 +17,10 @@ const DOCUMENT_LABELS: Record<KycDocumentType, string> = {
 
 @Component({
   selector: 'app-kyc-review',
-  imports: [BreadcrumbsComponent, StatusBadgeComponent],
+  imports: [
+  PageHeaderComponent,
+  StatusBadgeComponent,
+],
   templateUrl: './kyc-review.component.html',
 })
 export class KycReviewComponent {

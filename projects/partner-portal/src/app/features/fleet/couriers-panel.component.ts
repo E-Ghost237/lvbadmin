@@ -18,39 +18,67 @@ import { CourierService } from '../../core/services/courier.service';
     @if (forbidden()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission fleet.driver.manage." />
     } @else {
-      <div class="flex justify-end mb-4">
-        <button type="button" class="btn btn-primary btn-sm" (click)="formOpen.set(!formOpen())">{{ formOpen() ? 'Fermer' : '+ Nouveau livreur' }}</button>
-      </div>
-      @if (formOpen()) {
-        <div class="card p-5 mb-4">
-          <p class="text-sm font-medium mb-3">Nouveau livreur</p>
-          <app-courier-form [saving]="saving()" (save)="create($event)" />
+      <div class="toolbar">
+        <div>
+          <p class="section-label">Équipe de livraison</p>
+          <p class="text-xs mt-1" style="color: var(--text-muted)">Les dossiers KYC restent vérifiés par LVB</p>
         </div>
-      }
-      <div class="card">
-        <app-data-table
-          [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [trackBy]="trackBy" [rowClickable]="true" (rowClick)="open($event)"
-          emptyTitle="Aucun livreur" emptyHint="Créez un livreur : il recevra ses accès par email et complétera son dossier KYC."
-        >
-          <ng-template appCell="statut" let-row><app-status-badge domain="account" [status]="row.statut" /></ng-template>
-        </app-data-table>
+        <span class="toolbar-spacer"></span>
+        @if (rows().length) { <span class="count-chip">{{ rows().length }} livreur(s)</span> }
+        <div class="toolbar-divider"></div>
+        <button type="button" class="btn btn-primary btn-sm shrink-0" (click)="formOpen.set(!formOpen())">{{ formOpen() ? 'Fermer' : '+ Nouveau livreur' }}</button>
       </div>
-      <app-modal [open]="detail() !== null" title="Livreur" size="md" (closed)="detail.set(null)">
+
+      @if (formOpen()) {
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Nouveau livreur</h2>
+              <p class="card-sub">Il reçoit ses accès par email et complète son dossier KYC</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <app-courier-form [saving]="saving()" (save)="create($event)" />
+          </div>
+        </section>
+      }
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Livreurs</h2>
+            <p class="card-sub">Cliquez sur une ligne pour afficher la fiche complète</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
+          <app-data-table
+            [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [trackBy]="trackBy" [rowClickable]="true" (rowClick)="open($event)"
+            emptyTitle="Aucun livreur" emptyHint="Créez un livreur : il recevra ses accès par email et complétera son dossier KYC."
+          >
+            <ng-template appCell="statut" let-row><app-status-badge domain="account" [status]="row.statut" /></ng-template>
+          </app-data-table>
+        </div>
+        @if (cursor()) {
+          <div class="card-foot">
+            <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="loading()" (click)="fetch(cursor()!)">Charger plus</button>
+          </div>
+        }
+      </section>
+
+      <app-modal [open]="detail() !== null" title="Livreur" [subtitle]="detail()?.matricule ?? ''" size="md" (closed)="detail.set(null)">
         @if (detail(); as c) {
-          <div class="grid grid-cols-2 gap-3 text-sm">
-            <div><p class="field-label">Nom</p><p>{{ c.prenom ?? '' }} {{ c.nom }}</p></div>
-            <div><p class="field-label">Matricule</p><p>{{ c.matricule }}</p></div>
-            <div><p class="field-label">Téléphone</p><p>{{ c.telephone }}</p></div>
-            <div><p class="field-label">Email</p><p>{{ c.email ?? '—' }}</p></div>
-            <div><p class="field-label">Compte</p><app-status-badge domain="account" [status]="c.statut" /></div>
-            <div><p class="field-label">En service</p><p>{{ c.statut_operationnel }}</p></div>
+          <div class="kv-grid kv-grid-2">
+            <div class="kv-item"><span class="kv-label">Nom</span><span class="kv-value">{{ c.prenom ?? '' }} {{ c.nom }}</span></div>
+            <div class="kv-item"><span class="kv-label">Matricule</span><span class="kv-value">{{ c.matricule }}</span></div>
+            <div class="kv-item"><span class="kv-label">Téléphone</span><span class="kv-value">{{ c.telephone }}</span></div>
+            <div class="kv-item"><span class="kv-label">Email</span><span class="kv-value">{{ c.email ?? '—' }}</span></div>
+            <div class="kv-item"><span class="kv-label">Compte</span><span class="kv-value"><app-status-badge domain="account" [status]="c.statut" /></span></div>
+            <div class="kv-item"><span class="kv-label">En service</span><span class="kv-value">{{ c.statut_operationnel }}</span></div>
           </div>
         }
         <div modal-footer><button type="button" class="btn btn-secondary" (click)="detail.set(null)">Fermer</button></div>
       </app-modal>
-      @if (cursor()) {
-        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loading()" (click)="fetch(cursor()!)">Charger plus</button>
-      }
     }
   `,
 })

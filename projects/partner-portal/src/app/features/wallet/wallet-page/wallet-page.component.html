@@ -1,86 +1,131 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Portefeuille' }]" />
+<div class="page">
+  <app-page-header [crumbs]="[{ label: 'Portefeuille' }]">
+    <div page-head-text>
+      <h1 class="page-title">Portefeuille</h1>
+      <p class="page-sub">Solde, comptes de paiement et retraits (LVB-CDC-MKT-RENT-2026-V1.0).</p>
+    </div>
+  </app-page-header>
 
-<div class="mb-5">
-  <h1 class="text-xl font-semibold">Portefeuille</h1>
-  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Solde, comptes de paiement et retraits (LVB-CDC-MKT-RENT-2026-V1.0).</p>
-</div>
-
-@if (forbidden()) {
-  <app-forbidden-state detail="Votre compte n’a pas la permission wallet.read." />
-} @else {
+  @if (forbidden()) {
+    <app-forbidden-state detail="Votre compte n’a pas la permission wallet.read." />
+  } @else {
   <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
-  <div class="mt-5">
     @if (activeTab() === 'balance') {
       @if (loadingSummary()) {
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div><div class="skeleton h-24"></div>
+        <div class="stat-grid">
+          <div class="skeleton h-28"></div><div class="skeleton h-28"></div><div class="skeleton h-28"></div><div class="skeleton h-28"></div>
         </div>
       } @else if (summary(); as s) {
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <div class="stat-grid">
           <app-stat-tile label="Disponible" [value]="s.solde_disponible" unit="XAF" />
           <app-stat-tile label="En attente" [value]="s.solde_en_attente" unit="XAF" />
           <app-stat-tile label="Bloqué" [value]="s.solde_bloque" unit="XAF" />
           <app-stat-tile label="Retraits en cours" [value]="s.retraits_en_cours" unit="XAF" />
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
+        <div class="stat-grid stat-grid-tight max-w-2xl">
           <app-stat-tile label="Total gagné" [value]="s.total_gagne" unit="XAF" />
           <app-stat-tile label="Total retiré" [value]="s.total_retire" unit="XAF" />
         </div>
       }
 
-      <div class="card">
-        <p class="text-sm font-medium p-4 pb-0">Mouvements récents</p>
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Mouvements récents</h2>
+            <p class="card-sub">Crédits, débits et réserves appliqués au solde</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
         <app-data-table
           [columns]="movementColumns" [rows]="movements()" [loading]="loadingMovements() && movements().length === 0"
           [trackBy]="trackByMovementUuid" emptyTitle="Aucun mouvement" emptyHint="Aucun mouvement de portefeuille pour l’instant."
         />
-      </div>
-      @if (movementsCursor()) {
-        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingMovements()" (click)="fetchMovements(movementsCursor()!)">Charger plus</button>
-      }
+        </div>
+        @if (movementsCursor()) {
+          <div class="card-foot">
+            <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="loadingMovements()" (click)="fetchMovements(movementsCursor()!)">Charger plus</button>
+          </div>
+        }
+      </section>
     }
 
     @if (activeTab() === 'accounts') {
-      <div class="flex justify-end mb-4">
+      <div class="toolbar">
+        <div>
+          <p class="section-label">Comptes de paiement</p>
+          <p class="text-xs mt-1" style="color: var(--text-muted)">Un compte vérifié par LVB est requis pour demander un retrait</p>
+        </div>
+        <span class="toolbar-spacer"></span>
+        @if (payoutAccounts().length) { <span class="count-chip">{{ payoutAccounts().length }} compte(s)</span> }
+        <div class="toolbar-divider"></div>
         <button type="button" class="btn btn-primary btn-sm" (click)="openNewAccountForm()">+ Ajouter un compte</button>
       </div>
 
       @if (accountFormOpen()) {
-        <form [formGroup]="accountForm" (ngSubmit)="submitAccountForm()" class="card p-5 mb-4 flex flex-col gap-3 max-w-md">
-          <p class="text-sm font-medium mb-1">Nouveau compte de paiement</p>
+        <form [formGroup]="accountForm" (ngSubmit)="submitAccountForm()" class="card max-w-md">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Nouveau compte de paiement</h2>
+              <p class="card-sub">Mobile Money ou compte bancaire</p>
+            </div>
+          </div>
+          <div class="card-body flex flex-col gap-3">
           <app-field label="Opérateur" [control]="accountForm.controls.provider" required>
             <app-select [options]="providerOptions" [allowClear]="false" formControlName="provider" />
           </app-field>
           <app-field label="Numéro de compte" [control]="accountForm.controls.account_number" required [advisory]="accountAdvisory()" [advisoryContext]="accountAdvisoryContext()"><input class="input" formControlName="account_number" [attr.inputmode]="isBank() ? 'text' : 'tel'" /></app-field>
           <app-field label="Titulaire du compte" [control]="accountForm.controls.holder_name" required><input class="input" formControlName="holder_name" /></app-field>
           <p class="field-hint">Un administrateur LVB doit vérifier ce compte avant qu’il puisse recevoir un retrait.</p>
-          <div class="flex gap-2">
+          <div class="flex gap-2 pt-1">
             <button type="button" class="btn btn-ghost btn-sm" [disabled]="savingAccount()" (click)="accountFormOpen.set(false)">Annuler</button>
             <button type="submit" class="btn btn-primary btn-sm" [disabled]="savingAccount()">Ajouter</button>
+          </div>
           </div>
         </form>
       }
 
-      <div class="card">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Comptes enregistrés</h2>
+            <p class="card-sub">Le statut de vérification est mis à jour par LVB</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
         <app-data-table
           [columns]="accountColumns" [rows]="payoutAccounts()" [loading]="loadingAccounts() && payoutAccounts().length === 0"
           [trackBy]="trackByAccountUuid" emptyTitle="Aucun compte" emptyHint="Ajoutez un compte de paiement pour pouvoir demander un retrait."
         />
-      </div>
+        </div>
+      </section>
     }
 
     @if (activeTab() === 'withdrawals') {
-      <div class="flex justify-end mb-4">
+      <div class="toolbar">
+        <div>
+          <p class="section-label">Retraits</p>
+          <p class="text-xs mt-1" style="color: var(--text-muted)">Entre 1 000 et 1 000 000 XAF par demande</p>
+        </div>
+        <span class="toolbar-spacer"></span>
+        @if (withdrawals().length) { <span class="count-chip">{{ withdrawals().length }} demande(s)</span> }
+        <div class="toolbar-divider"></div>
         <button type="button" class="btn btn-primary btn-sm" [disabled]="verifiedAccountOptions().length === 0" (click)="openWithdrawalForm()">+ Demander un retrait</button>
       </div>
       @if (verifiedAccountOptions().length === 0) {
-        <p class="text-xs mb-4" style="color: var(--text-muted)">Ajoutez un compte de paiement et attendez sa vérification par LVB avant de pouvoir demander un retrait.</p>
+        <app-alert-banner kind="info">Ajoutez un compte de paiement et attendez sa vérification par LVB avant de pouvoir demander un retrait.</app-alert-banner>
       }
 
       @if (withdrawalFormOpen()) {
-        <div class="card p-5 mb-4 flex flex-col gap-3 max-w-md">
-          <p class="text-sm font-medium mb-1">Nouvelle demande de retrait</p>
+        <div class="card max-w-md">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Nouvelle demande de retrait</h2>
+              <p class="card-sub">Le versement est traité sous 48 h ouvrées</p>
+            </div>
+          </div>
+          <div class="card-body flex flex-col gap-3">
           <div>
             <label class="field-label">Compte de paiement</label>
             <app-select [options]="verifiedAccountOptions()" [allowClear]="false" [value]="withdrawalPayoutAccount()" (valueChange)="onWithdrawalPayoutAccountChange($event)" />
@@ -94,35 +139,44 @@
               <p class="field-hint">Entre 1 000 et 1 000 000 XAF.</p>
             }
           </div>
-          <div class="flex gap-2">
+          <div class="flex gap-2 pt-1">
             <button type="button" class="btn btn-ghost btn-sm" [disabled]="submittingWithdrawal()" (click)="withdrawalFormOpen.set(false)">Annuler</button>
             <button type="button" class="btn btn-primary btn-sm" [disabled]="submittingWithdrawal()" (click)="submitWithdrawal()">Envoyer la demande</button>
+          </div>
           </div>
         </div>
       }
 
-      <div class="card">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Historique des retraits</h2>
+            <p class="card-sub">Cliquez sur une ligne pour voir la référence de l’opération</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
         <app-data-table
           [columns]="withdrawalColumns" [rowClickable]="true" (rowClick)="openWithdrawal($event)" [rows]="withdrawals()" [loading]="loadingWithdrawals() && withdrawals().length === 0"
           [trackBy]="trackByWithdrawalUuid" emptyTitle="Aucun retrait" emptyHint="Aucune demande de retrait pour l’instant."
         >
           <ng-template appCell="status" let-row><app-status-badge domain="partnerWithdrawal" [status]="row.status" /></ng-template>
         </app-data-table>
-      </div>
+        </div>
+      </section>
     }
-  </div>
-}
+  }
+</div>
 
 <app-modal [open]="withdrawalDetail() !== null" title="Détail du retrait" size="md" (closed)="withdrawalDetail.set(null)">
   @if (withdrawalDetail(); as w) {
-    <div class="grid grid-cols-2 gap-3 text-sm">
-      <div><p class="field-label">Montant</p><p>{{ xaf(w.amount_xaf) }}</p></div>
-      <div><p class="field-label">Statut</p><app-status-badge domain="partnerWithdrawal" [status]="w.status" /></div>
-      <div><p class="field-label">Demandé le</p><p>{{ dateTime(w.created_at) }}</p></div>
-      <div><p class="field-label">Dernière mise à jour</p><p>{{ dateTime(w.updated_at) }}</p></div>
-      <div class="col-span-2"><p class="field-label">Référence opérateur</p><p>{{ w.operator_reference ?? '—' }}</p></div>
-      @if (w.reason) { <div class="col-span-2"><p class="field-label">Motif</p><p>{{ w.reason }}</p></div> }
-      <div class="col-span-2"><p class="field-label">Compte de paiement</p><p>{{ labels.label('payoutAccount', w.payout_account_uuid, 'Compte de paiement') }}</p></div>
+    <div class="kv-grid kv-grid-2">
+      <div class="kv-item"><span class="kv-label">Montant</span><span class="kv-value tabular-nums font-semibold">{{ xaf(w.amount_xaf) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Statut</span><app-status-badge domain="partnerWithdrawal" [status]="w.status" /></div>
+      <div class="kv-item"><span class="kv-label">Demandé le</span><span class="kv-value">{{ dateTime(w.created_at) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Dernière mise à jour</span><span class="kv-value">{{ dateTime(w.updated_at) }}</span></div>
+      <div class="kv-item col-span-full"><span class="kv-label">Référence opérateur</span><span class="kv-value">{{ w.operator_reference ?? '—' }}</span></div>
+      @if (w.reason) { <div class="kv-item col-span-full"><span class="kv-label">Motif</span><span class="kv-value">{{ w.reason }}</span></div> }
+      <div class="kv-item col-span-full"><span class="kv-label">Compte de paiement</span><span class="kv-value">{{ labels.label('payoutAccount', w.payout_account_uuid, 'Compte de paiement') }}</span></div>
     </div>
     @if (loadingWithdrawalDetail()) { <p class="text-xs mt-3" style="color: var(--text-muted)">Actualisation…</p> }
   }

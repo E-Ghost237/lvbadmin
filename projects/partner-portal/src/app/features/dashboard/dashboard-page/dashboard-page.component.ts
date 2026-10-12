@@ -3,7 +3,7 @@ import { DashboardService } from '../../../core/services/dashboard.service';
 import { DashboardAlert, PartnerDashboard } from '../../../core/models';
 import { formatDate } from '@lvb/utils/formatters';
 import { ProblemDetails } from '@lvb/models/common.model';
-import { BreadcrumbsComponent } from '@lvb/ui/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '@lvb/ui/page-header/page-header.component';
 import { ForbiddenStateComponent } from '@lvb/ui/forbidden-state/forbidden-state.component';
 import { StatTileComponent } from '@lvb/ui/stat-tile/stat-tile.component';
 import { PartnerFleetMapComponent } from './partner-fleet-map.component';
@@ -24,7 +24,12 @@ const ALERT_DANGER: Partial<Record<DashboardAlert['type'], boolean>> = {
 /** UC-PRT-DASH — GET /v1/partner/dashboard, the single aggregate home-page endpoint. */
 @Component({
   selector: 'app-dashboard-page',
-  imports: [BreadcrumbsComponent, ForbiddenStateComponent, StatTileComponent, PartnerFleetMapComponent],
+  imports: [
+  ForbiddenStateComponent,
+  PageHeaderComponent,
+  PartnerFleetMapComponent,
+  StatTileComponent,
+],
   templateUrl: './dashboard-page.component.html',
 })
 export class DashboardPageComponent {

@@ -1,22 +1,26 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Mon compte' }]" />
+<div class="page">
+  <app-page-header [crumbs]="[{ label: 'Mon compte' }]">
+    <span page-head-lead class="avatar-initials" aria-hidden="true">{{ (email.slice(0, 2) || '?').toUpperCase() }}</span>
+    <div page-head-text>
+      <h1 class="page-title">Mon compte</h1>
+      <p class="page-sub">{{ email }}</p>
+    </div>
+  </app-page-header>
 
-<div class="flex items-center gap-3 mb-5">
-  <div class="h-12 w-12 rounded-full flex items-center justify-center text-sm font-semibold text-white shrink-0" style="background: var(--brand)">
-    {{ (email.slice(0, 2) || '?').toUpperCase() }}
-  </div>
-  <div>
-    <h1 class="text-xl font-semibold">Mon compte</h1>
-    <p class="text-sm mt-0.5" style="color: var(--text-muted)">{{ email }}</p>
-  </div>
-</div>
+  <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
-<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
-
-<div class="mt-5 max-w-2xl">
+  <div class="max-w-2xl flex flex-col gap-4">
   @if (activeTab() === 'profil') {
-    <form [formGroup]="profileForm" class="card p-5 flex flex-col gap-4">
+    <form [formGroup]="profileForm" class="card">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">Informations personnelles</h2>
+          <p class="card-sub">Laissez un champ vide pour ne pas le modifier</p>
+        </div>
+      </div>
+      <div class="card-body flex flex-col gap-4">
       <app-alert-banner kind="info">L’API ne renvoie jamais votre profil actuel (aucun point d’accès de lecture) — laissez un champ vide pour ne pas le modifier.</app-alert-banner>
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <app-field label="Prénom" [control]="profileForm.controls.prenom"><input class="input" formControlName="prenom" /></app-field>
         <app-field label="Nom" [control]="profileForm.controls.nom"><input class="input" formControlName="nom" /></app-field>
       </div>
@@ -24,55 +28,75 @@
         <app-select [options]="languageOptions" [allowClear]="false" formControlName="langue" />
       </app-field>
       <button type="button" class="btn btn-primary btn-sm self-start" [disabled]="savingProfile()" (click)="saveProfile()">Enregistrer</button>
+      </div>
     </form>
   }
 
   @if (activeTab() === 'securite') {
-    <div class="flex flex-col gap-5">
-      <div class="card p-5">
-        <p class="text-sm font-medium mb-2">Mot de passe</p>
-        <p class="text-xs mb-3" style="color: var(--text-muted)">Un lien de réinitialisation sera envoyé à {{ email }}.</p>
-        <button type="button" class="btn btn-secondary btn-sm" [disabled]="requestingReset()" (click)="requestPasswordReset()">Envoyer le lien de réinitialisation</button>
-      </div>
+    <div class="flex flex-col gap-4">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Mot de passe</h2>
+            <p class="card-sub">Un lien de réinitialisation sera envoyé à {{ email }}.</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <button type="button" class="btn btn-secondary btn-sm" [disabled]="requestingReset()" (click)="requestPasswordReset()">Envoyer le lien de réinitialisation</button>
+        </div>
+      </section>
 
-      <div class="card p-5">
-        <p class="text-sm font-medium mb-3">Sessions actives</p>
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Sessions actives</h2>
+            <p class="card-sub">Révoquez tout appareil que vous ne reconnaissez pas</p>
+          </div>
+        </div>
+        <div class="card-body">
         @if (loadingSessions()) {
           <div class="skeleton h-16 w-full"></div>
         } @else {
           <div class="flex flex-col gap-2">
             @for (s of sessions(); track s.id) {
-              <div class="flex items-center justify-between rounded-(--radius-sm) px-3 py-2.5" style="background: var(--surface-2)">
-                <div>
-                  <p class="text-xs font-medium">{{ s.appareilNom || 'Appareil' }} @if (s.estSessionCourante) { <span style="color: var(--status-good)">(session courante)</span> }</p>
+              <div class="list-row">
+                <div class="min-w-0">
+                  <p class="text-xs font-semibold">{{ s.appareilNom || 'Appareil' }} @if (s.estSessionCourante) { <span style="color: var(--status-good)">(session courante)</span> }</p>
                   <p class="text-[11px] mt-0.5" style="color: var(--text-muted)">{{ s.ip }} · dernière activité {{ sessionActivity(s) }}</p>
                 </div>
                 @if (!s.estSessionCourante) {
-                  <button type="button" class="btn btn-danger-ghost btn-sm !py-1" (click)="revokeSession(s)">Révoquer</button>
+                  <button type="button" class="btn btn-danger-ghost btn-sm !py-1 shrink-0" (click)="revokeSession(s)">Révoquer</button>
                 }
               </div>
             } @empty {
-              <p class="text-xs text-center py-6" style="color: var(--text-muted)">Aucune session active.</p>
+              <div class="inline-empty">Aucune session active.</div>
             }
           </div>
         }
-      </div>
+        </div>
+      </section>
     </div>
   }
 
   @if (activeTab() === 'notifications') {
-    <div class="card p-5">
-      <p class="text-sm font-medium mb-1">Préférences par catégorie</p>
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">Préférences par catégorie</h2>
+          <p class="card-sub">Certaines notifications sont obligatoires pour votre compte</p>
+        </div>
+      </div>
+      <div class="card-body">
       @if (loadingPrefs()) {
         <div class="skeleton h-16"></div>
       } @else {
-        <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-3.5">
           @for (pref of prefs(); track pref.category) {
             <div class="flex items-center justify-between gap-3">
               <div>
-                <p class="text-sm">{{ categoryLabel[pref.category] }}</p>
+                <p class="text-sm font-medium">{{ categoryLabel[pref.category] }}</p>
                 @if (!pref.can_disable) {
-                  <p class="text-xs" style="color: var(--text-muted)">Toujours actif — indispensable au service.</p>
+                  <p class="text-xs mt-0.5" style="color: var(--text-muted)">Toujours actif — indispensable au service.</p>
                 }
               </div>
               <app-toggle [checked]="pref.enabled" [disabled]="!pref.can_disable" (checkedChange)="togglePref(pref, $event)" [label]="categoryLabel[pref.category]" />
@@ -80,36 +104,44 @@
           }
         </div>
       }
-    </div>
+      </div>
+    </section>
   }
 
   @if (activeTab() === 'confidentialite') {
     <div class="flex flex-col gap-4">
-      <div class="card p-5">
-        <p class="text-sm font-medium mb-3">Consentements</p>
-        <div class="flex flex-col gap-3">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Consentements</h2>
+            <p class="card-sub">Vous pouvez retirer un consentement à tout moment</p>
+          </div>
+        </div>
+        <div class="card-body flex flex-col gap-3.5">
           @for (c of consents; track c.type) {
             <div class="flex items-center justify-between gap-3">
-              <p class="text-sm">{{ c.label }}</p>
+              <p class="text-sm font-medium">{{ c.label }}</p>
               <app-toggle [checked]="consentState()[c.type] ?? false" (checkedChange)="toggleConsent(c.type, $event)" [label]="c.label" />
             </div>
           }
         </div>
-      </div>
-      <div class="card p-5 flex items-center justify-between gap-3">
+      </section>
+
+      <div class="card p-5 flex items-center justify-between gap-4">
         <div>
-          <p class="text-sm font-medium">Exporter mes données</p>
-          <p class="text-xs mt-0.5" style="color: var(--text-muted)">Profil, consentements et adresses (SEC-52).</p>
+          <p class="text-sm font-semibold">Exporter mes données</p>
+          <p class="text-xs mt-1" style="color: var(--text-muted)">Profil, consentements et adresses (SEC-52).</p>
         </div>
-        <button type="button" class="btn btn-secondary btn-sm" [disabled]="exporting()" (click)="exportData()">Exporter</button>
+        <button type="button" class="btn btn-secondary btn-sm shrink-0" [disabled]="exporting()" (click)="exportData()">Exporter</button>
       </div>
-      <div class="card p-5 flex items-center justify-between gap-3">
+      <div class="card p-5 flex items-center justify-between gap-4" style="border-color: color-mix(in srgb, var(--status-critical) 26%, var(--border))">
         <div>
-          <p class="text-sm font-medium">Supprimer mon compte</p>
-          <p class="text-xs mt-0.5" style="color: var(--text-muted)">Anonymisation sous 30 jours, hors commande en cours ou solde non nul.</p>
+          <p class="text-sm font-semibold" style="color: var(--status-critical)">Supprimer mon compte</p>
+          <p class="text-xs mt-1" style="color: var(--text-muted)">Anonymisation sous 30 jours, hors commande en cours ou solde non nul.</p>
         </div>
-        <button type="button" class="btn btn-danger-ghost btn-sm" [disabled]="requestingDeletion()" (click)="requestDeletion()">Supprimer</button>
+        <button type="button" class="btn btn-danger-ghost btn-sm shrink-0" [disabled]="requestingDeletion()" (click)="requestDeletion()">Supprimer</button>
       </div>
     </div>
   }
+</div>
 </div>

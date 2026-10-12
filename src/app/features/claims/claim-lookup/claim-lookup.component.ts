@@ -6,7 +6,13 @@ import { ArbitrationDecision, ArbitrationDossier, ClaimsService } from '../../..
 import { ProblemDetails } from '../../../core/models';
 import { formatDateTime, formatXaf } from '../../../core/utils/formatters';
 import {
-  AlertBannerComponent, BreadcrumbsComponent, FormFieldComponent, SelectComponent, SelectOption, ToastService, FormFeedbackService,
+  AlertBannerComponent,
+  FormFeedbackService,
+  FormFieldComponent,
+  PageHeaderComponent,
+  SelectComponent,
+  SelectOption,
+  ToastService,
 } from '../../../shared/ui';
 
 const DECISION_OPTIONS: SelectOption[] = [
@@ -16,7 +22,14 @@ const DECISION_OPTIONS: SelectOption[] = [
 
 @Component({
   selector: 'app-claim-lookup',
-  imports: [JsonPipe, ReactiveFormsModule, BreadcrumbsComponent, FormFieldComponent, AlertBannerComponent, SelectComponent],
+  imports: [
+  AlertBannerComponent,
+  FormFieldComponent,
+  JsonPipe,
+  PageHeaderComponent,
+  ReactiveFormsModule,
+  SelectComponent,
+],
   templateUrl: './claim-lookup.component.html',
 })
 export class ClaimLookupComponent {

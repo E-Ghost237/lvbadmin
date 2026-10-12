@@ -11,9 +11,23 @@ import { formatDate, formatDateTime, humanizeSlug } from '../../../core/utils/fo
 import { computeReadiness } from '../../../core/utils/partner-access';
 import { e164Phone, emailAddress, personName, xafAmount } from '../../../core/utils/validators';
 import {
-  BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, FormFieldComponent, ModalComponent,
-  SegmentedControlComponent, SegmentOption, SelectComponent, SelectOption, StatusBadgeComponent, TabDef,
-  TableCellDefDirective, TabsComponent, ToastService, CmPhoneDirective, FormFeedbackService,
+  CmPhoneDirective,
+  ColumnDef,
+  ConfirmService,
+  DataTableComponent,
+  FormFeedbackService,
+  FormFieldComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SegmentOption,
+  SegmentedControlComponent,
+  SelectComponent,
+  SelectOption,
+  StatusBadgeComponent,
+  TabDef,
+  TableCellDefDirective,
+  TabsComponent,
+  ToastService,
 } from '../../../shared/ui';
 
 interface StatusTransition {
@@ -62,10 +76,19 @@ const STATUS_TRANSITIONS: Record<PartnerStatus, StatusTransition[]> = {
 @Component({
   selector: 'app-partner-detail',
   imports: [
-    JsonPipe, ReactiveFormsModule, BreadcrumbsComponent, StatusBadgeComponent, ModalComponent, FormFieldComponent,
-    TabsComponent, DataTableComponent, TableCellDefDirective, SelectComponent, SegmentedControlComponent,
-    CmPhoneDirective,
-  ],
+  CmPhoneDirective,
+  DataTableComponent,
+  FormFieldComponent,
+  JsonPipe,
+  ModalComponent,
+  PageHeaderComponent,
+  ReactiveFormsModule,
+  SegmentedControlComponent,
+  SelectComponent,
+  StatusBadgeComponent,
+  TableCellDefDirective,
+  TabsComponent,
+],
   templateUrl: './partner-detail.component.html',
 })
 export class PartnerDetailComponent {
