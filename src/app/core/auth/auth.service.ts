@@ -2,9 +2,14 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, catchError, finalize, map, shareReplay, tap, throwError } from 'rxjs';
 import { API_BASE_URL } from '../http/api.config';
-import { AuthIdentity, CurrentUser, DeviceSessionSummary } from '../models';
+import { AuthIdentity, CurrentUser, DeviceSessionSummary, ProblemDetails } from '../models';
 
 const SESSION_KEY = 'lvb.session';
+/** sessionStorage, not localStorage: this token is single-use and should die with the tab, but
+ *  must survive an in-page reload (e.g. a dev-server HMR reload) between the credentials step and
+ *  the MFA step — otherwise `verifyMfa()` silently sends `challenge_token: null` and the backend's
+ *  "champ obligatoire" validation error (not a wrong-code error) is confusing. */
+const CHALLENGE_KEY = 'lvb.mfa_challenge';
 
 interface StoredSession {
   accessToken: string;
@@ -71,7 +76,7 @@ export class AuthService {
   private readonly baseUrl = inject(API_BASE_URL);
 
   private readonly _identity = signal<AuthIdentity | null>(this.readStoredIdentity());
-  private readonly _challengeToken = signal<string | null>(null);
+  private readonly _challengeToken = signal<string | null>(this.readStoredChallenge());
   private refreshInFlight$: Observable<void> | null = null;
 
   readonly identity = this._identity.asReadonly();
@@ -88,6 +93,7 @@ export class AuthService {
       map((res): { outcome: LoginOutcome } => {
         if (isMfaChallenge(res)) {
           this._challengeToken.set(res.challenge_token);
+          if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(CHALLENGE_KEY, res.challenge_token);
           return { outcome: 'MFA' };
         }
         this.persistSession(res, normalisedEmail);
@@ -111,6 +117,16 @@ export class AuthService {
 
   verifyMfa(email: string, code: string): Observable<AuthIdentity> {
     const challengeToken = this._challengeToken();
+    if (!challengeToken) {
+      // Never send a request we know the backend will bounce as "challenge_token obligatoire" —
+      // that reads like a bug report, not an expired-session message. This is also the only
+      // correct recovery: the one-time challenge is gone, so only a fresh login can produce a new one.
+      return throwError((): ProblemDetails => ({
+        type: 'about:blank', title: 'Session de vérification expirée', status: 440, code: 'ERR-CLIENT-4001',
+        detail: 'Votre session de vérification a expiré. Reconnectez-vous pour recevoir un nouveau code.',
+        request_id: '',
+      }));
+    }
     const body = {
       challenge_token: challengeToken,
       code: code.trim(),
@@ -135,6 +151,7 @@ export class AuthService {
     };
     if (typeof localStorage !== 'undefined') localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     this._challengeToken.set(null);
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(CHALLENGE_KEY);
     // Keep the name/role already loaded from /me across token rotations.
     this._identity.set({ ...(this._identity() ?? {}), email });
   }
@@ -178,6 +195,7 @@ export class AuthService {
 
   private clearLocalSession(): void {
     if (typeof localStorage !== 'undefined') localStorage.removeItem(SESSION_KEY);
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(CHALLENGE_KEY);
     this._identity.set(null);
     this._challengeToken.set(null);
   }
@@ -230,5 +248,9 @@ export class AuthService {
   private readStoredIdentity(): AuthIdentity | null {
     const session = this.readStoredSession();
     return session ? { email: session.email } : null;
+  }
+
+  private readStoredChallenge(): string | null {
+    return typeof sessionStorage === 'undefined' ? null : sessionStorage.getItem(CHALLENGE_KEY);
   }
 }

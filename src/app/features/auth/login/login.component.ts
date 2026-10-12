@@ -76,6 +76,8 @@ export class LoginComponent {
       },
       error: (err: ProblemDetails) => {
         this.submitting.set(false);
+        // The one-time challenge is gone (expired / lost) — only a fresh login can issue a new one.
+        if (err.status === 440) this.backToCredentials();
         this.errorMessage.set(err.detail);
       },
     });

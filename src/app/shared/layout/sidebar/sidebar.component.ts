@@ -26,7 +26,7 @@ const GROUP_DEFS: { labelKey: string; paths: string[] }[] = [
   template: `
     <aside class="lvb-sidebar" [style.width.px]="collapsed() ? 76 : 264">
       <div class="sidebar-brand" [class.justify-center]="collapsed()">
-        <img src="/logo/Logo_lvb_trimmed.png" alt="LVB" class="w-auto shrink-0 brightness-0 invert" [class.h-8]="collapsed()" [class.h-9]="!collapsed()" />
+        <img src="/logo/Logo_lvb_trimmed.png" alt="LVB" class="w-auto shrink-0" [class.h-8]="collapsed()" [class.h-9]="!collapsed()" />
         @if (!collapsed()) {
           <div class="min-w-0">
             <p class="text-[13px] font-extrabold leading-tight truncate" style="color: var(--sidebar-text-active); font-family: var(--font-heading)">{{ i18n.t('app.name') }}</p>
