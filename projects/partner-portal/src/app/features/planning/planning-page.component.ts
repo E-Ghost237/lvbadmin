@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ProblemDetails } from '@lvb/models/common.model';
-import { BreadcrumbsComponent } from '@lvb/ui/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '@lvb/ui/page-header/page-header.component';
 import { ConfirmService } from '@lvb/ui/confirm/confirm.service';
 import { FormFeedbackService } from '@lvb/ui/form-feedback/form-feedback.service';
 import { FormFieldComponent } from '@lvb/ui/field/form-field.component';
@@ -35,30 +35,37 @@ function oneTarget(g: AbstractControl): ValidationErrors | null {
  */
 @Component({
   selector: 'app-planning-page',
-  imports: [ReactiveFormsModule, BreadcrumbsComponent, FormFieldComponent, SelectComponent, ForbiddenStateComponent],
+  imports: [ReactiveFormsModule, PageHeaderComponent, FormFieldComponent, SelectComponent, ForbiddenStateComponent],
   template: `
-    <app-breadcrumbs [crumbs]="[{ label: 'Planning' }]" />
-    <div class="mb-5">
-      <h1 class="text-xl font-semibold">Planning de la flotte</h1>
-      <p class="text-sm mt-0.5" style="color: var(--text-muted)">Réservations en cours et périodes d’indisponibilité de vos véhicules et chauffeurs.</p>
-    </div>
+    <div class="page">
+      <app-page-header
+        [crumbs]="[{ label: 'Planning' }]"
+        title="Planning de la flotte"
+        subtitle="Réservations en cours et périodes d’indisponibilité de vos véhicules et chauffeurs."
+      />
 
     @if (forbidden()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission booking.read." />
     } @else {
-      <div class="card p-4 mb-4 flex flex-wrap items-end gap-3">
+      <div class="toolbar items-end">
         <div><label class="field-label">Du</label><input type="datetime-local" class="input" [value]="from()" (input)="from.set($any($event.target).value)" /></div>
         <div><label class="field-label">Au</label><input type="datetime-local" class="input" [value]="to()" (input)="to.set($any($event.target).value)" /></div>
         <div class="w-56"><label class="field-label">Véhicule</label><app-select [options]="vehicleOptions()" placeholder="Tous" [value]="vehicleFilter()" (valueChange)="vehicleFilter.set($event)" /></div>
         <div class="w-56"><label class="field-label">Chauffeur</label><app-select [options]="driverOptions()" placeholder="Tous" [value]="driverFilter()" (valueChange)="driverFilter.set($event)" /></div>
+        <span class="toolbar-spacer"></span>
         <button type="button" class="btn btn-primary btn-sm" [disabled]="loading()" (click)="load()">Afficher</button>
       </div>
-      @if (rangeError()) { <p class="field-error mb-3">{{ rangeError() }}</p> }
+      @if (rangeError()) { <p class="field-error">{{ rangeError() }}</p> }
 
       @if (canManage) {
-        <div class="card p-5 mb-4">
-          <p class="text-sm font-medium mb-3">Bloquer une période</p>
-          <form [formGroup]="blockForm" (ngSubmit)="submitBlock()" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Bloquer une période</h2>
+              <p class="card-sub">Indisponibilité planifiée d’un véhicule, d’un chauffeur ou des deux</p>
+            </div>
+          </div>
+          <form [formGroup]="blockForm" (ngSubmit)="submitBlock()" class="card-body grid grid-cols-1 sm:grid-cols-2 gap-3">
             <app-field label="Véhicule" [control]="blockForm.controls.vehicle_uuid" hint="Véhicule ou chauffeur (au moins un)"><app-select [options]="vehicleOptions()" formControlName="vehicle_uuid" /></app-field>
             <app-field label="Chauffeur" [control]="blockForm.controls.driver_uuid"><app-select [options]="driverOptions()" formControlName="driver_uuid" /></app-field>
             <app-field label="Début" [control]="blockForm.controls.starts_at" required><input type="datetime-local" class="input" formControlName="starts_at" /></app-field>
@@ -69,46 +76,67 @@ function oneTarget(g: AbstractControl): ValidationErrors | null {
             @if (blockForm.hasError('range') && blockTried()) { <p class="field-error sm:col-span-2">La fin doit être postérieure au début.</p> }
             <div class="sm:col-span-2"><button type="submit" class="btn btn-primary btn-sm" [disabled]="saving()">Bloquer</button></div>
           </form>
-        </div>
+        </section>
       }
 
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div class="card p-5">
-          <p class="text-sm font-semibold mb-3">Indisponibilités ({{ calendar()?.unavailability?.length ?? 0 }})</p>
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Indisponibilités</h2>
+              <p class="card-sub">Périodes bloquées sur la plage affichée</p>
+            </div>
+            <span class="count-chip">{{ calendar()?.unavailability?.length ?? 0 }}</span>
+          </div>
+          <div class="card-body">
           @if (loading()) { <div class="skeleton h-16"></div> }
-          @else if ((calendar()?.unavailability?.length ?? 0) === 0) { <p class="text-sm" style="color: var(--text-muted)">Aucune indisponibilité sur la période.</p> }
+          @else if ((calendar()?.unavailability?.length ?? 0) === 0) { <div class="inline-empty">Aucune indisponibilité sur la période.</div> }
           @else {
-            <ul class="flex flex-col gap-2">
+            <div class="stack">
               @for (u of calendar()!.unavailability; track u.uuid) {
-                <li class="flex items-start justify-between gap-3 text-sm">
-                  <span>
-                    <span class="font-medium">{{ target(u) }}</span> · {{ kindLabel[u.kind] }}
-                    <span class="block text-xs" style="color: var(--text-muted)">{{ dt(u.starts_at) }} → {{ dt(u.ends_at) }} — {{ u.reason }}</span>
-                  </span>
-                  @if (canManage) { <button type="button" class="btn btn-danger-ghost btn-sm !py-0.5" [disabled]="removing() === u.uuid" (click)="unblock(u)">Retirer</button> }
-                </li>
+                <div class="list-row items-start">
+                  <div class="min-w-0">
+                    <p class="text-sm font-semibold">{{ target(u) }} <span class="font-normal" style="color: var(--text-muted)">· {{ kindLabel[u.kind] }}</span></p>
+                    <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ dt(u.starts_at) }} → {{ dt(u.ends_at) }} — {{ u.reason }}</p>
+                  </div>
+                  @if (canManage) {
+                    <button type="button" class="btn btn-danger-ghost btn-sm !py-1 shrink-0" [disabled]="removing() === u.uuid" (click)="unblock(u)">Retirer</button>
+                  }
+                </div>
               }
-            </ul>
+            </div>
           }
-        </div>
-        <div class="card p-5">
-          <p class="text-sm font-semibold mb-3">Réservations ({{ calendar()?.bookings?.items?.length ?? 0 }})</p>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Réservations</h2>
+              <p class="card-sub">Créneaux retenus ou en attente de paiement</p>
+            </div>
+            <span class="count-chip">{{ calendar()?.bookings?.items?.length ?? 0 }}</span>
+          </div>
+          <div class="card-body">
           @if (loading()) { <div class="skeleton h-16"></div> }
-          @else if ((calendar()?.bookings?.items?.length ?? 0) === 0) { <p class="text-sm" style="color: var(--text-muted)">Aucune réservation sur la période.</p> }
+          @else if ((calendar()?.bookings?.items?.length ?? 0) === 0) { <div class="inline-empty">Aucune réservation sur la période.</div> }
           @else {
-            <ul class="flex flex-col gap-2">
+            <div class="stack">
               @for (b of calendar()!.bookings.items; track b.uuid) {
-                <li class="text-sm">
-                  <span class="font-medium">{{ holdTarget(b) }}</span>
-                  <span class="ml-2 text-xs px-2 py-0.5 rounded-full" [style.background]="b.status === 'RESERVED' ? 'var(--status-good-bg)' : 'var(--status-warning-bg)'" [style.color]="b.status === 'RESERVED' ? 'var(--status-good)' : 'var(--status-warning)'">{{ b.status === 'RESERVED' ? 'Réservé' : 'En attente de paiement' }}</span>
-                  <span class="block text-xs" style="color: var(--text-muted)">{{ dt(b.starts_at) }} → {{ dt(b.ends_at) }}</span>
-                </li>
+                <div class="list-row">
+                  <div class="min-w-0">
+                    <p class="text-sm font-semibold">{{ holdTarget(b) }}</p>
+                    <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ dt(b.starts_at) }} → {{ dt(b.ends_at) }}</p>
+                  </div>
+                  <span class="status-pill shrink-0" [style.background]="b.status === 'RESERVED' ? 'var(--status-good-bg)' : 'var(--status-warning-bg)'" [style.color]="b.status === 'RESERVED' ? 'var(--status-good)' : 'var(--status-warning)'">{{ b.status === 'RESERVED' ? 'Réservé' : 'En attente de paiement' }}</span>
+                </div>
               }
-            </ul>
+            </div>
           }
-        </div>
+          </div>
+        </section>
       </div>
     }
+    </div>
   `,
 })
 export class PlanningPageComponent {

@@ -6,7 +6,7 @@ import { NotificationCategory, NotificationPreference } from '../../../core/mode
 import { DeviceSessionSummary } from '@lvb/models/user.model';
 import { ProblemDetails } from '@lvb/models/common.model';
 import { formatDateTime } from '@lvb/utils/formatters';
-import { BreadcrumbsComponent } from '@lvb/ui/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '@lvb/ui/page-header/page-header.component';
 import { TabDef, TabsComponent } from '@lvb/ui/tabs/tabs.component';
 import { FormFieldComponent } from '@lvb/ui/field/form-field.component';
 import { ToggleComponent } from '@lvb/ui/toggle/toggle.component';
@@ -42,9 +42,14 @@ const CATEGORY_LABEL: Record<NotificationCategory, string> = {
 @Component({
   selector: 'app-account-page',
   imports: [
-    ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, ToggleComponent,
-    AlertBannerComponent, SelectComponent,
-  ],
+  AlertBannerComponent,
+  FormFieldComponent,
+  PageHeaderComponent,
+  ReactiveFormsModule,
+  SelectComponent,
+  TabsComponent,
+  ToggleComponent,
+],
   templateUrl: './account-page.component.html',
 })
 export class AccountPageComponent {

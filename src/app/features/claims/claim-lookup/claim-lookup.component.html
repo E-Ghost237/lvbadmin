@@ -1,11 +1,11 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Réclamations & litiges' }]" />
+<div class="page">
+  <app-page-header
+    [crumbs]="[{ label: 'Réclamations & litiges' }]"
+    title="Réclamations & litiges"
+    subtitle="Aucun point d’accès ne liste les litiges en attente — ouvrez un dossier par l’identifiant de la réclamation (UUID), obtenu depuis la console téléconseiller ou une escalade."
+  />
 
-<div class="mb-5">
-  <h1 class="text-xl font-semibold">Réclamations & litiges</h1>
-  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Aucun point d’accès ne liste les litiges en attente — ouvrez un dossier par l’identifiant de la réclamation (UUID), obtenu depuis la console téléconseiller ou une escalade.</p>
-</div>
-
-<div class="card p-4 max-w-xl flex items-end gap-3">
+<div class="toolbar max-w-2xl">
   <div class="flex-1">
     <label class="field-label">UUID de la réclamation</label>
     <input class="input" [value]="uuid()" (input)="onUuidInput($any($event.target).value)" (keydown.enter)="lookup()" placeholder="ex. 3f2e1a4b-..." />
@@ -14,87 +14,131 @@
 </div>
 
 @if (loading()) {
-  <div class="skeleton h-60 mt-4 max-w-3xl"></div>
+  <div class="skeleton h-60 max-w-3xl"></div>
 } @else if (notFound()) {
-  <div class="mt-4 max-w-xl"><app-alert-banner kind="danger">Dossier introuvable pour cet identifiant.</app-alert-banner></div>
+  <div class="max-w-xl"><app-alert-banner kind="danger">Dossier introuvable pour cet identifiant.</app-alert-banner></div>
 } @else if (dossier(); as d) {
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-5">
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
     <div class="lg:col-span-2 flex flex-col gap-4">
-      <div class="card p-5">
-        <div class="flex items-center justify-between">
-          <p class="text-sm font-semibold">Réclamation #{{ d.complaint.id }}</p>
-          <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background: var(--surface-2)">{{ d.complaint.status }}</span>
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Réclamation #{{ d.complaint.id }}</h2>
+            <p class="card-sub">{{ d.complaint.category }} · ouverte le {{ dateTime(d.complaint.opened_at) }}</p>
+          </div>
+          <div class="card-actions">
+            <span class="status-pill" style="background: var(--surface-2); color: var(--text-secondary); border-color: var(--border)">{{ d.complaint.status }}</span>
+          </div>
         </div>
-        <p class="text-xs mt-1" style="color: var(--text-muted)">{{ d.complaint.category }} · ouverte le {{ dateTime(d.complaint.opened_at) }}</p>
-        <p class="text-sm mt-3">{{ d.complaint.description }}</p>
-      </div>
+        <div class="card-body">
+          <p class="text-sm leading-relaxed">{{ d.complaint.description }}</p>
+        </div>
+      </section>
 
-      <div class="card p-5">
-        <p class="text-sm font-semibold mb-3">Commande</p>
-        <div class="grid grid-cols-2 gap-3 text-sm">
-          <div><p class="text-xs" style="color: var(--text-muted)">Destinataire</p><p>{{ d.order.recipient_name }}</p></div>
-          <div><p class="text-xs" style="color: var(--text-muted)">Téléphone</p><p>{{ d.order.recipient_phone }}</p></div>
-          <div><p class="text-xs" style="color: var(--text-muted)">Statut</p><p>{{ d.order.status }}</p></div>
-          <div><p class="text-xs" style="color: var(--text-muted)">Prix</p><p>{{ xaf(d.order.price_xaf) }}</p></div>
-          <div><p class="text-xs" style="color: var(--text-muted)">Promise</p><p>{{ dateTime(d.order.promised_at) }}</p></div>
-          <div><p class="text-xs" style="color: var(--text-muted)">Livrée</p><p>{{ d.order.delivered_at ? dateTime(d.order.delivered_at) : '—' }}</p></div>
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Commande</h2>
+            <p class="card-sub">Course concernée par la réclamation</p>
+          </div>
         </div>
-        <p class="text-xs font-semibold mt-4 mb-2" style="color: var(--text-muted)">HISTORIQUE</p>
-        <div class="flex flex-col gap-1.5">
+        <div class="card-body">
+        <div class="kv-grid kv-grid-2">
+          <div class="kv-item"><span class="kv-label">Destinataire</span><span class="kv-value">{{ d.order.recipient_name }}</span></div>
+          <div class="kv-item"><span class="kv-label">Téléphone</span><span class="kv-value">{{ d.order.recipient_phone }}</span></div>
+          <div class="kv-item"><span class="kv-label">Statut</span><span class="kv-value">{{ d.order.status }}</span></div>
+          <div class="kv-item"><span class="kv-label">Prix</span><span class="kv-value tabular-nums font-semibold">{{ xaf(d.order.price_xaf) }}</span></div>
+          <div class="kv-item"><span class="kv-label">Promise</span><span class="kv-value">{{ dateTime(d.order.promised_at) }}</span></div>
+          <div class="kv-item"><span class="kv-label">Livrée</span><span class="kv-value">{{ d.order.delivered_at ? dateTime(d.order.delivered_at) : '—' }}</span></div>
+        </div>
+        <p class="section-label mt-5 mb-3">Historique</p>
+        <div class="timeline">
           @for (h of d.order_history; track h.at) {
-            <div class="flex items-center gap-2 text-xs">
-              <span class="h-1.5 w-1.5 rounded-full shrink-0" style="background: var(--brand)"></span>
-              <span class="tabular-nums" style="color: var(--text-muted)">{{ dateTime(h.at) }}</span>
-              <span>{{ h.from ? h.from + ' → ' : '' }}{{ h.to }}</span>
+            <div class="timeline-item">
+              <span class="timeline-dot"></span>
+              <div class="min-w-0">
+                <p class="timeline-time">{{ dateTime(h.at) }}</p>
+                <p class="text-xs mt-0.5">{{ h.from ? h.from + ' → ' : '' }}{{ h.to }}</p>
+              </div>
             </div>
           }
         </div>
-      </div>
+        </div>
+      </section>
 
       @if (d.driver; as driver) {
-        <div class="card p-5">
-          <p class="text-sm font-semibold mb-3">Livreur</p>
-          <pre class="text-xs overflow-x-auto thin-scroll" style="color: var(--text-secondary)">{{ driver.profile | json }}</pre>
-          @if (driver.sanctions.length > 0) {
-            <p class="text-xs font-semibold mt-3 mb-2" style="color: var(--text-muted)">SANCTIONS</p>
-            <div class="flex flex-col gap-1.5">
-              @for (s of driver.sanctions; track s.uuid) {
-                <div class="text-xs">{{ s.type }} — {{ s.status }} — {{ s.reason }}</div>
-              }
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Livreur</h2>
+              <p class="card-sub">Profil technique et sanctions</p>
             </div>
-          }
-        </div>
+          </div>
+          <div class="card-body">
+            <pre class="code-block">{{ driver.profile | json }}</pre>
+            @if (driver.sanctions.length > 0) {
+              <p class="section-label mt-4 mb-2">Sanctions</p>
+              <div class="stack">
+                @for (s of driver.sanctions; track s.uuid) {
+                  <div class="list-row text-xs">{{ s.type }} — {{ s.status }} — {{ s.reason }}</div>
+                }
+              </div>
+            }
+          </div>
+        </section>
       }
 
-      <div class="card p-5">
-        <p class="text-sm font-semibold mb-3">Échanges</p>
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Échanges</h2>
+            <p class="card-sub">Déclarations, pièces jointes et appels masqués</p>
+          </div>
+        </div>
+        <div class="card-body">
         @if (d.exchanges.complaint_statement) { <p class="text-sm mb-3">{{ d.exchanges.complaint_statement }}</p> }
         @if (d.exchanges.attachments.length > 0) {
-          <p class="text-xs font-semibold mb-2" style="color: var(--text-muted)">PIÈCES JOINTES</p>
-          <div class="flex flex-col gap-1">
+          <p class="section-label mb-2">Pièces jointes</p>
+          <div class="stack">
             @for (a of d.exchanges.attachments; track a.sha256) {
               <a [href]="a.temporary_url" target="_blank" rel="noopener" class="link text-xs">{{ a.name }}</a>
             }
           </div>
         }
         @if (d.exchanges.masked_calls.length > 0) {
-          <p class="text-xs font-semibold mt-3 mb-2" style="color: var(--text-muted)">APPELS</p>
-          @for (c of d.exchanges.masked_calls; track c.call_id) {
-            <p class="text-xs">{{ c.mode }} · {{ dateTime(c.initiated_at) }}</p>
-          }
+          <p class="section-label mt-4 mb-2">Appels</p>
+          <div class="stack">
+            @for (c of d.exchanges.masked_calls; track c.call_id) {
+              <p class="text-xs">{{ c.mode }} · {{ dateTime(c.initiated_at) }}</p>
+            }
+          </div>
         }
         @if (!d.exchanges.complaint_statement && d.exchanges.attachments.length === 0 && d.exchanges.masked_calls.length === 0) {
-          <p class="text-xs" style="color: var(--text-muted)">Aucun échange enregistré.</p>
+          <div class="inline-empty">Aucun échange enregistré.</div>
         }
-      </div>
+        </div>
+      </section>
     </div>
 
-    <div class="card p-5 h-fit">
+    <section class="card lg:sticky lg:top-4">
       @if (d.arbitration) {
-        <p class="text-sm font-semibold mb-2">Décision déjà rendue</p>
-        <pre class="text-xs overflow-x-auto thin-scroll" style="color: var(--text-secondary)">{{ d.arbitration | json }}</pre>
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Décision déjà rendue</h2>
+            <p class="card-sub">L’arbitrage est définitif pour ce dossier</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <pre class="code-block">{{ d.arbitration | json }}</pre>
+        </div>
       } @else {
-        <p class="text-sm font-semibold mb-3">Rendre une décision</p>
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Rendre une décision</h2>
+            <p class="card-sub">Motif obligatoire (10 caractères minimum)</p>
+          </div>
+        </div>
+        <div class="card-body">
         <form [formGroup]="decisionForm" class="flex flex-col gap-3">
           <app-field label="Décision" [control]="decisionForm.controls.decision" required>
             <app-select [options]="decisionOptions" [allowClear]="false" formControlName="decision" />
@@ -107,7 +151,9 @@
           </app-field>
           <button type="button" class="btn btn-primary" [disabled]="deciding()" (click)="decide()">Enregistrer la décision</button>
         </form>
+        </div>
       }
-    </div>
+    </section>
   </div>
 }
+</div>

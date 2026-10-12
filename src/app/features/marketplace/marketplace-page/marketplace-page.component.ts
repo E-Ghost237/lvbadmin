@@ -12,8 +12,19 @@ import {
 import { formatDate, formatDateTime, formatXaf } from '../../../core/utils/formatters';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
-  BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, ModalComponent,
-  SelectComponent, SelectOption, StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService,
+  ColumnDef,
+  ConfirmService,
+  DataTableComponent,
+  ForbiddenStateComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SelectComponent,
+  SelectOption,
+  StatusBadgeComponent,
+  TabDef,
+  TableCellDefDirective,
+  TabsComponent,
+  ToastService,
   ToggleComponent,
 } from '../../../shared/ui';
 
@@ -48,9 +59,16 @@ const BOOKING_REASON_LABEL: Partial<Record<BookingActionKind, string>> = {
 @Component({
   selector: 'app-marketplace-page',
   imports: [
-    BreadcrumbsComponent, TabsComponent, ForbiddenStateComponent, StatusBadgeComponent, SelectComponent,
-    DataTableComponent, TableCellDefDirective, ToggleComponent, ModalComponent,
-  ],
+  DataTableComponent,
+  ForbiddenStateComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SelectComponent,
+  StatusBadgeComponent,
+  TableCellDefDirective,
+  TabsComponent,
+  ToggleComponent,
+],
   templateUrl: './marketplace-page.component.html',
 })
 export class MarketplacePageComponent {

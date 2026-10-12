@@ -29,25 +29,28 @@ const POLL_MS = 20_000;
   selector: 'app-partner-fleet-map',
   imports: [MapPanelComponent],
   template: `
-    <div class="card p-4 flex flex-col">
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <h2 class="text-sm font-semibold">Suivi de mon équipe en direct</h2>
-        @if (state() === 'ready') {
-          <p class="text-xs" style="color: var(--text-muted)">
-            {{ counts().online }} en ligne · {{ counts().mission }} en livraison · {{ counts().offline }} hors ligne
-            @if (updated(); as t) { · mis à jour {{ t.toLocaleTimeString('fr-FR') }} }
-          </p>
-        }
+    <section class="card flex flex-col">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">Suivi de mon équipe en direct</h2>
+          @if (state() === 'ready') {
+            <p class="card-sub">
+              {{ counts().online }} en ligne · {{ counts().mission }} en livraison · {{ counts().offline }} hors ligne
+              @if (updated(); as t) { · mis à jour {{ t.toLocaleTimeString('fr-FR') }} }
+            </p>
+          } @else {
+            <p class="card-sub">Positions GPS transmises par votre équipe</p>
+          }
+        </div>
       </div>
+      <div class="card-body flex flex-col">
       @switch (state()) {
         @case ('loading') { <div class="skeleton h-80"></div> }
         @case ('unavailable') {
-          <p class="text-sm px-3 py-6 text-center rounded-(--radius-md)" style="background: var(--surface-2); color: var(--text-muted)">
-            Le suivi en direct n’est pas disponible pour votre compte (il est réservé aux membres de l’organisation habilités).
-          </p>
+          <div class="inline-empty">Le suivi en direct n’est pas disponible pour votre compte (il est réservé aux membres de l’organisation habilités).</div>
         }
         @case ('error') {
-          <p class="text-sm px-3 py-6 text-center rounded-(--radius-md)" style="background: var(--surface-2); color: var(--status-critical)">{{ error() }}</p>
+          <div class="inline-empty" style="color: var(--status-critical)">{{ error() }}</div>
         }
         @default {
           @if (units().length === 0) {
@@ -59,10 +62,11 @@ const POLL_MS = 20_000;
             <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background:#E8830C"></span> En pause</div>
             <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background:#6B7686"></span> Hors ligne</div>
           </app-map-panel>
-          <p class="text-[11px] mt-2" style="color: var(--text-muted)">Survolez une icône pour voir le nom, le téléphone et l’état. Les icônes s’adaptent au zoom.</p>
+          <p class="text-[11px] mt-2.5" style="color: var(--text-muted)">Survolez une icône pour voir le nom, le téléphone et l’état. Les icônes s’adaptent au zoom.</p>
         }
       }
-    </div>
+      </div>
+    </section>
   `,
 })
 export class PartnerFleetMapComponent {

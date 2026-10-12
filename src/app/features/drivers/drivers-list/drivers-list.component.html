@@ -1,58 +1,97 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Livreurs' }]" />
+<div class="page">
+  <app-page-header
+    [crumbs]="[{ label: 'Livreurs' }]"
+    title="Livreurs"
+    subtitle="Annuaire et validation des dossiers KYC."
+  >
+    <button type="button" class="btn btn-primary btn-sm" (click)="newCourierOpen.set(true)">+ Nouveau livreur</button>
+  </app-page-header>
 
-<div class="mb-5 flex items-start justify-between gap-3 flex-wrap">
-  <div>
-    <h1 class="text-xl font-semibold">Livreurs</h1>
-    <p class="text-sm mt-0.5" style="color: var(--text-muted)">Annuaire et validation des dossiers KYC.</p>
-  </div>
-  <button type="button" class="btn btn-primary btn-sm" (click)="newCourierOpen.set(true)">+ Nouveau livreur</button>
-</div>
+  <app-modal [open]="newCourierOpen()" title="Nouveau livreur" size="lg" (closed)="newCourierOpen.set(false)">
+    <app-courier-form [saving]="creatingCourier()" (save)="createCourier($event)" />
+  </app-modal>
 
-<app-modal [open]="newCourierOpen()" title="Nouveau livreur" size="lg" (closed)="newCourierOpen.set(false)">
-  <app-courier-form [saving]="creatingCourier()" (save)="createCourier($event)" />
-</app-modal>
+  <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
-<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
-
-<div class="mt-5">
   @if (activeTab() === 'all') {
     @if (forbidden()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission drivers.view." />
     } @else {
-      <div class="mb-3 max-w-sm">
-        <app-search-input placeholder="Nom, téléphone, matricule…" (searchChange)="onSearch($event)" />
+      <div class="toolbar">
+        <div class="toolbar-grow">
+          <app-search-input placeholder="Nom, téléphone, matricule…" (searchChange)="onSearch($event)" />
+        </div>
+        <span class="toolbar-spacer"></span>
+        @if (rows().length) {
+          <span class="count-chip">{{ rows().length }} livreur(s)</span>
+        }
       </div>
-      <div class="card">
-        <app-data-table
-          [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [rowClickable]="true"
-          [trackBy]="trackByUuid" (rowClick)="openDriver($event)"
-        >
-          <ng-template appCell="statut_compte" let-row><app-status-badge domain="account" [status]="row.statut_compte" /></ng-template>
-        </app-data-table>
-      </div>
-      @if (nextCursor()) {
-        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loading()" (click)="fetch(nextCursor()!)">Charger plus</button>
-      }
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Annuaire</h2>
+            <p class="card-sub">Cliquez sur une ligne pour ouvrir la fiche du livreur</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
+          <app-data-table
+            [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [rowClickable]="true"
+            [trackBy]="trackByUuid" (rowClick)="openDriver($event)"
+          >
+            <ng-template appCell="statut_compte" let-row><app-status-badge domain="account" [status]="row.statut_compte" /></ng-template>
+          </app-data-table>
+        </div>
+        @if (nextCursor()) {
+          <div class="card-foot">
+            <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="loading()" (click)="fetch(nextCursor()!)">Charger plus</button>
+          </div>
+        }
+      </section>
     }
   }
 
   @if (activeTab() === 'kyc') {
     @if (loadingKyc() && kycRows().length === 0) {
-      <div class="flex flex-col gap-2"><div class="skeleton h-14"></div><div class="skeleton h-14"></div><div class="skeleton h-14"></div></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        @for (i of [1,2,3,4]; track i) { <div class="skeleton h-29"></div> }
+      </div>
     } @else {
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
         @for (d of kycRows(); track d.uuid) {
-          <button type="button" class="card p-4 text-left hover:shadow-(--shadow-md) transition-shadow" (click)="openKyc(d)">
-            <p class="text-sm font-medium">{{ d.prenom }} {{ d.nom }}</p>
-            <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ d.matricule || '—' }}</p>
-            <app-status-badge domain="account" [status]="d.statut_compte" class="mt-2 inline-block" />
+          <button type="button" class="card card-hover p-4 text-left flex flex-col gap-3" (click)="openKyc(d)">
+            <div class="flex items-center justify-between gap-2">
+              <span class="inline-flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold" style="background: var(--app-accent-soft); color: var(--app-accent-ink)">
+                {{ (d.prenom ?? '').slice(0,1) + d.nom.slice(0,1) }}
+              </span>
+              <app-status-badge domain="account" [status]="d.statut_compte" />
+            </div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold truncate">{{ d.prenom }} {{ d.nom }}</p>
+              <p class="text-xs mt-0.5 font-mono" style="color: var(--text-muted)">{{ d.matricule || 'Matricule non attribué' }}</p>
+            </div>
+            <span class="text-xs font-medium inline-flex items-center gap-1" style="color: var(--app-accent-ink)">
+              Examiner le dossier
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+            </span>
           </button>
         } @empty {
-          <p class="text-xs col-span-full text-center py-8" style="color: var(--text-muted)">Aucun dossier en attente.</p>
+          <div class="card col-span-full">
+            <div class="state-block">
+              <div class="state-icon" style="background: var(--status-good-bg); color: var(--status-good)">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="9" /></svg>
+              </div>
+              <p class="state-title">Aucun dossier en attente</p>
+              <p class="state-hint">Tous les dossiers KYC déposés ont été traités.</p>
+            </div>
+          </div>
         }
       </div>
       @if (kycNextCursor()) {
-        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingKyc()" (click)="fetchKyc(kycNextCursor()!)">Charger plus</button>
+        <div class="flex justify-end">
+          <button type="button" class="btn btn-secondary btn-sm" [disabled]="loadingKyc()" (click)="fetchKyc(kycNextCursor()!)">Charger plus</button>
+        </div>
       }
     }
   }

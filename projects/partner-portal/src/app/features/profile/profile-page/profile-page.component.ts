@@ -14,7 +14,7 @@ import { Partner, PartnerChangeRequest, PartnerDocument, PartnerInvitation, Part
 import { PartnerDocumentType, PartnerRole } from '@lvb/models/enums';
 import { ProblemDetails } from '@lvb/models/common.model';
 import { formatDate, formatDateTime } from '@lvb/utils/formatters';
-import { BreadcrumbsComponent } from '@lvb/ui/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '@lvb/ui/page-header/page-header.component';
 import { TabDef, TabsComponent } from '@lvb/ui/tabs/tabs.component';
 import { ForbiddenStateComponent } from '@lvb/ui/forbidden-state/forbidden-state.component';
 import { StatusBadgeComponent } from '@lvb/ui/status-badge/status-badge.component';
@@ -47,9 +47,19 @@ const ROLE_OPTIONS: SelectOption[] = (Object.keys(ROLE_LABELS) as PartnerRole[])
 @Component({
   selector: 'app-profile-page',
   imports: [
-    ReactiveFormsModule, KeyValuePipe, BreadcrumbsComponent, TabsComponent, ForbiddenStateComponent, StatusBadgeComponent,
-    SelectComponent, DataTableComponent, TableCellDefDirective, FileDropComponent, FormFieldComponent, CmPhoneDirective,
-  ],
+  CmPhoneDirective,
+  DataTableComponent,
+  FileDropComponent,
+  ForbiddenStateComponent,
+  FormFieldComponent,
+  KeyValuePipe,
+  PageHeaderComponent,
+  ReactiveFormsModule,
+  SelectComponent,
+  StatusBadgeComponent,
+  TableCellDefDirective,
+  TabsComponent,
+],
   templateUrl: './profile-page.component.html',
 })
 export class ProfilePageComponent {

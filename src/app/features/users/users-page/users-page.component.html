@@ -1,36 +1,57 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Utilisateurs & rôles' }]" />
+<div class="page">
+  <app-page-header
+    [crumbs]="[{ label: 'Utilisateurs & rôles' }]"
+    title="Utilisateurs & rôles"
+    subtitle="Gestion des comptes clients, du personnel interne et des permissions."
+  />
 
-<div class="mb-5">
-  <h1 class="text-xl font-semibold">Utilisateurs & rôles</h1>
-  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Gestion des comptes clients, du personnel interne et des permissions.</p>
-</div>
+  <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
-<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
-
-<div class="mt-5">
   @if (activeTab() === 'clients') {
     @if (forbiddenClients()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission users.view." />
     } @else {
-      <div class="mb-3 max-w-sm"><app-search-input placeholder="Nom, téléphone…" (searchChange)="onClientSearch($event)" /></div>
-      <div class="card">
-        <app-data-table [columns]="columns" [rows]="clientRows()" [loading]="loadingClients() && clientRows().length === 0" [trackBy]="trackByUuid">
-          <ng-template appCell="statut" let-row><app-status-badge domain="account" [status]="row.statut" /></ng-template>
-          <ng-template appCell="cree_le" let-row>
-            <div class="flex items-center justify-between gap-2">
-              <span>{{ row.cree_le ? (row.cree_le | slice: 0:10) : '—' }}</span>
-              <div class="flex gap-1.5">
-                @if (row.statut === 'SUSPENDU' || row.statut === 'SUSPENDU_DOCUMENT') {
-                  <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="reactivate(row, fetchClients.bind(this))">Réactiver</button>
-                } @else {
-                  <button type="button" class="btn btn-danger-ghost btn-sm !py-1" (click)="suspend(row, fetchClients.bind(this))">Suspendre</button>
-                }
-              </div>
-            </div>
-          </ng-template>
-        </app-data-table>
+      <div class="toolbar">
+        <div class="toolbar-grow">
+          <app-search-input placeholder="Nom, téléphone…" (searchChange)="onClientSearch($event)" />
+        </div>
+        <span class="toolbar-spacer"></span>
+        @if (clientRows().length) {
+          <span class="count-chip">{{ clientRows().length }} affiché(s)</span>
+        }
       </div>
-      @if (clientCursor()) { <button type="button" class="btn btn-secondary btn-sm mt-3" (click)="fetchClients(clientCursor()!)">Charger plus</button> }
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Comptes clients</h2>
+            <p class="card-sub">Comptes créés par les clients eux-mêmes ou par la console téléconseiller</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
+          <app-data-table [columns]="columns" [rows]="clientRows()" [loading]="loadingClients() && clientRows().length === 0" [trackBy]="trackByUuid">
+            <ng-template appCell="statut" let-row><app-status-badge domain="account" [status]="row.statut" /></ng-template>
+            <ng-template appCell="cree_le" let-row>
+              <div class="flex items-center justify-between gap-3">
+                <span class="tabular-nums" style="color: var(--text-secondary)">{{ row.cree_le ? (row.cree_le | slice: 0:10) : '—' }}</span>
+                <div class="flex gap-1.5">
+                  @if (row.statut === 'SUSPENDU' || row.statut === 'SUSPENDU_DOCUMENT') {
+                    <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="reactivate(row, fetchClients.bind(this))">Réactiver</button>
+                  } @else {
+                    <button type="button" class="btn btn-danger-ghost btn-sm !py-1" (click)="suspend(row, fetchClients.bind(this))">Suspendre</button>
+                  }
+                </div>
+              </div>
+            </ng-template>
+          </app-data-table>
+        </div>
+        @if (clientCursor()) {
+          <div class="card-foot">
+            <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="loadingClients()" (click)="fetchClients(clientCursor()!)">Charger plus</button>
+          </div>
+        }
+      </section>
     }
   }
 
@@ -38,26 +59,41 @@
     @if (forbiddenInternal()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission users.view." />
     } @else {
-      <button type="button" class="btn btn-primary btn-sm mb-3" (click)="openNewInternal()">+ Nouveau compte interne</button>
-      <div class="card">
-        <app-data-table [columns]="columns" [rows]="internalRows()" [loading]="loadingInternal() && internalRows().length === 0" [trackBy]="trackByUuid">
-          <ng-template appCell="statut" let-row><app-status-badge domain="account" [status]="row.statut" /></ng-template>
-          <ng-template appCell="cree_le" let-row>
-            <div class="flex items-center justify-between gap-2">
-              <span>{{ row.cree_le ? (row.cree_le | slice: 0:10) : '—' }}</span>
-              <div class="flex gap-1.5">
-                <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openAssignRoles(row)">Rôles</button>
-                @if (row.statut === 'SUSPENDU' || row.statut === 'SUSPENDU_DOCUMENT') {
-                  <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="reactivate(row, fetchInternal.bind(this))">Réactiver</button>
-                } @else {
-                  <button type="button" class="btn btn-danger-ghost btn-sm !py-1" (click)="suspend(row, fetchInternal.bind(this))">Suspendre</button>
-                }
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Personnel interne</h2>
+            <p class="card-sub">Support, finance, supervision — accès défini par leurs rôles</p>
+          </div>
+          <div class="card-actions">
+            <button type="button" class="btn btn-primary btn-sm" (click)="openNewInternal()">+ Nouveau compte interne</button>
+          </div>
+        </div>
+        <div class="card-body-flush">
+          <app-data-table [columns]="columns" [rows]="internalRows()" [loading]="loadingInternal() && internalRows().length === 0" [trackBy]="trackByUuid">
+            <ng-template appCell="statut" let-row><app-status-badge domain="account" [status]="row.statut" /></ng-template>
+            <ng-template appCell="cree_le" let-row>
+              <div class="flex items-center justify-between gap-3">
+                <span class="tabular-nums" style="color: var(--text-secondary)">{{ row.cree_le ? (row.cree_le | slice: 0:10) : '—' }}</span>
+                <div class="flex gap-1.5">
+                  <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openAssignRoles(row)">Rôles</button>
+                  @if (row.statut === 'SUSPENDU' || row.statut === 'SUSPENDU_DOCUMENT') {
+                    <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="reactivate(row, fetchInternal.bind(this))">Réactiver</button>
+                  } @else {
+                    <button type="button" class="btn btn-danger-ghost btn-sm !py-1" (click)="suspend(row, fetchInternal.bind(this))">Suspendre</button>
+                  }
+                </div>
               </div>
-            </div>
-          </ng-template>
-        </app-data-table>
-      </div>
-      @if (internalCursor()) { <button type="button" class="btn btn-secondary btn-sm mt-3" (click)="fetchInternal(internalCursor()!)">Charger plus</button> }
+            </ng-template>
+          </app-data-table>
+        </div>
+        @if (internalCursor()) {
+          <div class="card-foot">
+            <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="loadingInternal()" (click)="fetchInternal(internalCursor()!)">Charger plus</button>
+          </div>
+        }
+      </section>
     }
   }
 
@@ -67,37 +103,48 @@
     } @else if (loadingCatalog()) {
       <div class="skeleton h-60"></div>
     } @else if (catalog(); as c) {
-      <button type="button" class="btn btn-primary btn-sm mb-3" (click)="openNewRole()">+ Nouveau rôle</button>
-      <div class="card overflow-x-auto thin-scroll">
-        <table class="w-full text-sm border-collapse">
-          <thead>
-            <tr style="border-bottom: 1px solid var(--border)">
-              <th class="text-left px-4 py-2.5 text-xs uppercase min-w-56" style="color: var(--text-muted)">Permission</th>
-              @for (role of c.roles; track role.id) {
-                <th class="text-center px-3 py-2.5 text-xs min-w-28" style="color: var(--text-muted)">
-                  {{ role.name }}
-                  <div class="text-[10px] font-normal">{{ role.users_count }} compte(s)</div>
-                  @if (role.users_count === 0) {
-                    <button type="button" class="text-[10px] link mt-0.5" (click)="deleteRole(role)">Supprimer</button>
-                  }
-                </th>
-              }
-            </tr>
-          </thead>
-          <tbody>
-            @for (perm of c.permissions; track perm) {
-              <tr style="border-bottom: 1px solid var(--border)">
-                <td class="px-4 py-2.5 text-sm" [attr.title]="perm">{{ permissionLabel(perm) }}</td>
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Matrice des permissions</h2>
+            <p class="card-sub">Cochez pour accorder la permission au rôle — l’enregistrement est immédiat</p>
+          </div>
+          <div class="card-actions">
+            <span class="count-chip">{{ c.roles.length }} rôle(s)</span>
+            <button type="button" class="btn btn-primary btn-sm" (click)="openNewRole()">+ Nouveau rôle</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto thin-scroll">
+          <table class="w-full text-sm border-collapse">
+            <thead>
+              <tr>
+                <th class="dt-head-cell min-w-56">Permission</th>
                 @for (role of c.roles; track role.id) {
-                  <td class="text-center px-3 py-2">
-                    <input type="checkbox" class="checkbox" [checked]="role.permissions.includes(perm)" (change)="toggleRolePermission(role, perm)" />
-                  </td>
+                  <th class="dt-head-cell text-center min-w-28">
+                    {{ role.name }}
+                    <div class="text-[10px] font-normal normal-case tracking-normal" style="color: var(--text-muted)">{{ role.users_count }} compte(s)</div>
+                    @if (role.users_count === 0) {
+                      <button type="button" class="text-[10px] link mt-0.5 font-medium normal-case tracking-normal" (click)="deleteRole(role)">Supprimer</button>
+                    }
+                  </th>
                 }
               </tr>
-            }
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              @for (perm of c.permissions; track perm) {
+                <tr class="dt-row" style="border-bottom: 1px solid var(--border)">
+                  <td class="dt-cell" [attr.title]="perm">{{ permissionLabel(perm) }}</td>
+                  @for (role of c.roles; track role.id) {
+                    <td class="dt-cell text-center">
+                      <input type="checkbox" class="checkbox" [checked]="role.permissions.includes(perm)" (change)="toggleRolePermission(role, perm)" />
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
     }
   }
 </div>
@@ -158,7 +205,7 @@
     } @else {
       <div></div>
     }
-    <p class="sm:col-span-2 text-xs text-slate-500">Le mot de passe est généré automatiquement et envoyé par email au nouvel utilisateur.</p>
+    <p class="sm:col-span-2 text-xs" style="color: var(--text-muted)">Le mot de passe est généré automatiquement et envoyé par email au nouvel utilisateur.</p>
   </form>
   <div modal-footer class="flex gap-2">
     <button type="button" class="btn btn-secondary" (click)="newInternalOpen.set(false)">Annuler</button>

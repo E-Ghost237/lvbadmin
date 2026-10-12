@@ -7,9 +7,21 @@ import { PartnersService } from '../../../core/services/partners.service';
 import { CreateCommissionRuleRequest, GeoPoint, MarketplaceCategory, PartnerCommissionRule, ProblemDetails } from '../../../core/models';
 import { formatDate, formatPercent, formatXaf } from '../../../core/utils/formatters';
 import {
-  BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, FormFieldComponent,
-  PolygonPickerComponent, SegmentedControlComponent, SegmentOption, SelectComponent, SelectOption, TabDef,
-  TabsComponent, ToastService, FormFeedbackService,
+  ColumnDef,
+  ConfirmService,
+  DataTableComponent,
+  ForbiddenStateComponent,
+  FormFeedbackService,
+  FormFieldComponent,
+  PageHeaderComponent,
+  PolygonPickerComponent,
+  SegmentOption,
+  SegmentedControlComponent,
+  SelectComponent,
+  SelectOption,
+  TabDef,
+  TabsComponent,
+  ToastService,
 } from '../../../shared/ui';
 
 const ZONE_TYPE_LABELS: Record<ZoneType, string> = {
@@ -33,9 +45,16 @@ import { xafAmount } from '../../../core/utils/validators';
 @Component({
   selector: 'app-pricing-page',
   imports: [
-    ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, FormFieldComponent, PolygonPickerComponent,
-    ForbiddenStateComponent, SegmentedControlComponent, SelectComponent, DataTableComponent,
-  ],
+  DataTableComponent,
+  ForbiddenStateComponent,
+  FormFieldComponent,
+  PageHeaderComponent,
+  PolygonPickerComponent,
+  ReactiveFormsModule,
+  SegmentedControlComponent,
+  SelectComponent,
+  TabsComponent,
+],
   templateUrl: './pricing-page.component.html',
 })
 export class PricingPageComponent {

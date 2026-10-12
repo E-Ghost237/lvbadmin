@@ -37,6 +37,7 @@ export const EN: Record<string, string> = {
   'action.save': 'Save',
   'action.cancel': 'Cancel',
   'action.confirm': 'Confirm',
+  'action.clear': 'Clear search',
   'action.close': 'Close',
   'action.edit': 'Edit',
   'action.delete': 'Delete',

@@ -7,7 +7,7 @@ import { ProblemDetails } from '@lvb/models/common.model';
 import { formatDate, formatDateTime, formatXaf } from '@lvb/utils/formatters';
 import { PartnerContextService } from '../../../core/services/partner-context.service';
 import { I18nService } from '@lvb/i18n/i18n.service';
-import { BreadcrumbsComponent } from '@lvb/ui/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '@lvb/ui/page-header/page-header.component';
 import { TabDef, TabsComponent } from '@lvb/ui/tabs/tabs.component';
 import { ForbiddenStateComponent } from '@lvb/ui/forbidden-state/forbidden-state.component';
 import { StatusBadgeComponent } from '@lvb/ui/status-badge/status-badge.component';
@@ -37,9 +37,16 @@ const PAYMENT_METHOD_OPTIONS: SelectOption[] = [
 @Component({
   selector: 'app-orders-page',
   imports: [
-    BreadcrumbsComponent, TabsComponent, ForbiddenStateComponent, StatusBadgeComponent, StatTileComponent,
-    SelectComponent, DataTableComponent, TableCellDefDirective, ModalComponent,
-  ],
+  DataTableComponent,
+  ForbiddenStateComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SelectComponent,
+  StatTileComponent,
+  StatusBadgeComponent,
+  TableCellDefDirective,
+  TabsComponent,
+],
   templateUrl: './orders-page.component.html',
 })
 export class OrdersPageComponent {

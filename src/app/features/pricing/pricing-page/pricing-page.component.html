@@ -1,31 +1,39 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Tarification & zones' }]" />
-
-<div class="mb-5">
-  <h1 class="text-xl font-semibold">Tarification & zones</h1>
-  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Moteur de tarification déterministe (RG-010→016) et zones opérationnelles.</p>
-</div>
+<div class="page">
+  <app-page-header
+    [crumbs]="[{ label: 'Tarification & zones' }]"
+    title="Tarification & zones"
+    subtitle="Moteur de tarification déterministe (RG-010→016) et zones opérationnelles."
+  />
 
 <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
-<div class="mt-5">
+<div class="flex flex-col gap-4">
   @if (activeTab() === 'grilles') {
-    <div class="flex items-center justify-between mb-3">
+    <div class="toolbar">
       <app-segmented-control [options]="citySegmentOptions" [value]="gridCity()" ariaLabel="Ville" (valueChange)="selectGridCity($event)" />
+      <span class="toolbar-spacer"></span>
+      @if (grids().length) { <span class="count-chip">{{ grids().length }} grille(s)</span> }
     </div>
 
     @if (forbiddenGrids()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission catalog.manage." />
     } @else {
       <div class="grid grid-cols-1 lg:grid-cols-[minmax(320px,420px)_1fr] gap-4 items-start">
-        <form [formGroup]="grilleForm" (ngSubmit)="createGrille()" class="card p-5 flex flex-col gap-3">
-          <p class="text-sm font-medium mb-1">Nouvelle grille</p>
-          <div class="grid grid-cols-2 gap-3">
+        <form [formGroup]="grilleForm" (ngSubmit)="createGrille()" class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Nouvelle grille</h2>
+              <p class="card-sub">Créée en brouillon, activable une fois vérifiée</p>
+            </div>
+          </div>
+          <div class="card-body flex flex-col gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <app-field label="Nom" [control]="grilleForm.controls.nom" required><input class="input" formControlName="nom" placeholder="DOUALA_2026_R1" /></app-field>
             <app-field label="Ville" [control]="grilleForm.controls.ville" required>
               <app-select [options]="citySelectOptions" [allowClear]="false" formControlName="ville" />
             </app-field>
           </div>
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <app-field label="Frais prise en charge" [control]="grilleForm.controls.frais_prise_en_charge" required><input type="number" min="0" class="input" formControlName="frais_prise_en_charge" /></app-field>
             <app-field label="Tarif / km" [control]="grilleForm.controls.tarif_km" required><input type="number" min="0" class="input" formControlName="tarif_km" /></app-field>
             <app-field label="Tarif / min" [control]="grilleForm.controls.tarif_minute" required><input type="number" min="0" class="input" formControlName="tarif_minute" /></app-field>
@@ -34,19 +42,26 @@
             <app-field label="Plafond remise" [control]="grilleForm.controls.plafond_remise"><input type="number" min="0" class="input" formControlName="plafond_remise" /></app-field>
           </div>
           <button type="submit" class="btn btn-primary self-start" [disabled]="creatingGrille()">Créer (brouillon)</button>
+          </div>
         </form>
 
-        <div class="card p-4">
-          <p class="text-sm font-medium mb-3">Grilles — {{ gridCity() }}</p>
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Grilles — {{ gridCity() }}</h2>
+              <p class="card-sub">Une seule grille active par ville à la fois</p>
+            </div>
+          </div>
+          <div class="card-body">
           @if (loadingGrids()) {
             <div class="flex flex-col gap-2"><div class="skeleton h-16"></div><div class="skeleton h-16"></div></div>
           } @else {
             <div class="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3">
               @for (g of grids(); track g.uuid) {
-                <div class="rounded-(--radius-sm) px-3 py-3 flex flex-col gap-2" style="background: var(--surface-2)">
+                <div class="list-row flex-col items-stretch !gap-2">
                   <div class="flex items-start justify-between gap-2">
-                    <p class="text-sm font-medium">{{ g.name }}</p>
-                    <span class="text-xs font-medium shrink-0" [style.color]="gridStatusColor[g.status]">{{ gridStatusLabel[g.status] }}</span>
+                    <p class="text-sm font-semibold">{{ g.name }}</p>
+                    <span class="text-xs font-semibold shrink-0" [style.color]="gridStatusColor[g.status]">{{ gridStatusLabel[g.status] }}</span>
                   </div>
                   <p class="text-xs" style="color: var(--text-muted)">{{ xaf(g.base_fee_xaf) }} + {{ xaf(g.price_per_km_xaf) }}/km · min {{ xaf(g.minimum_price_xaf) }}</p>
                   @if (g.status !== 'ACTIVE') {
@@ -54,18 +69,22 @@
                   }
                 </div>
               } @empty {
-                <p class="text-xs col-span-full text-center py-6" style="color: var(--text-muted)">Aucune grille pour {{ gridCity() }}.</p>
+                <div class="inline-empty col-span-full">Aucune grille pour {{ gridCity() }}.</div>
               }
             </div>
           }
-        </div>
+          </div>
+        </section>
       </div>
     }
   }
 
   @if (activeTab() === 'zones') {
-    <div class="flex items-center justify-between mb-3">
+    <div class="toolbar">
       <app-segmented-control [options]="citySegmentOptions" [value]="zoneVille()" ariaLabel="Ville" (valueChange)="selectVille($event)" />
+      <span class="toolbar-spacer"></span>
+      @if (zones().length) { <span class="count-chip">{{ zones().length }} zone(s)</span> }
+      <div class="toolbar-divider"></div>
       <button type="button" class="btn btn-primary btn-sm" (click)="openZoneForm()">+ Nouvelle zone</button>
     </div>
 
@@ -73,12 +92,14 @@
       <app-forbidden-state detail="Votre compte n’a pas la permission catalog.manage." />
     } @else if (zoneFormOpen()) {
       <div class="grid grid-cols-1 lg:grid-cols-[minmax(280px,340px)_1fr] gap-4 items-start">
-        <form [formGroup]="zoneForm" (ngSubmit)="createZone()" class="card p-5 flex flex-col gap-3">
+        <form [formGroup]="zoneForm" (ngSubmit)="createZone()" class="card">
+          <div class="card-head"><div><h2 class="card-title">Nouvelle zone</h2><p class="card-sub">Nommez la zone puis tracez son contour</p></div></div>
+          <div class="card-body flex flex-col gap-3">
           <app-field label="Nom" [control]="zoneForm.controls.nom" required><input class="input" formControlName="nom" /></app-field>
           <app-field label="Type" [control]="zoneForm.controls.type" required>
             <app-select [options]="zoneTypeOptions" [allowClear]="false" formControlName="type" />
           </app-field>
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <app-field label="Supplément fixe (XAF)" [control]="zoneForm.controls.supplement_fixe"><input type="number" min="0" class="input" formControlName="supplement_fixe" /></app-field>
             <app-field label="Prix minimum (XAF)" [control]="zoneForm.controls.prix_minimum"><input type="number" min="0" class="input" formControlName="prix_minimum" /></app-field>
           </div>
@@ -87,26 +108,34 @@
             <button type="button" class="btn btn-secondary btn-sm" (click)="resetPolygon()">Effacer le tracé</button>
             <button type="submit" class="btn btn-primary btn-sm" [disabled]="savingZone() || zonePoints().length < 3">Créer la zone</button>
           </div>
+          </div>
         </form>
-        <div class="card p-4 flex flex-col">
-          <p class="text-xs mb-2" style="color: var(--text-muted)">Cliquez sur la carte pour tracer le polygone (3 points minimum).</p>
-          <app-polygon-picker [points]="zonePoints()" (pointsChange)="onPolygonPoints($event)" class="block h-85 sm:h-105 xl:h-120 2xl:h-150" />
-        </div>
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Tracé de la zone</h2>
+              <p class="card-sub">Cliquez sur la carte pour tracer le polygone (3 points minimum, {{ zonePoints().length }} placé(s))</p>
+            </div>
+          </div>
+          <div class="card-body flex flex-col">
+            <app-polygon-picker [points]="zonePoints()" (pointsChange)="onPolygonPoints($event)" class="block h-85 sm:h-105 xl:h-120 2xl:h-150" />
+          </div>
+        </section>
       </div>
     } @else if (loadingZones()) {
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3"><div class="skeleton h-20"></div><div class="skeleton h-20"></div></div>
     } @else {
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
         @for (z of zones(); track z.id) {
-          <div class="card p-4 flex items-center justify-between">
-            <div>
-              <p class="text-sm font-medium">{{ z.nom }}</p>
+          <div class="card card-hover p-4 flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <p class="text-sm font-semibold truncate">{{ z.nom }}</p>
               <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ zoneTypeLabel[z.type] }}</p>
             </div>
-            <button type="button" class="btn btn-danger-ghost btn-sm !py-1" (click)="deleteZone(z)">Supprimer</button>
+            <button type="button" class="btn btn-danger-ghost btn-sm !py-1 shrink-0" (click)="deleteZone(z)">Supprimer</button>
           </div>
         } @empty {
-          <p class="text-xs col-span-full text-center py-8" style="color: var(--text-muted)">Aucune zone pour {{ zoneVille() }}.</p>
+          <div class="card col-span-full"><div class="inline-empty">Aucune zone pour {{ zoneVille() }}.</div></div>
         }
       </div>
     }
@@ -117,9 +146,14 @@
       <app-forbidden-state detail="Votre compte n’a pas la permission pricing.manage." />
     } @else {
       <div class="grid grid-cols-1 lg:grid-cols-[minmax(340px,420px)_1fr] gap-4 items-start">
-        <form [formGroup]="commissionForm" (ngSubmit)="createCommission()" class="card p-5 flex flex-col gap-3">
-          <p class="text-sm font-medium mb-1">Nouvelle règle de commission</p>
-          <p class="text-xs -mt-2" style="color: var(--text-muted)">Les règles sont immuables : une correction crée une nouvelle version, elle ne modifie pas l’existante.</p>
+        <form [formGroup]="commissionForm" (ngSubmit)="createCommission()" class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Nouvelle règle de commission</h2>
+              <p class="card-sub">Les règles sont immuables : une correction crée une nouvelle version.</p>
+            </div>
+          </div>
+          <div class="card-body flex flex-col gap-3">
 
           <app-field label="Partenaire (UUID) — laisser vide pour une règle globale" [control]="commissionForm.controls.partner_uuid">
             <div class="flex items-center gap-2">
@@ -139,7 +173,7 @@
             <input type="number" min="0" max="10000" class="input" formControlName="basis_points" />
           </app-field>
 
-          <div class="grid grid-cols-2 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <app-field label="Valide à partir du" [control]="commissionForm.controls.valid_from" required><input type="date" class="input" formControlName="valid_from" /></app-field>
             <app-field label="Valide jusqu’au (optionnel)" [control]="commissionForm.controls.valid_to"><input type="date" class="input" formControlName="valid_to" /></app-field>
           </div>
@@ -149,15 +183,25 @@
           </app-field>
 
           <button type="submit" class="btn btn-primary self-start" [disabled]="creatingCommission()">Créer la règle</button>
+          </div>
         </form>
 
-        <div class="card">
-          <app-data-table
-            [columns]="commissionColumns" [rows]="commissionRules()" [loading]="loadingCommissions() && commissionRules().length === 0"
-            [trackBy]="trackByCommissionUuid" emptyTitle="Aucune règle" emptyHint="Aucune règle de commission n’a encore été créée."
-          />
-        </div>
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Règles en vigueur</h2>
+              <p class="card-sub">La version la plus récente s’applique à chaque nouvelle réservation</p>
+            </div>
+          </div>
+          <div class="card-body-flush">
+            <app-data-table
+              [columns]="commissionColumns" [rows]="commissionRules()" [loading]="loadingCommissions() && commissionRules().length === 0"
+              [trackBy]="trackByCommissionUuid" emptyTitle="Aucune règle" emptyHint="Aucune règle de commission n’a encore été créée."
+            />
+          </div>
+        </section>
       </div>
     }
   }
+</div>
 </div>

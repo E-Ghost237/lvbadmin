@@ -37,6 +37,14 @@
   --accent-100: #e2f4cb;
   --accent-50: #f3fae8;
 
+  /* Content-area accent — admin = brand blue, partner portal = leaf green
+     (overridden in partner-theme.css). Keeps each app's personality inside
+     the working area without touching the shared brand chrome. */
+  --app-accent: var(--brand);
+  --app-accent-ink: var(--brand-600);
+  --app-accent-soft: var(--brand-50);
+  --app-accent-ring: color-mix(in srgb, var(--brand) 16%, transparent);
+
   --grad-brand: linear-gradient(135deg, #0a63e0 0%, #004aad 60%, #003681 100%);
   --grad-brand-accent: linear-gradient(120deg, #0a63e0 0%, #2f9e44 78%, #74bf1f 100%);
 
@@ -68,10 +76,12 @@
   --status-neutral: #5b6b7c;
   --status-neutral-bg: #eef1f6;
 
+  --radius-xs: 6px;
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 22px;
+  --shadow-xs: 0 1px 2px rgba(16, 28, 48, 0.04);
   --shadow-sm: 0 1px 2px rgba(16, 28, 48, 0.05), 0 1px 6px rgba(16, 28, 48, 0.04);
   --shadow-md: 0 2px 6px rgba(16, 28, 48, 0.05), 0 10px 28px rgba(16, 28, 48, 0.08);
   --shadow-lg: 0 8px 20px rgba(16, 28, 48, 0.10), 0 24px 56px rgba(16, 28, 48, 0.16);
@@ -120,6 +130,7 @@
     --status-neutral: #b6c1d4;
     --status-neutral-bg: #1a2439;
 
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
     --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
     --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
@@ -163,6 +174,7 @@
   --status-critical-bg: #3a1414;
   --status-neutral: #b6c1d4;
   --status-neutral-bg: #1a2439;
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
@@ -340,6 +352,663 @@ h1, h2, h3, h4, h5, h6 {
 .thin-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
 .thin-scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; }
 .thin-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* =====================================================================
+ * Page composition — the shared skeleton every feature page builds on.
+ *
+ *   <div class="page">
+ *     <app-page-header … />            header: breadcrumb, title, actions
+ *     <div class="stat-grid">…</div>   KPI row
+ *     <div class="toolbar">…</div>     search / filters / bulk actions
+ *     <section class="card">…</section> content: card-head + body + card-foot
+ *   </div>
+ *
+ * Everything below is presentation only: no page logic, no bindings, so the
+ * screens stay consistent while each keeps the behaviour it already had.
+ * =================================================================== */
+@layer components {
+  .page {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ---- Page header ------------------------------------------------- */
+  .page-head {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .page-head-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .page-head-lead {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+  }
+  .page-head-text { min-width: 0; }
+  .page-title {
+    font-family: var(--font-heading);
+    font-size: 1.375rem;
+    font-weight: 800;
+    letter-spacing: -0.022em;
+    line-height: 1.2;
+    margin: 0;
+    color: var(--text-primary);
+  }
+  .page-sub {
+    margin: 4px 0 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    max-width: 82ch;
+  }
+  .page-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .page-head-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* Small square icon chip — detail pages, empty cards, section marks. */
+  .icon-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    width: 40px;
+    flex-shrink: 0;
+    border-radius: 13px;
+    background: var(--app-accent-soft);
+    color: var(--app-accent);
+    border: 1px solid color-mix(in srgb, var(--app-accent) 14%, transparent);
+  }
+  .icon-chip svg { width: 19px; height: 19px; }
+
+  /* ---- Section / card headings ------------------------------------- */
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-2) 38%, var(--surface-1)) 0%,
+      var(--surface-1) 100%
+    );
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  .card-title {
+    font-family: var(--font-heading);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0;
+    color: var(--text-primary);
+  }
+  .card-sub {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .card-body { padding: 18px; }
+  .card-body-flush { padding: 0; }
+  .card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface-2) 26%, var(--surface-1));
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  }
+  .card-hover { transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease; }
+  .card-hover:hover {
+    box-shadow: var(--shadow-md);
+    border-color: color-mix(in srgb, var(--app-accent) 22%, var(--border));
+    transform: translateY(-1px);
+  }
+
+  /* Nested panel — for a block that lives *inside* a card body (simulator,
+     inline form) and must read as a subordinate surface, not a second card. */
+  .inset-panel {
+    background: color-mix(in srgb, var(--surface-2) 46%, var(--surface-1));
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  .inset-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Toggle chip (multi-select filters, quick picks). */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 13px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-1);
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  .chip[aria-pressed="true"] {
+    background: var(--app-accent-soft);
+    border-color: color-mix(in srgb, var(--app-accent) 34%, var(--border));
+    color: var(--app-accent-ink);
+  }
+
+  /* Tiny uppercase section label (above a group of rows, inside a card). */
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.075em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  /* Count chip next to a card title — "24 commandes". */
+  .count-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+
+  /* ---- Toolbars (search + filters + row actions) -------------------- */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-xs);
+  }
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .toolbar-grow { flex: 1 1 260px; max-width: 340px; min-width: 200px; }
+  .toolbar-spacer { flex: 1 1 auto; }
+  .toolbar-divider { width: 1px; align-self: stretch; min-height: 26px; background: var(--border); }
+
+  /* Filter pill row (Toutes / catégorie …) — colours stay data-driven. */
+  .pill-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .pill-filter:hover { border-color: var(--border-strong); }
+
+  /* ---- KPI rows ----------------------------------------------------- */
+  .stat-grid {
+    display: grid;
+    gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(205px, 1fr));
+  }
+  .stat-grid-tight { grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); }
+
+  /* ---- Key / value display (detail panes, modals, info cards) -------- */
+  .kv-grid {
+    display: grid;
+    gap: 14px 22px;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  }
+  .kv-grid-2 { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+  .kv-item { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .kv-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .kv-value {
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--text-primary);
+    overflow-wrap: anywhere;
+  }
+  .kv-value-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+
+  /* ---- Rows / lists -------------------------------------------------- */
+  .list-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius-md);
+    background: color-mix(in srgb, var(--surface-2) 70%, var(--surface-1));
+    border: 1px solid var(--border);
+  }
+  .list-row-interactive {
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  }
+  .list-row-interactive:hover {
+    border-color: color-mix(in srgb, var(--app-accent) 30%, var(--border));
+    background: var(--surface-1);
+    box-shadow: var(--shadow-xs);
+  }
+  .stack { display: flex; flex-direction: column; gap: 8px; }
+
+  /* Inline "nothing here yet" placeholder inside a card body. */
+  .inline-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 28px 16px;
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--text-muted);
+  }
+
+  /* ---- Timeline (status history) ------------------------------------- */
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+  .timeline-item {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 0 0 14px 0;
+  }
+  .timeline-item::before {
+    content: "";
+    position: absolute;
+    left: 4.5px;
+    top: 14px;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+  }
+  .timeline-item:last-child { padding-bottom: 0; }
+  .timeline-item:last-child::before { display: none; }
+  .timeline-dot {
+    position: relative;
+    z-index: 1;
+    margin-top: 4px;
+    height: 10px;
+    width: 10px;
+    border-radius: 999px;
+    flex-shrink: 0;
+    background: var(--app-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 14%, transparent);
+  }
+  .timeline-time {
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  /* ---- Code / raw payload blocks -------------------------------------- */
+  .code-block {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    line-height: 1.5;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    overflow-x: auto;
+    margin: 0;
+    max-height: 320px;
+  }
+
+  /* ---- Misc helpers --------------------------------------------------- */
+  .divider { height: 1px; background: var(--border); border: 0; margin: 0; }
+  .metric-value {
+    font-family: var(--font-heading);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .metric-value-sm { font-size: 1.25rem; }
+  .metric-value-lg { font-size: 2rem; }
+}
+
+/* =====================================================================
+ * Shared UI polish — the reusable blocks (stat tiles, tables, badges,
+ * tabs, empty states, modals) tuned once so every page inherits the same
+ * finish. Presentation only.
+ * =================================================================== */
+@layer components {
+  /* ---- KPI tile ------------------------------------------------------ */
+  .stat-tile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px 18px;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .stat-tile::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--tone, transparent);
+    opacity: 0.9;
+  }
+  .stat-tile-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .stat-tile-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0;
+  }
+  .stat-tile-value {
+    font-family: var(--font-heading);
+    font-size: 1.75rem;
+    font-weight: 800;
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+    margin: 0;
+  }
+  .stat-tile-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 17px;
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+  .stat-tile-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+
+  /* ---- Data table ---------------------------------------------------- */
+  .dt-head-cell {
+    padding: 10px 16px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.075em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: color-mix(in srgb, var(--surface-2) 52%, var(--surface-1));
+    white-space: nowrap;
+    user-select: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .dt-row { transition: background 0.12s ease; }
+  .dt-row:hover { background: color-mix(in srgb, var(--app-accent) 4%, transparent); }
+  .dt-cell { padding: 13px 16px; vertical-align: middle; }
+  .dt-cell-narrow { padding: 10px 12px; }
+  .dt-empty-row td { padding: 0; }
+
+  /* ---- Status pill --------------------------------------------------- */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    line-height: 1.45;
+    white-space: nowrap;
+    border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  }
+  .status-pill-dot { height: 6px; width: 6px; border-radius: 999px; background: currentColor; }
+  .status-pill-lg { font-size: 12.5px; padding: 5px 12px; }
+
+  /* ---- Tabs ---------------------------------------------------------- */
+  .tab-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--surface-2) 85%, var(--surface-1));
+    border: 1px solid var(--border);
+    max-width: 100%;
+    overflow-x: auto;
+  }
+  .tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .tab:hover { color: var(--text-primary); }
+  .tab-active {
+    background: var(--surface-1);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-xs);
+    border: 1px solid var(--border);
+  }
+  .tab-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    border-radius: 999px;
+    padding: 1px 6px;
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    background: var(--surface-2);
+    color: var(--text-secondary);
+  }
+  .tab-active .tab-count { background: var(--app-accent-soft); color: var(--app-accent); }
+
+  /* ---- Avatars & meters ---------------------------------------------- */
+  .avatar-initials {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 46px;
+    width: 46px;
+    flex-shrink: 0;
+    border-radius: 15px;
+    font-family: var(--font-heading);
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    color: var(--app-accent-ink);
+    background: var(--app-accent-soft);
+    border: 1px solid color-mix(in srgb, var(--app-accent) 18%, transparent);
+  }
+  .meter {
+    height: 6px;
+    width: 100%;
+    border-radius: 999px;
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .meter-fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--app-accent);
+    transition: width 0.4s ease;
+  }
+
+  /* ---- Segmented control --------------------------------------------- */
+  .seg-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px;
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--surface-2) 82%, var(--surface-1));
+    border: 1px solid var(--border);
+  }
+  .seg-item {
+    padding: 6px 13px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .seg-item:hover:not(:disabled) { color: var(--text-primary); }
+  .seg-item-active { background: var(--surface-1); color: var(--text-primary); box-shadow: var(--shadow-xs); border: 1px solid var(--border); }
+
+  /* ---- Empty / error states ------------------------------------------ */
+  .state-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 48px 24px;
+    text-align: center;
+  }
+  .state-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 46px;
+    width: 46px;
+    border-radius: 15px;
+  }
+  .state-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin: 0; }
+  .state-hint { font-size: 12.5px; color: var(--text-muted); margin: 0; max-width: 46ch; line-height: 1.5; }
+
+  /* ---- Modal chrome --------------------------------------------------- */
+  .modal-panel {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--surface-2) 40%, var(--surface-1)) 0%,
+      var(--surface-1) 100%
+    );
+  }
+  .modal-title {
+    font-family: var(--font-heading);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.012em;
+    margin: 0;
+    color: var(--text-primary);
+  }
+  .modal-sub { font-size: 12.5px; color: var(--text-muted); margin: 3px 0 0; }
+  .modal-body { padding: 20px; }
+  .modal-foot {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface-2) 30%, var(--surface-1));
+  }
+
+  /* ---- Field extras --------------------------------------------------- */
+  .input-icon-right { position: relative; }
+  .input-affix {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-1);
+    padding: 0 4px 0 12px;
+  }
+  .input-affix .input { border: 0; box-shadow: none; padding-left: 0; background: transparent; }
+  .input-affix:focus-within { border-color: var(--app-accent); box-shadow: 0 0 0 4px var(--app-accent-soft); }
+  .input-affix-unit {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding-right: 10px;
+    white-space: nowrap;
+  }
+}
 
 /* ---------------------------------------------------------------------
  * Brand chrome — sidebar & topbar (shared by both apps)

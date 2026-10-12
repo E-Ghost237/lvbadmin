@@ -1,57 +1,71 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Partenaires' }]" />
-
-<div class="mb-5">
-  <h1 class="text-xl font-semibold">Partenaires</h1>
-  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Dossiers, validation, équipes et suivi des comptes partenaires.</p>
-</div>
+<div class="page">
+  <app-page-header
+    [crumbs]="[{ label: 'Partenaires' }]"
+    title="Partenaires"
+    subtitle="Dossiers, validation, équipes et suivi des comptes partenaires."
+  />
 
 @if (forbidden()) {
   <app-forbidden-state detail="Votre compte n’a pas la permission partners.view." />
 } @else {
-  <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <div class="toolbar">
     <app-select
       class="w-auto min-w-48" [options]="statusOptions()" placeholder="Tous les statuts"
       ariaLabel="Filtrer par statut" [value]="statusFilter()" (valueChange)="onStatusFilterChange($event)"
     />
+    <span class="toolbar-spacer"></span>
+    @if (rows().length) { <span class="count-chip">{{ rows().length }} dossier(s)</span> }
+    <div class="toolbar-divider"></div>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="openCategories()">Gérer les catégories</button>
+    <button type="button" class="btn btn-primary btn-sm" (click)="openNewPartner()">+ Nouveau partenaire</button>
+  </div>
 
-    <div class="flex items-center gap-2">
-      <button type="button" class="btn btn-secondary btn-sm" (click)="openCategories()">Gérer les catégories</button>
-      <button type="button" class="btn btn-primary btn-sm" (click)="openNewPartner()">+ Nouveau partenaire</button>
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title">Dossiers partenaires</h2>
+        <p class="card-sub">Cliquez sur une ligne pour ouvrir le dossier complet</p>
+      </div>
     </div>
-  </div>
-
-  <div class="card">
-    <app-data-table
-      [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [rowClickable]="true"
-      [trackBy]="trackByUuid" (rowClick)="openPartner($event)"
-    >
-      <ng-template appCell="nom_commercial" let-row>
-        <p class="text-sm font-medium">{{ row.nom_commercial }}</p>
-        <p class="text-xs" style="color: var(--text-muted)">{{ row.telephone }}</p>
-      </ng-template>
-      <ng-template appCell="responsable_nom" let-row>
-        <p class="text-sm">{{ row.responsable_nom }}</p>
-        <p class="text-xs" style="color: var(--text-muted)">{{ row.responsable_telephone }}</p>
-      </ng-template>
-      <ng-template appCell="statut_partenaire" let-row><app-status-badge domain="partner" [status]="row.statut_partenaire" /></ng-template>
-      <ng-template appCell="actions" let-row>
-        @if (row.statut_partenaire === 'EN_ATTENTE_VALIDATION') {
-          <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="$event.stopPropagation(); openValidate(row)">Valider</button>
-        }
-      </ng-template>
-    </app-data-table>
-  </div>
-  @if (nextCursor()) {
-    <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loading()" (click)="fetch(nextCursor()!)">Charger plus</button>
-  }
+    <div class="card-body-flush">
+      <app-data-table
+        [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [rowClickable]="true"
+        [trackBy]="trackByUuid" (rowClick)="openPartner($event)"
+      >
+        <ng-template appCell="nom_commercial" let-row>
+          <p class="text-sm font-semibold">{{ row.nom_commercial }}</p>
+          <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ row.telephone }}</p>
+        </ng-template>
+        <ng-template appCell="responsable_nom" let-row>
+          <p class="text-sm">{{ row.responsable_nom }}</p>
+          <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ row.responsable_telephone }}</p>
+        </ng-template>
+        <ng-template appCell="statut_partenaire" let-row><app-status-badge domain="partner" [status]="row.statut_partenaire" /></ng-template>
+        <ng-template appCell="actions" let-row>
+          @if (row.statut_partenaire === 'EN_ATTENTE_VALIDATION') {
+            <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="$event.stopPropagation(); openValidate(row)">Valider</button>
+          }
+        </ng-template>
+      </app-data-table>
+    </div>
+    @if (nextCursor()) {
+      <div class="card-foot">
+        <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="loading()" (click)="fetch(nextCursor()!)">Charger plus</button>
+      </div>
+    }
+  </section>
 }
+
+</div>
 
 <app-modal [open]="newPartnerOpen()" title="Nouveau partenaire" size="lg" (closed)="newPartnerOpen.set(false)">
   <div class="flex flex-col gap-4">
     <div>
       <p class="field-label">Client Entreprise à rattacher <span class="text-(--status-critical)" aria-hidden="true">*</span></p>
       @if (selectedOwner(); as owner) {
-        <div class="flex items-center justify-between rounded-(--radius-sm) px-3 py-2.5" style="background: var(--brand-50)">
+        <div class="flex items-center justify-between rounded-(--radius-md) px-3.5 py-2.5" style="background: var(--app-accent-soft); border: 1px solid color-mix(in srgb, var(--app-accent) 22%, transparent)">
+
           <div>
             <p class="text-sm font-medium">{{ owner.prenom }} {{ owner.nom }}</p>
             <p class="text-xs" style="color: var(--text-muted)">{{ owner.telephone }}</p>
@@ -62,12 +76,12 @@
         <app-search-input placeholder="Nom, téléphone…" (searchChange)="searchOwners($event)" />
         <div class="flex flex-col gap-1 mt-2 max-h-40 overflow-y-auto thin-scroll">
           @for (c of ownerCandidates(); track c.uuid) {
-            <button type="button" class="text-left rounded-(--radius-sm) px-2.5 py-2 text-sm hover:bg-(--surface-2)" (click)="selectOwner(c)">
+            <button type="button" class="list-row list-row-interactive text-left w-full" (click)="selectOwner(c)">
               {{ c.prenom }} {{ c.nom }} <span style="color: var(--text-muted)">· {{ c.telephone }}</span>
             </button>
           } @empty {
             @if (ownerQuery().trim() && !loadingOwners()) {
-              <p class="text-xs text-center py-3" style="color: var(--text-muted)">Aucun client Entreprise trouvé.</p>
+              <div class="inline-empty">Aucun client Entreprise trouvé.</div>
             }
           }
         </div>
@@ -146,15 +160,15 @@
           />
         </div>
       } @empty {
-        <p class="text-xs text-center py-3" style="color: var(--text-muted)">Aucune catégorie.</p>
+        <div class="inline-empty">Aucune catégorie.</div>
       }
     </div>
-    <div class="flex items-center gap-2 mt-3 pt-3" style="border-top: 1px solid var(--border)">
+    <div class="flex items-center gap-2 mt-4 pt-4" style="border-top: 1px solid var(--border)">
       <input
         class="input flex-1" placeholder="Nouvelle catégorie…" [value]="newCategoryName()"
         (input)="onNewCategoryNameInput($any($event.target).value)"
       />
-      <button type="button" class="btn btn-secondary btn-sm" [disabled]="creatingCategory() || !newCategoryName().trim()" (click)="createCategory()">Ajouter</button>
+      <button type="button" class="btn btn-primary btn-sm shrink-0" [disabled]="creatingCategory() || !newCategoryName().trim()" (click)="createCategory()">Ajouter</button>
     </div>
   }
   <div modal-footer class="flex gap-2">

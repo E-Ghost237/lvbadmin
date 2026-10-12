@@ -1,35 +1,40 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Flotte' }]" />
+<div class="page">
+  <app-page-header [crumbs]="[{ label: 'Flotte' }]">
+    <div page-head-text>
+      <h1 class="page-title">Flotte</h1>
+      <p class="page-sub">Véhicules et chauffeurs de votre organisation (LVB-CDC-MKT-RENT-2026-V1.0).</p>
+    </div>
+  </app-page-header>
 
-<div class="mb-5">
-  <h1 class="text-xl font-semibold">Flotte</h1>
-  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Véhicules et chauffeurs de votre organisation (LVB-CDC-MKT-RENT-2026-V1.0).</p>
-</div>
+  <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
-<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
-
-@if (managed(); as m) {
-  <div class="mt-5">
+  @if (managed(); as m) {
     <app-resource-panel [resource]="m.resource" [uuid]="m.uuid" [label]="m.label" [vehicles]="vehicleSelectOptions()" (closed)="managed.set(null)" />
-  </div>
-}
+  }
 
-<div class="mt-5">
   @if (activeTab() === 'vehicles') {
     @if (forbiddenVehicles()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission fleet.vehicle.manage." />
     } @else {
-      <div class="flex items-center justify-between mb-4">
-        <div class="max-w-xs flex-1">
-          <app-select [options]="vehicleStatusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="vehicleStatusFilter()" (valueChange)="onVehicleStatusFilterChange($event)" />
-        </div>
+      <div class="toolbar">
+        <app-select class="w-auto min-w-52" [options]="vehicleStatusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="vehicleStatusFilter()" (valueChange)="onVehicleStatusFilterChange($event)" />
+        <span class="toolbar-spacer"></span>
+        @if (vehicles().length) { <span class="count-chip">{{ vehicles().length }} véhicule(s)</span> }
+        <div class="toolbar-divider"></div>
         <button type="button" class="btn btn-primary btn-sm shrink-0" (click)="openNewVehicleForm()">+ Nouveau véhicule</button>
       </div>
 
       @if (vehicleFormOpen()) {
-        <form [formGroup]="vehicleForm" (ngSubmit)="submitVehicleForm()" class="card p-5 mb-4 flex flex-col gap-4">
-          <p class="text-sm font-medium">{{ editingVehicle() ? 'Modifier le véhicule' : 'Nouveau véhicule' }}</p>
+        <form [formGroup]="vehicleForm" (ngSubmit)="submitVehicleForm()" class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">{{ editingVehicle() ? 'Modifier le véhicule' : 'Nouveau véhicule' }}</h2>
+              <p class="card-sub">Le formulaire s’adapte au type de véhicule choisi</p>
+            </div>
+          </div>
+          <div class="card-body flex flex-col gap-4">
           @if (editingVehicle()?.compliance_suspended) {
-            <p class="text-xs px-3 py-2 rounded-(--radius-sm)" style="background: var(--status-critical-bg); color: var(--status-critical)">
+            <p class="text-xs px-3.5 py-2.5 rounded-(--radius-md)" style="background: var(--status-critical-bg); color: var(--status-critical)">
               Ce véhicule est suspendu pour non-conformité par LVB — toute modification sera refusée tant que la suspension n’est pas levée.
             </p>
           }
@@ -51,7 +56,7 @@
               }
             </div>
 
-            <button type="button" class="text-sm font-medium self-start" style="color: var(--brand)" (click)="showVehicleMore.set(!showVehicleMore())">
+            <button type="button" class="text-sm font-semibold self-start" style="color: var(--app-accent-ink)" (click)="showVehicleMore.set(!showVehicleMore())">
               {{ showVehicleMore() ? '− Masquer les détails' : '+ Plus de détails (facultatif)' }}
             </button>
             @if (showVehicleMore()) {
@@ -73,14 +78,22 @@
               </div>
             }
           }
-          <div class="flex gap-2">
+          <div class="flex gap-2 pt-1">
             <button type="button" class="btn btn-ghost btn-sm" [disabled]="savingVehicle()" (click)="vehicleFormOpen.set(false)">Annuler</button>
             <button type="submit" class="btn btn-primary btn-sm" [disabled]="savingVehicle()">{{ editingVehicle() ? 'Enregistrer' : 'Créer' }}</button>
+          </div>
           </div>
         </form>
       }
 
-      <div class="card">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Véhicules</h2>
+            <p class="card-sub">Activez un véhicule pour pouvoir le publier dans une offre</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
         <app-data-table
           [columns]="vehicleColumns" [rows]="vehicles()" [loading]="loadingVehicles() && vehicles().length === 0"
           [trackBy]="trackByVehicleUuid" emptyTitle="Aucun véhicule" emptyHint="Ajoutez votre premier véhicule pour commencer."
@@ -96,10 +109,14 @@
             </div>
           </ng-template>
         </app-data-table>
-      </div>
-      @if (vehiclesCursor()) {
-        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingVehicles()" (click)="fetchVehicles(vehiclesCursor()!)">Charger plus</button>
-      }
+        </div>
+        @if (vehiclesCursor()) {
+          <div class="card-foot">
+            <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="loadingVehicles()" (click)="fetchVehicles(vehiclesCursor()!)">Charger plus</button>
+          </div>
+        }
+      </section>
     }
   }
 
@@ -107,18 +124,25 @@
     @if (forbiddenDrivers()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission fleet.driver.manage." />
     } @else {
-      <div class="flex items-center justify-between mb-4">
-        <div class="max-w-xs flex-1">
-          <app-select [options]="driverStatusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="driverStatusFilter()" (valueChange)="onDriverStatusFilterChange($event)" />
-        </div>
+      <div class="toolbar">
+        <app-select class="w-auto min-w-52" [options]="driverStatusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="driverStatusFilter()" (valueChange)="onDriverStatusFilterChange($event)" />
+        <span class="toolbar-spacer"></span>
+        @if (drivers().length) { <span class="count-chip">{{ drivers().length }} chauffeur(s)</span> }
+        <div class="toolbar-divider"></div>
         <button type="button" class="btn btn-primary btn-sm shrink-0" (click)="openNewDriverForm()">+ Nouveau chauffeur</button>
       </div>
 
       @if (driverFormOpen()) {
-        <form [formGroup]="driverForm" (ngSubmit)="submitDriverForm()" class="card p-5 mb-4 flex flex-col gap-4">
-          <p class="text-sm font-medium">{{ editingDriver() ? 'Modifier le chauffeur' : 'Nouveau chauffeur' }}</p>
+        <form [formGroup]="driverForm" (ngSubmit)="submitDriverForm()" class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">{{ editingDriver() ? 'Modifier le chauffeur' : 'Nouveau chauffeur' }}</h2>
+              <p class="card-sub">Le permis est vérifié par LVB avant activation</p>
+            </div>
+          </div>
+          <div class="card-body flex flex-col gap-4">
           @if (editingDriver()?.compliance_suspended) {
-            <p class="text-xs px-3 py-2 rounded-(--radius-sm)" style="background: var(--status-critical-bg); color: var(--status-critical)">
+            <p class="text-xs px-3.5 py-2.5 rounded-(--radius-md)" style="background: var(--status-critical-bg); color: var(--status-critical)">
               Ce chauffeur est suspendu pour non-conformité par LVB — toute modification sera refusée tant que la suspension n’est pas levée.
             </p>
           }
@@ -134,7 +158,7 @@
             <app-chip-picker [options]="licenseChips" [value]="driverForm.controls.license_categories.value" ariaLabel="Catégories de permis" (valueChange)="setDriverCsv('license_categories', $event)" />
           </app-field>
 
-          <button type="button" class="text-sm font-medium self-start" style="color: var(--brand)" (click)="showDriverMore.set(!showDriverMore())">
+          <button type="button" class="text-sm font-semibold self-start" style="color: var(--app-accent-ink)" (click)="showDriverMore.set(!showDriverMore())">
             {{ showDriverMore() ? '− Masquer les détails' : '+ Plus de détails (facultatif)' }}
           </button>
           @if (showDriverMore()) {
@@ -153,14 +177,22 @@
               }
             </div>
           }
-          <div class="flex gap-2">
+          <div class="flex gap-2 pt-1">
             <button type="button" class="btn btn-ghost btn-sm" [disabled]="savingDriver()" (click)="driverFormOpen.set(false)">Annuler</button>
             <button type="submit" class="btn btn-primary btn-sm" [disabled]="savingDriver()">{{ editingDriver() ? 'Enregistrer' : 'Créer' }}</button>
+          </div>
           </div>
         </form>
       }
 
-      <div class="card">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Chauffeurs</h2>
+            <p class="card-sub">Un chauffeur actif peut être affecté aux réservations</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
         <app-data-table
           [columns]="driverColumns" [rows]="drivers()" [loading]="loadingDrivers() && drivers().length === 0"
           [trackBy]="trackByDriverUuid" emptyTitle="Aucun chauffeur" emptyHint="Ajoutez votre premier chauffeur pour commencer."
@@ -173,10 +205,14 @@
             </div>
           </ng-template>
         </app-data-table>
-      </div>
-      @if (driversCursor()) {
-        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingDrivers()" (click)="fetchDrivers(driversCursor()!)">Charger plus</button>
-      }
+        </div>
+        @if (driversCursor()) {
+          <div class="card-foot">
+            <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="loadingDrivers()" (click)="fetchDrivers(driversCursor()!)">Charger plus</button>
+          </div>
+        }
+      </section>
     }
   }
   @if (activeTab() === 'couriers') {

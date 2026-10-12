@@ -4,12 +4,23 @@ import { AuditLogEntry, AuditService } from '../../../core/services/audit.servic
 import { ProblemDetails } from '../../../core/models';
 import { formatDateTime, humanizeSlug } from '../../../core/utils/formatters';
 import {
-  BreadcrumbsComponent, ColumnDef, DataTableComponent, ForbiddenStateComponent, ModalComponent, ToastService,
+  ColumnDef,
+  DataTableComponent,
+  ForbiddenStateComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  ToastService,
 } from '../../../shared/ui';
 
 @Component({
   selector: 'app-audit-page',
-  imports: [JsonPipe, BreadcrumbsComponent, DataTableComponent, ForbiddenStateComponent, ModalComponent],
+  imports: [
+  DataTableComponent,
+  ForbiddenStateComponent,
+  JsonPipe,
+  ModalComponent,
+  PageHeaderComponent,
+],
   templateUrl: './audit-page.component.html',
 })
 export class AuditPageComponent {

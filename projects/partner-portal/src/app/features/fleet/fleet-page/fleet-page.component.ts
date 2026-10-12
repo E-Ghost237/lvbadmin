@@ -15,7 +15,7 @@ import { csvList, e164Phone, emailAddress, intRange, minAge, notInPast, personNa
 import { CmPhoneDirective } from '@lvb/ui/cm-phone/cm-phone.directive';
 import { formatDate } from '@lvb/utils/formatters';
 import { I18nService } from '@lvb/i18n/i18n.service';
-import { BreadcrumbsComponent } from '@lvb/ui/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '@lvb/ui/page-header/page-header.component';
 import { TabDef, TabsComponent } from '@lvb/ui/tabs/tabs.component';
 import { ForbiddenStateComponent } from '@lvb/ui/forbidden-state/forbidden-state.component';
 import { StatusBadgeComponent } from '@lvb/ui/status-badge/status-badge.component';
@@ -41,9 +41,20 @@ import { ToastService } from '@lvb/ui/toast/toast.service';
 @Component({
   selector: 'app-fleet-page',
   imports: [
-    ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, ForbiddenStateComponent, StatusBadgeComponent,
-    SelectComponent, DataTableComponent, TableCellDefDirective, FormFieldComponent, CmPhoneDirective, CouriersPanelComponent, ResourcePanelComponent, ChipPickerComponent,
-  ],
+  ChipPickerComponent,
+  CmPhoneDirective,
+  CouriersPanelComponent,
+  DataTableComponent,
+  ForbiddenStateComponent,
+  FormFieldComponent,
+  PageHeaderComponent,
+  ReactiveFormsModule,
+  ResourcePanelComponent,
+  SelectComponent,
+  StatusBadgeComponent,
+  TableCellDefDirective,
+  TabsComponent,
+],
   templateUrl: './fleet-page.component.html',
 })
 export class FleetPageComponent {

@@ -8,8 +8,19 @@ import {
 import { formatDateTime, formatXaf } from '../../../core/utils/formatters';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
-  BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, ModalComponent,
-  SelectComponent, SelectOption, StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent, ToastService,
+  ColumnDef,
+  ConfirmService,
+  DataTableComponent,
+  ForbiddenStateComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SelectComponent,
+  SelectOption,
+  StatusBadgeComponent,
+  TabDef,
+  TableCellDefDirective,
+  TabsComponent,
+  ToastService,
 } from '../../../shared/ui';
 
 const WITHDRAWAL_ACTION_LABEL: Record<WithdrawalDecisionAction, string> = {
@@ -42,9 +53,15 @@ const ADJUSTMENT_KIND_OPTIONS: SelectOption[] = [
 @Component({
   selector: 'app-wallet-page',
   imports: [
-    BreadcrumbsComponent, TabsComponent, ForbiddenStateComponent, StatusBadgeComponent, SelectComponent,
-    DataTableComponent, TableCellDefDirective, ModalComponent,
-  ],
+  DataTableComponent,
+  ForbiddenStateComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SelectComponent,
+  StatusBadgeComponent,
+  TableCellDefDirective,
+  TabsComponent,
+],
   templateUrl: './wallet-page.component.html',
 })
 export class WalletPageComponent {

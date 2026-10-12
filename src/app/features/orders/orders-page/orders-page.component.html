@@ -1,62 +1,82 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Commandes' }]" />
+<div class="page">
+  <app-page-header
+    [crumbs]="[{ label: 'Commandes' }]"
+    title="Commandes"
+    subtitle="Recherche globale des commandes et affectation manuelle (UC-ADM-08→10)."
+  >
+    <button type="button" class="btn btn-secondary btn-sm" [disabled]="loading()" (click)="fetch()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v6h-6" /></svg>
+      Actualiser
+    </button>
+  </app-page-header>
 
-<div class="mb-5">
-  <h1 class="text-xl font-semibold">Commandes</h1>
-  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Recherche globale des commandes et affectation manuelle (UC-ADM-08→10).</p>
-</div>
+  @if (forbidden()) {
+    <app-forbidden-state detail="Votre compte n’a pas la permission orders.view." />
+  } @else {
+    <div class="toolbar">
+      <div class="toolbar-grow">
+        <app-search-input placeholder="UUID, nom ou téléphone du destinataire…" (searchChange)="onSearch($event)" />
+      </div>
 
-@if (forbidden()) {
-  <app-forbidden-state detail="Votre compte n’a pas la permission orders.view." />
-} @else {
-  <div class="flex flex-wrap items-center gap-3 mb-4">
-    <div class="max-w-xs flex-1 min-w-55">
-      <app-search-input placeholder="UUID, nom ou téléphone du destinataire…" (searchChange)="onSearch($event)" />
+      <app-segmented-control [options]="cityOptions" [value]="cityFilter()" ariaLabel="Filtrer par ville" (valueChange)="selectCity($event)" />
+
+      <app-select
+        class="w-auto min-w-48" [options]="statusOptions()" placeholder="Tous les statuts" [disabled]="unassignedOnly()"
+        ariaLabel="Filtrer par statut" [value]="statusFilter()" (valueChange)="onStatusFilterChange($event)"
+      />
+
+      <label class="flex items-center gap-2 text-xs font-medium">
+        <input type="checkbox" class="checkbox" [checked]="unassignedOnly()" (change)="toggleUnassignedOnly()" />
+        Non affectées uniquement
+      </label>
     </div>
 
-    <app-segmented-control [options]="cityOptions" [value]="cityFilter()" ariaLabel="Filtrer par ville" (valueChange)="selectCity($event)" />
-
-    <app-select
-      class="w-auto min-w-48" [options]="statusOptions()" placeholder="Tous les statuts" [disabled]="unassignedOnly()"
-      ariaLabel="Filtrer par statut" [value]="statusFilter()" (valueChange)="onStatusFilterChange($event)"
-    />
-
-    <label class="flex items-center gap-2 text-xs font-medium">
-      <input type="checkbox" class="checkbox" [checked]="unassignedOnly()" (change)="toggleUnassignedOnly()" />
-      Non affectées uniquement
-    </label>
-  </div>
-
-  <div class="card">
-    <app-data-table [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [trackBy]="trackByUuid">
-      <ng-template appCell="destinataire" let-row>
-        <p class="text-sm font-medium">{{ row.destinataire.nom }}</p>
-        <p class="text-xs" style="color: var(--text-muted)">{{ row.destinataire.telephone }}</p>
-      </ng-template>
-      <ng-template appCell="statut" let-row><app-status-badge domain="order" [status]="row.statut" /></ng-template>
-      <ng-template appCell="livreur" let-row>
-        @if (row.livreur; as l) {
-          <p class="text-sm">{{ l.matricule }}</p>
-          <p class="text-xs" style="color: var(--text-muted)">{{ l.prenom }} {{ l.nom }}</p>
-        } @else {
-          <span class="text-xs" style="color: var(--text-muted)">—</span>
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">Résultats</h2>
+          <p class="card-sub">Commandes les plus récentes d’abord · recherche serveur</p>
+        </div>
+        @if (rows().length) {
+          <span class="count-chip">{{ rows().length }} affichée(s)</span>
         }
-      </ng-template>
-      <ng-template appCell="actions" let-row>
-        @if (isUnassignable(row)) {
-          <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openAssign(row)">Affecter</button>
-        }
-      </ng-template>
-    </app-data-table>
-  </div>
-  @if (nextCursor()) {
-    <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loading()" (click)="fetch(nextCursor()!)">Charger plus</button>
+      </div>
+      <div class="card-body-flush">
+        <app-data-table [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [trackBy]="trackByUuid">
+          <ng-template appCell="destinataire" let-row>
+            <p class="text-sm font-medium">{{ row.destinataire.nom }}</p>
+            <p class="text-xs" style="color: var(--text-muted)">{{ row.destinataire.telephone }}</p>
+          </ng-template>
+          <ng-template appCell="statut" let-row><app-status-badge domain="order" [status]="row.statut" /></ng-template>
+          <ng-template appCell="livreur" let-row>
+            @if (row.livreur; as l) {
+              <p class="text-sm">{{ l.matricule }}</p>
+              <p class="text-xs" style="color: var(--text-muted)">{{ l.prenom }} {{ l.nom }}</p>
+            } @else {
+              <span class="text-xs" style="color: var(--text-muted)">—</span>
+            }
+          </ng-template>
+          <ng-template appCell="actions" let-row>
+            @if (isUnassignable(row)) {
+              <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openAssign(row)">Affecter</button>
+            }
+          </ng-template>
+        </app-data-table>
+      </div>
+      @if (nextCursor()) {
+        <div class="card-foot">
+          <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+          <button type="button" class="btn btn-secondary btn-sm" [disabled]="loading()" (click)="fetch(nextCursor()!)">Charger plus</button>
+        </div>
+      }
+    </section>
   }
-}
+</div>
 
 <app-modal [open]="!!assignTarget()" title="Affecter manuellement" [subtitle]="assignTarget()?.destinataire?.nom ?? ''" size="lg" (closed)="assignTarget.set(null)">
   @if (assignTarget(); as order) {
     <div class="flex flex-col gap-4">
-      <div class="rounded-(--radius-sm) px-3 py-2.5 text-xs" style="background: var(--surface-2)">
+      <div class="inset-panel px-3.5 py-2.5 text-xs" style="color: var(--text-secondary)">
         {{ order.ville }} · {{ xaf(order.prix_final_xaf) }} · échéance {{ dateTime(order.echeance_promise) }}
       </div>
 

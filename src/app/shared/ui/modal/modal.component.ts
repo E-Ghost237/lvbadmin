@@ -16,27 +16,29 @@ const SIZE_CLASS: Record<ModalSize, string> = { sm: 'max-w-md', md: 'max-w-xl', 
   template: `
     @if (open()) {
       <div class="fixed inset-0 z-2000 flex items-center justify-center p-4" role="presentation">
-        <div class="absolute inset-0" style="background: rgba(0, 0, 0, 0.4)" (click)="dismiss()" aria-hidden="true"></div>
+        <div class="absolute inset-0 backdrop-blur-[2px]" style="background: rgba(8, 20, 38, 0.45)" (click)="dismiss()" aria-hidden="true"></div>
         <div
           cdkTrapFocus cdkTrapFocusAutoCapture
-          class="relative w-full card shadow-(--shadow-lg) flex flex-col max-h-[90vh]"
+          class="relative w-full card modal-panel shadow-(--shadow-lg) flex flex-col max-h-[90vh]"
           [class]="sizeClass()"
           role="dialog" aria-modal="true" [attr.aria-labelledby]="titleId"
         >
-          <div class="flex items-start justify-between gap-4 px-5 py-4 border-b" style="border-color: var(--border)">
-            <div>
-              <h2 [id]="titleId" class="text-base font-semibold">{{ title() }}</h2>
-              @if (subtitle()) { <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ subtitle() }}</p> }
+          <div class="modal-head">
+            <div class="min-w-0">
+              <h2 [id]="titleId" class="modal-title">{{ title() }}</h2>
+              @if (subtitle()) { <p class="modal-sub">{{ subtitle() }}</p> }
             </div>
-            <button type="button" class="btn btn-ghost btn-sm !px-1.5" (click)="dismiss()" [attr.aria-label]="i18n.t('action.close')">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            <button type="button" class="btn btn-ghost btn-sm !px-1.5 -mr-1 -mt-0.5" (click)="dismiss()" [attr.aria-label]="i18n.t('action.close')">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
             </button>
           </div>
-          <div class="overflow-y-auto px-5 py-4 thin-scroll">
-            <ng-content></ng-content>
+          <div class="overflow-y-auto thin-scroll flex-1">
+            <div class="modal-body">
+              <ng-content></ng-content>
+            </div>
           </div>
           @if (hasFooter()) {
-            <div class="flex items-center justify-end gap-2 px-5 py-3.5 border-t" style="border-color: var(--border)">
+            <div class="modal-foot">
               <ng-content select="[modal-footer]"></ng-content>
             </div>
           }

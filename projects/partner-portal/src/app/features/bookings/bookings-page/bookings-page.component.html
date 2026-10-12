@@ -1,49 +1,64 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Réservations' }]" />
+<div class="page">
+  <app-page-header [crumbs]="[{ label: 'Réservations' }]">
+    <div page-head-text>
+      <h1 class="page-title">Réservations</h1>
+      <p class="page-sub">Réservations reçues sur vos offres marketplace (LVB-CDC-MKT-RENT-2026-V1.0).</p>
+    </div>
+  </app-page-header>
 
-<div class="mb-5">
-  <h1 class="text-xl font-semibold">Réservations</h1>
-  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Réservations reçues sur vos offres marketplace (LVB-CDC-MKT-RENT-2026-V1.0).</p>
-</div>
+  @if (forbidden()) {
+    <app-forbidden-state detail="Votre compte n’a pas la permission booking.read." />
+  } @else {
+    <div class="toolbar">
+      <app-select class="w-auto min-w-52" [options]="statusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="statusFilter()" (valueChange)="onStatusFilterChange($event)" />
+      <span class="toolbar-spacer"></span>
+      @if (bookings().length) { <span class="count-chip">{{ bookings().length }} réservation(s)</span> }
+    </div>
 
-@if (forbidden()) {
-  <app-forbidden-state detail="Votre compte n’a pas la permission booking.read." />
-} @else {
-  <div class="mb-4 max-w-xs">
-    <app-select [options]="statusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="statusFilter()" (valueChange)="onStatusFilterChange($event)" />
-  </div>
-
-  <div class="card">
-    <app-data-table
-      [columns]="columns" [rows]="bookings()" [loading]="loading() && bookings().length === 0"
-      [trackBy]="trackByUuid" emptyTitle="Aucune réservation" emptyHint="Aucune réservation ne correspond à ce filtre."
-    >
-      <ng-template appCell="status" let-row><app-status-badge domain="booking" [status]="row.status" /></ng-template>
-      <ng-template appCell="actions" let-row>
-        <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openDetail(row.uuid)">Détails</button>
-      </ng-template>
-    </app-data-table>
-  </div>
-  @if (cursor()) {
-    <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loading()" (click)="fetch(cursor()!)">Charger plus</button>
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">Demandes reçues</h2>
+          <p class="card-sub">Ouvrez une ligne pour affecter un chauffeur ou traiter un litige</p>
+        </div>
+      </div>
+      <div class="card-body-flush">
+        <app-data-table
+          [columns]="columns" [rows]="bookings()" [loading]="loading() && bookings().length === 0"
+          [trackBy]="trackByUuid" emptyTitle="Aucune réservation" emptyHint="Aucune réservation ne correspond à ce filtre."
+        >
+          <ng-template appCell="status" let-row><app-status-badge domain="booking" [status]="row.status" /></ng-template>
+          <ng-template appCell="actions" let-row>
+            <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openDetail(row.uuid)">Détails</button>
+          </ng-template>
+        </app-data-table>
+      </div>
+      @if (cursor()) {
+        <div class="card-foot">
+          <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+          <button type="button" class="btn btn-secondary btn-sm" [disabled]="loading()" (click)="fetch(cursor()!)">Charger plus</button>
+        </div>
+      }
+    </section>
   }
-}
+</div>
 
 <app-modal [open]="detail() !== null || loadingDetail()" title="Réservation" [subtitle]="detail() ? dateTime(detail()!.starts_at) + ' → ' + dateTime(detail()!.ends_at) : ''" size="lg" [hasFooter]="false" (closed)="closeDetail()">
   @if (loadingDetail()) {
     <div class="skeleton h-40"></div>
   } @else if (detail(); as b) {
-    <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-      <div><span class="field-label">Statut</span><div class="mt-1"><app-status-badge domain="booking" [status]="b.status" /></div></div>
-      <div><span class="field-label">Paiement</span><div class="mt-1"><app-status-badge domain="bookingPayment" [status]="b.payment_status" /></div></div>
-      <div><span class="field-label">Début</span><p>{{ dateTime(b.starts_at) }}</p></div>
-      <div><span class="field-label">Fin</span><p>{{ dateTime(b.ends_at) }}</p></div>
-      <div><span class="field-label">Offre</span><p>{{ labels.label('offer', b.offer_uuid) }}</p></div>
-      <div><span class="field-label">Véhicule</span><p>{{ vehicleLabel(b) }}</p></div>
-      <div><span class="field-label">Chauffeur</span><p>{{ driverLabel(b) }}</p></div>
-      <div><span class="field-label">Montant total</span><p>{{ xaf(b.total_amount) }}</p></div>
-      <div><span class="field-label">Commission</span><p>{{ xaf(b.commission_amount) }}</p></div>
+    <div class="kv-grid kv-grid-2">
+      <div class="kv-item"><span class="kv-label">Statut</span><app-status-badge domain="booking" [status]="b.status" /></div>
+      <div class="kv-item"><span class="kv-label">Paiement</span><app-status-badge domain="bookingPayment" [status]="b.payment_status" /></div>
+      <div class="kv-item"><span class="kv-label">Début</span><span class="kv-value">{{ dateTime(b.starts_at) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Fin</span><span class="kv-value">{{ dateTime(b.ends_at) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Offre</span><span class="kv-value">{{ labels.label('offer', b.offer_uuid) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Véhicule</span><span class="kv-value">{{ vehicleLabel(b) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Chauffeur</span><span class="kv-value">{{ driverLabel(b) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Montant total</span><span class="kv-value tabular-nums font-semibold">{{ xaf(b.total_amount) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Commission</span><span class="kv-value tabular-nums">{{ xaf(b.commission_amount) }}</span></div>
       @if (b.dispute_status) {
-        <div><span class="field-label">Litige</span><div class="mt-1"><app-status-badge domain="bookingDispute" [status]="b.dispute_status" /></div></div>
+        <div class="kv-item"><span class="kv-label">Litige</span><app-status-badge domain="bookingDispute" [status]="b.dispute_status" /></div>
       }
     </div>
 
@@ -61,8 +76,8 @@
     }
 
     @if (showAssignDriverForm() && canAct) {
-      <div class="card p-4 mt-3" style="border: 1px solid var(--border)">
-        <p class="text-sm font-medium mb-3">Affecter un chauffeur</p>
+      <div class="list-row flex-col items-stretch mt-3 !gap-3" style="border-style: dashed">
+        <p class="text-sm font-semibold">Affecter un chauffeur</p>
         <div class="flex flex-col gap-3">
           <app-select [options]="driverOptions()" placeholder="Choisir un chauffeur actif" [allowClear]="false" [value]="assignDriverUuid()" (valueChange)="onAssignDriverChange($event)" />
           <div class="flex justify-end gap-2">
@@ -75,12 +90,15 @@
 
     @if (b.history && b.history.length > 0) {
       <div class="mt-5 pt-4" style="border-top: 1px solid var(--border)">
-        <p class="text-sm font-medium mb-3">Historique</p>
-        <div class="flex flex-col gap-2 max-h-64 overflow-y-auto thin-scroll">
+        <p class="section-label mb-3">Historique</p>
+        <div class="timeline max-h-64 overflow-y-auto thin-scroll">
           @for (entry of b.history; track entry.uuid) {
-            <div class="text-xs flex items-start gap-2">
-              <span style="color: var(--text-muted)" class="shrink-0 w-32">{{ dateTime(entry.created_at) }}</span>
-              <span>{{ entry.from_status ?? '—' }} → {{ entry.to_status }}@if (entry.reason) { — {{ entry.reason }} }</span>
+            <div class="timeline-item">
+              <span class="timeline-dot"></span>
+              <div class="min-w-0">
+                <p class="timeline-time">{{ dateTime(entry.created_at) }}</p>
+                <p class="text-xs mt-0.5">{{ entry.from_status ?? '—' }} → {{ entry.to_status }}@if (entry.reason) { — {{ entry.reason }} }</p>
+              </div>
             </div>
           }
         </div>

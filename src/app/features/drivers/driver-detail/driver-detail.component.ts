@@ -6,8 +6,16 @@ import { DriversService, DriverQuality, SanctionType } from '../../../core/servi
 import { AdminUserDetail, ProblemDetails } from '../../../core/models';
 import { formatDate, formatDateTime, formatPercent } from '../../../core/utils/formatters';
 import {
-  AlertBannerComponent, BreadcrumbsComponent, ConfirmService, FormFieldComponent, ModalComponent, SelectComponent,
-  SelectOption, StatusBadgeComponent, ToastService, FormFeedbackService,
+  AlertBannerComponent,
+  ConfirmService,
+  FormFeedbackService,
+  FormFieldComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SelectComponent,
+  SelectOption,
+  StatusBadgeComponent,
+  ToastService,
 } from '../../../shared/ui';
 
 const SANCTION_TYPE_OPTIONS: SelectOption[] = [
@@ -18,9 +26,15 @@ const SANCTION_TYPE_OPTIONS: SelectOption[] = [
 @Component({
   selector: 'app-driver-detail',
   imports: [
-    DecimalPipe, ReactiveFormsModule, BreadcrumbsComponent, StatusBadgeComponent, AlertBannerComponent, ModalComponent,
-    FormFieldComponent, SelectComponent,
-  ],
+  AlertBannerComponent,
+  DecimalPipe,
+  FormFieldComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  ReactiveFormsModule,
+  SelectComponent,
+  StatusBadgeComponent,
+],
   templateUrl: './driver-detail.component.html',
 })
 export class DriverDetailComponent {

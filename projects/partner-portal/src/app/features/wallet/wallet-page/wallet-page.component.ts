@@ -1,3 +1,4 @@
+import { AlertBannerComponent } from '@lvb/ui/alert-banner/alert-banner.component';
 import { Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { tap } from 'rxjs';
@@ -10,7 +11,7 @@ import { ProblemDetails } from '@lvb/models/common.model';
 import { momoAccount, personName } from '@lvb/utils/validators';
 import { formatDateTime, formatXaf } from '@lvb/utils/formatters';
 import { I18nService } from '@lvb/i18n/i18n.service';
-import { BreadcrumbsComponent } from '@lvb/ui/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '@lvb/ui/page-header/page-header.component';
 import { TabDef, TabsComponent } from '@lvb/ui/tabs/tabs.component';
 import { ForbiddenStateComponent } from '@lvb/ui/forbidden-state/forbidden-state.component';
 import { StatusBadgeComponent } from '@lvb/ui/status-badge/status-badge.component';
@@ -39,10 +40,19 @@ const PROVIDER_OPTIONS: SelectOption[] = [
 @Component({
   selector: 'app-wallet-page',
   imports: [
-    ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, ForbiddenStateComponent, StatusBadgeComponent,
-    StatTileComponent, SelectComponent, DataTableComponent, TableCellDefDirective, FormFieldComponent,
-    ModalComponent,
-  ],
+  AlertBannerComponent,
+  DataTableComponent,
+  ForbiddenStateComponent,
+  FormFieldComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  ReactiveFormsModule,
+  SelectComponent,
+  StatTileComponent,
+  StatusBadgeComponent,
+  TableCellDefDirective,
+  TabsComponent,
+],
   templateUrl: './wallet-page.component.html',
 })
 export class WalletPageComponent {

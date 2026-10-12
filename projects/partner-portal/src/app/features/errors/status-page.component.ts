@@ -5,11 +5,16 @@ import { RouterLink } from '@angular/router';
   selector: 'app-status-page',
   imports: [RouterLink],
   template: `
-    <div class="min-h-screen flex flex-col items-center justify-center gap-3 text-center p-6" style="background: var(--surface-0)">
-      <p class="text-5xl font-bold" style="color: var(--brand)">{{ code() }}</p>
+    <div class="flex min-h-[62vh] flex-col items-center justify-center gap-3.5 text-center py-10">
+      <span class="icon-chip" style="height: 54px; width: 54px; border-radius: 17px; background: var(--app-accent-soft); color: var(--app-accent-ink)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" /><path d="M12 8v4M12 16h.01" />
+        </svg>
+      </span>
+      <p class="font-heading text-4xl font-extrabold tracking-tight" style="color: var(--app-accent)">{{ code() }}</p>
       <h1 class="text-lg font-semibold">{{ title() }}</h1>
-      <p class="text-sm max-w-sm" style="color: var(--text-muted)">{{ message() }}</p>
-      <a routerLink="/" class="btn btn-primary mt-3">Retour à l’accueil</a>
+      <p class="text-sm max-w-sm leading-relaxed" style="color: var(--text-muted)">{{ message() }}</p>
+      <a routerLink="/" class="btn btn-primary mt-2">Retour à l’accueil</a>
     </div>
   `,
 })

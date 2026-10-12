@@ -9,9 +9,21 @@ import {
 import { formatDateTime, formatPercent, formatXaf, humanizeSlug } from '../../../core/utils/formatters';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
-  BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, FormFieldComponent,
-  ModalComponent, SelectComponent, SelectOption, StatusBadgeComponent, TabDef, TableCellDefDirective, TabsComponent,
-  ToastService, FormFeedbackService,
+  ColumnDef,
+  ConfirmService,
+  DataTableComponent,
+  ForbiddenStateComponent,
+  FormFeedbackService,
+  FormFieldComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SelectComponent,
+  SelectOption,
+  StatusBadgeComponent,
+  TabDef,
+  TableCellDefDirective,
+  TabsComponent,
+  ToastService,
 } from '../../../shared/ui';
 
 const WITHDRAWAL_STATUSES: WithdrawalStatus[] = ['EN_ATTENTE', 'EN_COURS', 'PAYE', 'REJETE', 'ECHEC'];
@@ -31,9 +43,17 @@ const RESOLUTION_ACTION_OPTIONS: SelectOption[] = (Object.keys(RESOLUTION_ACTION
 @Component({
   selector: 'app-finance-page',
   imports: [
-    ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, DataTableComponent, TableCellDefDirective,
-    StatusBadgeComponent, ModalComponent, FormFieldComponent, ForbiddenStateComponent, SelectComponent,
-  ],
+  DataTableComponent,
+  ForbiddenStateComponent,
+  FormFieldComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  ReactiveFormsModule,
+  SelectComponent,
+  StatusBadgeComponent,
+  TableCellDefDirective,
+  TabsComponent,
+],
   templateUrl: './finance-page.component.html',
 })
 export class FinancePageComponent {

@@ -8,15 +8,15 @@ const TONE_CLASSES: Record<string, string> = {
   serious: 'text-(--status-serious) bg-(--status-serious-bg)',
   critical: 'text-(--status-critical) bg-(--status-critical-bg)',
   neutral: 'text-(--status-neutral) bg-(--status-neutral-bg)',
-  info: 'text-(--brand-600) bg-(--brand-50)',
+  info: 'text-(--app-accent-ink) bg-(--app-accent-soft)',
 };
 
 /** Status is always paired with a visible label — never color alone (accessibility non-negotiable). */
 @Component({
   selector: 'app-status-badge',
   template: `
-    <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap" [class]="toneClass()">
-      <span class="h-1.5 w-1.5 rounded-full" [style.background]="dotColor()"></span>
+    <span class="status-pill" [class]="toneClass()">
+      <span class="status-pill-dot" aria-hidden="true"></span>
       {{ label() }}
     </span>
   `,
@@ -30,5 +30,4 @@ export class StatusBadgeComponent {
   readonly tone = computed(() => toneFor(this.domain(), this.status()));
   readonly toneClass = computed(() => TONE_CLASSES[this.tone()]);
   readonly label = computed(() => this.i18n.t(i18nKeyFor(this.domain(), this.status())));
-  readonly dotColor = computed(() => `var(--status-${this.tone() === 'info' ? 'neutral' : this.tone()})`);
 }

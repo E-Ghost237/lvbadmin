@@ -1,96 +1,119 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Supervision' }]" />
+<div class="page">
+  <app-page-header
+    [crumbs]="[{ label: 'Supervision' }]"
+    title="Supervision temps réel"
+    subtitle="Détectez et traitez une anomalie avant que le client ne s’en aperçoive."
+  >
+    @if (lastUpdate(); as t) {
+      <span class="text-xs hidden sm:inline" style="color: var(--text-muted)">Mis à jour à {{ t.toLocaleTimeString('fr-FR') }}</span>
+    }
+    <button type="button" class="btn btn-secondary btn-sm" [disabled]="loading()" (click)="fetch()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v6h-6" /></svg>
+      Actualiser
+    </button>
+  </app-page-header>
 
-<div class="flex items-center justify-between mb-5">
-  <div>
-    <h1 class="text-xl font-semibold">Supervision temps réel</h1>
-    <p class="text-sm mt-0.5" style="color: var(--text-muted)">Détectez et traitez une anomalie avant que le client ne s’en aperçoive.</p>
-  </div>
-  <button type="button" class="btn btn-secondary btn-sm" [disabled]="loading()" (click)="fetch()">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 4v6h-6" /></svg>
-    Actualiser
-  </button>
-</div>
-
-@if (forbidden()) {
-  <app-forbidden-state detail="Votre compte n’a pas la permission supervision.view." />
-} @else if (loading() && !dashboard()) {
-  <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
-    @for (i of [1,2,3,4,5]; track i) { <div class="skeleton h-24"></div> }
-  </div>
-} @else if (dashboard(); as d) {
-  <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
-    <app-stat-tile label="Commandes créées" [value]="d.daily_stats.created" unit="count" />
-    <app-stat-tile label="Livrées" [value]="d.daily_stats.delivered" unit="count" />
-    <app-stat-tile label="Annulées" [value]="d.daily_stats.cancelled" unit="count" />
-    <app-stat-tile label="En cours" [value]="d.orders.length" unit="count" />
-    <app-stat-tile label="Livreurs actifs" [value]="activeDriversCount()" [target]="d.drivers.length" unit="count" />
-  </div>
-
-  <div class="grid grid-cols-1 xl:grid-cols-5 gap-4 mt-5 items-stretch">
-    <div class="xl:col-span-3 card p-4 flex flex-col">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-semibold">Carte temps réel</h2>
-        <p class="text-xs" style="color: var(--text-muted)">
-          {{ d.drivers.length }} livreur(s) · {{ d.orders.length }} commande(s)
-          @if (lastUpdate(); as t) { · mis à jour {{ t.toLocaleTimeString('fr-FR') }} }
-        </p>
-      </div>
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3 text-xs" style="color: var(--text-secondary)">
-        <label class="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" [checked]="live()" (change)="live.set($any($event.target).checked)" /> Temps réel (20 s)</label>
-        <label class="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" [checked]="showOrders()" (change)="showOrders.set($any($event.target).checked)" /> Commandes</label>
-        <label class="inline-flex items-center gap-1.5 cursor-pointer"><input type="checkbox" [checked]="showTrails()" (change)="showTrails.set($any($event.target).checked)" /> Trajectoires</label>
-      </div>
-      <app-map-panel [bbox]="bbox()" [markers]="mapMarkers()" [lines]="mapLines()" [units]="driverUnits()" class="block h-85 sm:h-105 xl:h-120 2xl:h-155">
-        <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--status-good)"></span> Disponible</div>
-        <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--brand)"></span> En mission</div>
-        <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--status-warning)"></span> En pause</div>
-        <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--status-neutral)"></span> Hors ligne</div>
-        <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: #2E9E44"></span> Ramassage</div>
-        <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: #D03B3B"></span> Livraison</div>
-      </app-map-panel>
+  @if (forbidden()) {
+    <app-forbidden-state detail="Votre compte n’a pas la permission supervision.view." />
+  } @else if (loading() && !dashboard()) {
+    <div class="stat-grid">
+      @for (i of [1,2,3,4,5]; track i) { <div class="skeleton h-28"></div> }
+    </div>
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-4">
+      <div class="xl:col-span-3 skeleton h-105"></div>
+      <div class="xl:col-span-2 skeleton h-105"></div>
+    </div>
+  } @else if (dashboard(); as d) {
+    <div class="stat-grid">
+      <app-stat-tile label="Commandes créées" [value]="d.daily_stats.created" unit="count" />
+      <app-stat-tile label="Livrées" [value]="d.daily_stats.delivered" unit="count" />
+      <app-stat-tile label="Annulées" [value]="d.daily_stats.cancelled" unit="count" />
+      <app-stat-tile label="En cours" [value]="d.orders.length" unit="count" />
+      <app-stat-tile label="Livreurs actifs" [value]="activeDriversCount()" [target]="d.drivers.length" unit="count" />
     </div>
 
-    <div class="xl:col-span-2 card p-4 flex flex-col">
-      <h2 class="text-sm font-semibold mb-3">Files d’alerte</h2>
-      <div class="flex flex-wrap gap-1.5 mb-3">
-        <button type="button" class="px-2.5 py-1 rounded-full text-xs font-medium" [style.background]="typeFilter() === 'TOUTES' ? 'var(--brand)' : 'var(--surface-2)'" [style.color]="typeFilter() === 'TOUTES' ? 'white' : 'var(--text-secondary)'" (click)="selectType('TOUTES')">
-          Toutes ({{ d.alerts.length }})
-        </button>
-        @for (type of alertTypes; track type) {
-          @if (alertCountByType()[type]) {
-            <button type="button" class="px-2.5 py-1 rounded-full text-xs font-medium" [style.background]="typeFilter() === type ? 'var(--brand)' : 'var(--surface-2)'" [style.color]="typeFilter() === type ? 'white' : 'var(--text-secondary)'" (click)="selectType(type)">
-              {{ alertTypeLabel[type] }} ({{ alertCountByType()[type] }})
-            </button>
-          }
-        }
-      </div>
-
-      <div class="flex-1 min-h-0 flex flex-col gap-2.5 overflow-y-auto thin-scroll max-h-105 xl:max-h-none">
-        @for (alert of filteredAlerts(); track alert.id) {
-          <div class="rounded-(--radius-md) p-3" style="border: 1px solid var(--border); background: var(--surface-2)">
-            <div class="flex items-start justify-between gap-2">
-              <div class="flex items-center gap-2">
-                <span class="h-2 w-2 rounded-full shrink-0" [style.background]="'var(--status-' + (alert.severity === 'FAIBLE' ? 'good' : alert.severity === 'MOYENNE' ? 'warning' : alert.severity === 'HAUTE' ? 'serious' : 'critical') + ')'"></span>
-                <p class="text-xs font-semibold">{{ alertTypeLabel[alert.type] }} — {{ alert.resource_type }}</p>
-              </div>
-            </div>
-            <p class="text-xs mt-1.5">{{ alert.message }}</p>
-            <p class="text-[11px] mt-1" style="color: var(--text-muted)">Ref. {{ alert.resource_id.slice(0, 12) }}…</p>
-            <div class="mt-2">
-              @if (alert.acknowledgement) {
-                <span class="text-[11px]" style="color: var(--status-good)">Acquittée</span>
-              } @else {
-                <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openAck(alert)">Acquitter</button>
-              }
-            </div>
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-4 items-stretch">
+      <section class="xl:col-span-3 card flex flex-col overflow-hidden">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Carte temps réel</h2>
+            <p class="card-sub">{{ d.drivers.length }} livreur(s) · {{ d.orders.length }} commande(s) en cours</p>
           </div>
-        } @empty {
-          <p class="text-xs text-center py-8" style="color: var(--text-muted)">Aucune alerte.</p>
-        }
-      </div>
+          <div class="card-actions text-xs" style="color: var(--text-secondary)">
+            <label class="inline-flex items-center gap-1.5 cursor-pointer px-2.5 py-1 rounded-full" style="border: 1px solid var(--border)">
+              <input type="checkbox" class="checkbox" [checked]="live()" (change)="live.set($any($event.target).checked)" /> Temps réel (20 s)
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer px-2.5 py-1 rounded-full" style="border: 1px solid var(--border)">
+              <input type="checkbox" class="checkbox" [checked]="showOrders()" (change)="showOrders.set($any($event.target).checked)" /> Commandes
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer px-2.5 py-1 rounded-full" style="border: 1px solid var(--border)">
+              <input type="checkbox" class="checkbox" [checked]="showTrails()" (change)="showTrails.set($any($event.target).checked)" /> Trajectoires
+            </label>
+          </div>
+        </div>
+        <app-map-panel [bbox]="bbox()" [markers]="mapMarkers()" [lines]="mapLines()" [units]="driverUnits()" class="block flex-1 min-h-85 sm:min-h-105 xl:min-h-120 2xl:min-h-155">
+          <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--status-good)"></span> Disponible</div>
+          <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--app-accent)"></span> En mission</div>
+          <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--status-warning)"></span> En pause</div>
+          <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: var(--status-neutral)"></span> Hors ligne</div>
+          <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: #2E9E44"></span> Ramassage</div>
+          <div legend class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full" style="background: #D03B3B"></span> Livraison</div>
+        </app-map-panel>
+      </section>
+
+      <section class="xl:col-span-2 card flex flex-col overflow-hidden">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Files d’alerte</h2>
+            <p class="card-sub">Anomalies détectées par le moteur de supervision</p>
+          </div>
+          <span class="count-chip">{{ filteredAlerts().length }}</span>
+        </div>
+
+        <div class="px-4 pt-3 flex flex-wrap gap-1.5">
+          <button type="button" class="pill-filter" [style.background]="typeFilter() === 'TOUTES' ? 'var(--app-accent)' : 'var(--surface-2)'" [style.color]="typeFilter() === 'TOUTES' ? 'white' : 'var(--text-secondary)'" (click)="selectType('TOUTES')">
+            Toutes ({{ d.alerts.length }})
+          </button>
+          @for (type of alertTypes; track type) {
+            @if (alertCountByType()[type]) {
+              <button type="button" class="pill-filter" [style.background]="typeFilter() === type ? 'var(--app-accent)' : 'var(--surface-2)'" [style.color]="typeFilter() === type ? 'white' : 'var(--text-secondary)'" (click)="selectType(type)">
+                {{ alertTypeLabel[type] }} ({{ alertCountByType()[type] }})
+              </button>
+            }
+          }
+        </div>
+
+        <div class="flex-1 min-h-0 flex flex-col gap-2.5 p-4 overflow-y-auto thin-scroll max-h-105 xl:max-h-none">
+          @for (alert of filteredAlerts(); track alert.id) {
+            <article class="list-row items-start">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="h-2 w-2 rounded-full shrink-0" [style.background]="'var(--status-' + (alert.severity === 'FAIBLE' ? 'good' : alert.severity === 'MOYENNE' ? 'warning' : alert.severity === 'HAUTE' ? 'serious' : 'critical') + ')'"></span>
+                  <p class="text-xs font-semibold">{{ alertTypeLabel[alert.type] }} — {{ alert.resource_type }}</p>
+                </div>
+                <p class="text-xs mt-1.5" style="color: var(--text-secondary)">{{ alert.message }}</p>
+                <p class="text-[11px] mt-1 font-mono" style="color: var(--text-muted)">Réf. {{ alert.resource_id.slice(0, 12) }}…</p>
+              </div>
+              <div class="shrink-0">
+                @if (alert.acknowledgement) {
+                  <span class="status-pill" style="color: var(--status-good); background: var(--status-good-bg)">Acquittée</span>
+                } @else {
+                  <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openAck(alert)">Acquitter</button>
+                }
+              </div>
+            </article>
+          } @empty {
+            <div class="inline-empty">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--status-good)" stroke-width="1.8" aria-hidden="true"><path d="m9 12 2 2 4-4" /><circle cx="12" cy="12" r="9" /></svg>
+              <p class="font-medium" style="color: var(--text-secondary)">Aucune alerte</p>
+              <p>Les files sont vides pour ce filtre.</p>
+            </div>
+          }
+        </div>
+      </section>
     </div>
-  </div>
-}
+  }
+</div>
 
 <app-modal [open]="!!ackTarget()" title="Acquitter l’alerte" [subtitle]="ackTarget()?.message ?? ''" (closed)="ackTarget.set(null)">
   <form [formGroup]="ackForm" class="flex flex-col gap-3">

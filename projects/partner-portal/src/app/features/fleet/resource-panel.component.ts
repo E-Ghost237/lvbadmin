@@ -41,19 +41,18 @@ interface ExcRow { date: string; closed: boolean; opens: string; closes: string 
   selector: 'app-resource-panel',
   imports: [ReactiveFormsModule, FormFieldComponent, SelectComponent],
   template: `
-    <div class="card p-5 mb-4">
-      <div class="flex items-start justify-between gap-3 mb-3">
+    <section class="card">
+      <div class="card-head">
         <div>
-          <p class="text-sm font-semibold">{{ label() }}</p>
-          <p class="text-xs" style="color: var(--text-muted)">{{ resource() === 'vehicles' ? 'Véhicule' : 'Chauffeur' }}</p>
+          <h2 class="card-title">{{ label() }}</h2>
+          <p class="card-sub">{{ resource() === 'vehicles' ? 'Véhicule' : 'Chauffeur' }} — documents, horaires et autorisations</p>
         </div>
         <button type="button" class="btn btn-ghost btn-sm" (click)="closed.emit()">Fermer</button>
       </div>
-      <div class="flex flex-wrap gap-1.5 mb-4">
+      <div class="card-body">
+      <div class="tab-bar mb-5">
         @for (s of sections(); track s.id) {
-          <button type="button" class="px-2.5 py-1 rounded-full text-xs font-medium"
-                  [style.background]="section() === s.id ? 'var(--brand)' : 'var(--surface-2)'"
-                  [style.color]="section() === s.id ? 'white' : 'var(--text-secondary)'" (click)="open(s.id)">{{ s.label }}</button>
+          <button type="button" class="tab" [class.tab-active]="section() === s.id" (click)="open(s.id)">{{ s.label }}</button>
         }
       </div>
 
@@ -61,63 +60,81 @@ interface ExcRow { date: string; closed: boolean; opens: string; closes: string 
         @case ('documents') {
           @if (forbidden()) { <p class="field-error">Accès refusé pour votre rôle.</p> }
           @if (docs().length === 0 && !loadingDocs()) {
-            <p class="text-sm mb-3" style="color: var(--text-muted)">Aucun document déposé.</p>
+            <div class="inline-empty">Aucun document déposé.</div>
+          } @else {
+            <div class="stack mb-5">
+              @for (d of docs(); track d.uuid) {
+                <div class="list-row">
+                  <div class="min-w-0">
+                    <p class="text-sm font-semibold">{{ kindLabel[d.kind] }}</p>
+                    <p class="text-xs mt-0.5" style="color: var(--text-muted)">{{ size(d.bytes) }} · déposé le {{ dt(d.created_at) }}</p>
+                  </div>
+                  <button type="button" class="btn btn-secondary btn-sm !py-1 shrink-0" [disabled]="opening() === d.uuid" (click)="openDoc(d)">Ouvrir</button>
+                </div>
+              }
+            </div>
           }
-          <ul class="flex flex-col gap-1.5 mb-4">
-            @for (d of docs(); track d.uuid) {
-              <li class="flex items-center justify-between gap-3 text-sm">
-                <span>{{ kindLabel[d.kind] }} <span class="text-xs" style="color: var(--text-muted)">· {{ size(d.bytes) }} · {{ dt(d.created_at) }}</span></span>
-                <button type="button" class="btn btn-secondary btn-sm !py-0.5" [disabled]="opening() === d.uuid" (click)="openDoc(d)">Ouvrir</button>
-              </li>
-            }
-          </ul>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-            <div>
-              <label class="field-label">Type</label>
-              <app-select [options]="kindOptions()" [allowClear]="false" [value]="uploadKind()" (valueChange)="uploadKind.set($event)" />
+
+          <div class="inset-panel">
+            <div class="inset-panel-head">
+              <div>
+                <p class="card-title">Déposer un document</p>
+                <p class="card-sub">PDF, JPG ou PNG — 10 Mo maximum</p>
+              </div>
             </div>
-            <div class="sm:col-span-2">
-              <label class="field-label">Fichier (PDF, JPG ou PNG — 10 Mo max)</label>
-              <input type="file" class="input" accept="application/pdf,image/jpeg,image/png" (change)="onFile($event, false)" />
+            <div class="p-4 flex flex-col gap-3">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <div>
+                  <label class="field-label" for="doc-kind">Type</label>
+                  <app-select [options]="kindOptions()" [allowClear]="false" [value]="uploadKind()" (valueChange)="uploadKind.set($event)" />
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="field-label" for="doc-file">Fichier</label>
+                  <input id="doc-file" type="file" class="input" accept="application/pdf,image/jpeg,image/png" (change)="onFile($event, false)" />
+                </div>
+              </div>
+              @if (fileError()) { <p class="field-error !mt-0">{{ fileError() }}</p> }
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="btn btn-primary btn-sm" [disabled]="uploading()" (click)="upload()">Déposer le document</button>
+              </div>
             </div>
           </div>
-          @if (fileError()) { <p class="field-error mt-1">{{ fileError() }}</p> }
-          <div class="flex flex-wrap gap-2 mt-3">
-            <button type="button" class="btn btn-primary btn-sm" [disabled]="uploading()" (click)="upload()">Déposer le document</button>
-          </div>
+
           @if (resource() === 'vehicles') {
-            <div class="mt-5 pt-4" style="border-top: 1px solid var(--border)">
-              <p class="text-sm font-medium mb-2">Photo du véhicule</p>
+            <div class="mt-5 pt-5" style="border-top: 1px solid var(--border)">
+              <p class="section-label mb-3">Photo du véhicule</p>
               <input type="file" class="input max-w-md" accept="image/jpeg,image/png,image/webp" (change)="onFile($event, true)" />
               @if (photoError()) { <p class="field-error mt-1">{{ photoError() }}</p> }
-              <button type="button" class="btn btn-secondary btn-sm mt-2" [disabled]="uploading()" (click)="uploadPhoto()">Envoyer la photo</button>
+              <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="uploading()" (click)="uploadPhoto()">Envoyer la photo</button>
             </div>
           }
         }
 
         @case ('hours') {
           @if (loadingHours()) { <div class="skeleton h-24"></div> } @else {
-            <p class="text-xs mb-3" style="color: var(--text-muted)">
+            <p class="text-xs mb-4 leading-relaxed" style="color: var(--text-muted)">
               {{ hoursConfigured() ? 'Horaires enregistrés.' : 'Aucun horaire défini : la ressource n’est pas restreinte.' }}
               Fuseau : Africa/Douala. Décochez un jour pour le marquer fermé.
             </p>
-            <div class="flex flex-col gap-2">
+            <div class="flex flex-col gap-1">
               @for (row of days(); track row.weekday; let i = $index) {
-                <div class="flex flex-wrap items-center gap-3 text-sm">
-                  <label class="inline-flex items-center gap-2 w-32"><input type="checkbox" [checked]="row.open" (change)="patchDay(i, { open: $any($event.target).checked })" /> {{ row.label }}</label>
+                <div class="list-row !py-2.5">
+                  <label class="inline-flex items-center gap-2.5 text-sm font-medium w-32 shrink-0"><input type="checkbox" class="checkbox" [checked]="row.open" (change)="patchDay(i, { open: $any($event.target).checked })" /> {{ row.label }}</label>
                   @if (row.open) {
-                    <input type="time" class="input !w-32" [value]="row.opens" (input)="patchDay(i, { opens: $any($event.target).value })" />
-                    <span>→</span>
-                    <input type="time" class="input !w-32" [value]="row.closes" (input)="patchDay(i, { closes: $any($event.target).value })" />
-                    @if (dayError(row); as e) { <span class="field-error">{{ e }}</span> }
+                    <div class="flex flex-wrap items-center gap-2.5">
+                      <input type="time" class="input !w-32" [value]="row.opens" (input)="patchDay(i, { opens: $any($event.target).value })" />
+                      <span style="color: var(--text-muted)">→</span>
+                      <input type="time" class="input !w-32" [value]="row.closes" (input)="patchDay(i, { closes: $any($event.target).value })" />
+                      @if (dayError(row); as e) { <span class="field-error !mt-0">{{ e }}</span> }
+                    </div>
                   } @else { <span class="text-xs" style="color: var(--text-muted)">Fermé</span> }
                 </div>
               }
             </div>
 
-            <p class="text-sm font-medium mt-5 mb-2">Exceptions (jours fériés, congés…)</p>
+            <p class="section-label mt-6 mb-3">Exceptions (jours fériés, congés…)</p>
             @for (ex of exceptions(); track $index; let i = $index) {
-              <div class="flex flex-wrap items-center gap-3 text-sm mb-2">
+              <div class="list-row flex-wrap mb-2">
                 <input type="date" class="input !w-44" [value]="ex.date" (input)="patchExc(i, { date: $any($event.target).value })" />
                 <label class="inline-flex items-center gap-2"><input type="checkbox" [checked]="ex.closed" (change)="patchExc(i, { closed: $any($event.target).checked })" /> Fermé toute la journée</label>
                 @if (!ex.closed) {
@@ -125,29 +142,31 @@ interface ExcRow { date: string; closed: boolean; opens: string; closes: string 
                   <span>→</span>
                   <input type="time" class="input !w-32" [value]="ex.closes" (input)="patchExc(i, { closes: $any($event.target).value })" />
                 }
-                <button type="button" class="btn btn-danger-ghost btn-sm !py-0.5" (click)="removeExc(i)">Retirer</button>
+                <button type="button" class="btn btn-danger-ghost btn-sm !py-1" (click)="removeExc(i)">Retirer</button>
               </div>
             }
-            <button type="button" class="btn btn-secondary btn-sm" (click)="addExc()">+ Ajouter une exception</button>
+            <button type="button" class="btn btn-secondary btn-sm mt-1" (click)="addExc()">+ Ajouter une exception</button>
             @if (hoursError()) { <p class="field-error mt-3">{{ hoursError() }}</p> }
-            <div class="mt-4"><button type="button" class="btn btn-primary btn-sm" [disabled]="savingHours()" (click)="saveHours()">Enregistrer les horaires</button></div>
+            <div class="mt-5 pt-4" style="border-top: 1px solid var(--border)">
+              <button type="button" class="btn btn-primary btn-sm" [disabled]="savingHours()" (click)="saveHours()">Enregistrer les horaires</button>
+            </div>
           }
         }
 
         @case ('maintenance') {
-          <form [formGroup]="rangeForm" (ngSubmit)="submitMaintenance()" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <p class="text-xs mb-4 leading-relaxed" style="color: var(--text-muted)">Le véhicule n’est plus réservable pendant la période bloquée. Retrouvez le blocage dans « Planning ».</p>
+          <form [formGroup]="rangeForm" (ngSubmit)="submitMaintenance()" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <app-field label="Début" [control]="rangeForm.controls.starts_at" required><input type="datetime-local" class="input" formControlName="starts_at" /></app-field>
             <app-field label="Fin" [control]="rangeForm.controls.ends_at" required><input type="datetime-local" class="input" formControlName="ends_at" /></app-field>
             @if (rangeForm.hasError('range') && rangeForm.controls.ends_at.touched) { <p class="field-error sm:col-span-2">La fin doit être postérieure au début.</p> }
             <app-field class="sm:col-span-2" label="Motif" [control]="rangeForm.controls.reason" required><input class="input" formControlName="reason" placeholder="Vidange, révision, réparation…" /></app-field>
-            <div class="sm:col-span-2"><button type="submit" class="btn btn-primary btn-sm" [disabled]="savingRange()">Bloquer pour maintenance</button>
-              <span class="text-xs ml-2" style="color: var(--text-muted)">Le véhicule n’est plus réservable sur cette période. Retrouvez le blocage dans « Planning ».</span></div>
+            <div class="sm:col-span-2"><button type="submit" class="btn btn-primary btn-sm" [disabled]="savingRange()">Bloquer pour maintenance</button></div>
           </form>
         }
 
         @case ('auth') {
-          <p class="text-xs mb-3" style="color: var(--text-muted)">Autorisez ce chauffeur à conduire un véhicule précis ou une catégorie de véhicules.</p>
-          <form [formGroup]="authForm" (ngSubmit)="submitAuth()" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <p class="text-xs mb-4 leading-relaxed" style="color: var(--text-muted)">Autorisez ce chauffeur à conduire un véhicule précis ou une catégorie de véhicules.</p>
+          <form [formGroup]="authForm" (ngSubmit)="submitAuth()" class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <app-field label="Véhicule" [control]="authForm.controls.vehicle_uuid" hint="Ou une catégorie ci-contre">
               <app-select [options]="vehicleOptions()" formControlName="vehicle_uuid" />
             </app-field>
@@ -157,25 +176,28 @@ interface ExcRow { date: string; closed: boolean; opens: string; closes: string 
             @if (authError()) { <p class="field-error sm:col-span-2">{{ authError() }}</p> }
             <div class="sm:col-span-2"><button type="submit" class="btn btn-primary btn-sm" [disabled]="savingAuth()">Autoriser</button></div>
           </form>
-          <p class="text-sm font-medium mt-5 mb-2">Véhicules autorisés pour ce chauffeur</p>
-          @if (loadingAuth()) { <div class="skeleton h-10"></div> }
-          @else if (authorizations().length === 0) { <p class="text-sm" style="color: var(--text-muted)">Aucune autorisation active.</p> }
-          @else {
-            <ul class="flex flex-col gap-2">
-              @for (a of authorizations(); track a.authorization_uuid) {
-                <li class="flex items-center justify-between gap-3 text-sm">
-                  <span>
-                    <span class="font-medium">{{ a.registration || a.category || 'Véhicule' }}</span>@if (a.brand) { <span> — {{ a.brand }} {{ a.model }}</span> }
-                    <span class="block text-xs" style="color: var(--text-muted)">Depuis le {{ dt(a.from) }}{{ a.until ? ' jusqu’au ' + dt(a.until) : ' — sans limite de durée' }}</span>
-                  </span>
-                  <button type="button" class="btn btn-danger-ghost btn-sm !py-0.5" (click)="revoke(a)">Révoquer</button>
-                </li>
-              }
-            </ul>
-          }
+          <div class="mt-6 pt-5" style="border-top: 1px solid var(--border)">
+            <p class="section-label mb-3">Véhicules autorisés pour ce chauffeur</p>
+            @if (loadingAuth()) { <div class="skeleton h-10"></div> }
+            @else if (authorizations().length === 0) { <div class="inline-empty">Aucune autorisation active.</div> }
+            @else {
+              <div class="stack">
+                @for (a of authorizations(); track a.authorization_uuid) {
+                  <div class="list-row">
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold">{{ a.registration || a.category || 'Véhicule' }}@if (a.brand) { <span class="font-normal" style="color: var(--text-secondary)"> — {{ a.brand }} {{ a.model }}</span> }</p>
+                      <p class="text-xs mt-0.5" style="color: var(--text-muted)">Depuis le {{ dt(a.from) }}{{ a.until ? ' jusqu’au ' + dt(a.until) : ' — sans limite de durée' }}</p>
+                    </div>
+                    <button type="button" class="btn btn-danger-ghost btn-sm !py-1 shrink-0" (click)="revoke(a)">Révoquer</button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
         }
       }
-    </div>
+      </div>
+    </section>
   `,
 })
 export class ResourcePanelComponent implements OnInit {

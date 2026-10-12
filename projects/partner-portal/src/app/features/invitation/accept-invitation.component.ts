@@ -25,22 +25,34 @@ function invitationToken(control: AbstractControl): ValidationErrors | null {
   selector: 'app-accept-invitation',
   imports: [ReactiveFormsModule, RouterLink, FormFieldComponent],
   template: `
-    <div class="max-w-lg mx-auto flex flex-col gap-4">
+    <div class="page max-w-lg">
       <div>
-        <h1 class="text-xl font-semibold">Rejoindre une équipe partenaire</h1>
-        <p class="text-sm mt-0.5" style="color: var(--text-muted)">
+        <p class="section-label">Équipe partenaire</p>
+        <h1 class="page-title mt-1.5">Rejoindre une équipe partenaire</h1>
+        <p class="page-sub mt-1">
           Saisissez le code reçu par email ou SMS. L’invitation doit correspondre à l’email ou au téléphone vérifié de votre compte, et expire après 72 h.
         </p>
       </div>
-      <form [formGroup]="form" (ngSubmit)="submit()" class="card p-5 flex flex-col gap-4">
-        <app-field label="Code d’invitation" [control]="form.controls.token" required hint="64 caractères (chiffres et lettres a–f).">
-          <input class="input font-mono text-xs" formControlName="token" autocomplete="off" spellcheck="false" />
-        </app-field>
-        <div class="flex gap-2">
-          <button type="submit" class="btn btn-primary" [disabled]="accepting()">Accepter l’invitation</button>
-          <a routerLink="/onboarding" class="btn btn-ghost">Annuler</a>
+      <section class="card">
+        <div class="card-head">
+          <span class="icon-chip" style="background: var(--app-accent-soft); color: var(--app-accent-ink)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 7a4 4 0 1 0 0 8" /><path d="M11 11h9l2 2-2 2h-2v2h-2" /></svg>
+          </span>
+          <div>
+            <h2 class="card-title">Code d’invitation</h2>
+            <p class="card-sub">Copiez le code exactement tel qu’il figure dans le message reçu</p>
+          </div>
         </div>
-      </form>
+        <form [formGroup]="form" (ngSubmit)="submit()" class="card-body flex flex-col gap-4">
+          <app-field label="Code d’invitation" [control]="form.controls.token" required hint="64 caractères (chiffres et lettres a–f).">
+            <input class="input font-mono text-xs" formControlName="token" autocomplete="off" spellcheck="false" />
+          </app-field>
+          <div class="flex gap-2">
+            <button type="submit" class="btn btn-primary" [disabled]="accepting()">Accepter l’invitation</button>
+            <a routerLink="/onboarding" class="btn btn-ghost">Annuler</a>
+          </div>
+        </form>
+      </section>
     </div>
   `,
 })

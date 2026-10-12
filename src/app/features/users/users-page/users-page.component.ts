@@ -8,9 +8,23 @@ import { formatDate, humanizeSlug } from '../../../core/utils/formatters';
 import { cmMobilePhone, emailAddress, personName } from '../../../core/utils/validators';
 import { I18nService } from '../../../core/i18n/i18n.service';
 import {
-  BreadcrumbsComponent, ColumnDef, ConfirmService, DataTableComponent, ForbiddenStateComponent, FormFieldComponent,
-  ModalComponent, SearchInputComponent, SelectComponent, SelectOption, StatusBadgeComponent, TabDef,
-  TableCellDefDirective, TabsComponent, ToastService, FormFeedbackService, CmPhoneDirective,
+  CmPhoneDirective,
+  ColumnDef,
+  ConfirmService,
+  DataTableComponent,
+  ForbiddenStateComponent,
+  FormFeedbackService,
+  FormFieldComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SearchInputComponent,
+  SelectComponent,
+  SelectOption,
+  StatusBadgeComponent,
+  TabDef,
+  TableCellDefDirective,
+  TabsComponent,
+  ToastService,
 } from '../../../shared/ui';
 
 const LANGUAGE_OPTIONS: SelectOption[] = [{ value: 'fr', label: 'Français' }, { value: 'en', label: 'English' }];
@@ -18,10 +32,20 @@ const LANGUAGE_OPTIONS: SelectOption[] = [{ value: 'fr', label: 'Français' }, {
 @Component({
   selector: 'app-users-page',
   imports: [
-    SlicePipe, ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, DataTableComponent, SearchInputComponent,
-    StatusBadgeComponent, ForbiddenStateComponent, TableCellDefDirective, ModalComponent, FormFieldComponent,
-    SelectComponent, CmPhoneDirective,
-  ],
+  CmPhoneDirective,
+  DataTableComponent,
+  ForbiddenStateComponent,
+  FormFieldComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  ReactiveFormsModule,
+  SearchInputComponent,
+  SelectComponent,
+  SlicePipe,
+  StatusBadgeComponent,
+  TableCellDefDirective,
+  TabsComponent,
+],
   templateUrl: './users-page.component.html',
 })
 export class UsersPageComponent {

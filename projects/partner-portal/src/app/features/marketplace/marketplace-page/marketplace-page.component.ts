@@ -1,3 +1,4 @@
+import { AlertBannerComponent } from '@lvb/ui/alert-banner/alert-banner.component';
 import { Component, inject, signal } from '@angular/core';
 import { intRange, requireOneOf, xafAmount } from '@lvb/utils/validators';
 import { LabelsService } from '../../../core/services/labels.service';
@@ -18,7 +19,7 @@ import { Vehicle } from '@lvb/models/rental.model';
 import { ProblemDetails } from '@lvb/models/common.model';
 import { formatXaf } from '@lvb/utils/formatters';
 import { I18nService } from '@lvb/i18n/i18n.service';
-import { BreadcrumbsComponent } from '@lvb/ui/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '@lvb/ui/page-header/page-header.component';
 import { TabDef, TabsComponent } from '@lvb/ui/tabs/tabs.component';
 import { ForbiddenStateComponent } from '@lvb/ui/forbidden-state/forbidden-state.component';
 import { StatusBadgeComponent } from '@lvb/ui/status-badge/status-badge.component';
@@ -72,10 +73,18 @@ interface OfferAction {
 @Component({
   selector: 'app-marketplace-page',
   imports: [
-    ReactiveFormsModule, BreadcrumbsComponent, TabsComponent, ForbiddenStateComponent, StatusBadgeComponent,
-    SelectComponent, DataTableComponent, TableCellDefDirective, FormFieldComponent,
-    RatePlanSimulatorComponent,
-  ],
+  AlertBannerComponent,
+  DataTableComponent,
+  ForbiddenStateComponent,
+  FormFieldComponent,
+  PageHeaderComponent,
+  RatePlanSimulatorComponent,
+  ReactiveFormsModule,
+  SelectComponent,
+  StatusBadgeComponent,
+  TableCellDefDirective,
+  TabsComponent,
+],
   templateUrl: './marketplace-page.component.html',
 })
 export class MarketplacePageComponent {

@@ -1,43 +1,61 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Journal d’audit' }]" />
-
-<div class="flex items-center justify-between mb-5">
-  <div>
-    <h1 class="text-xl font-semibold">Journal d’audit</h1>
-    <p class="text-sm mt-0.5" style="color: var(--text-muted)">Journal immuable, en écriture seule (SEC-42).</p>
-  </div>
-  <button type="button" class="btn btn-secondary btn-sm" [disabled]="exporting()" (click)="exportCsv()">Exporter CSV</button>
-</div>
+<div class="page">
+  <app-page-header
+    [crumbs]="[{ label: 'Journal d’audit' }]"
+    title="Journal d’audit"
+    subtitle="Journal immuable, en écriture seule (SEC-42)."
+  >
+    <button type="button" class="btn btn-secondary btn-sm" [disabled]="exporting()" (click)="exportCsv()">Exporter CSV</button>
+  </app-page-header>
 
 @if (forbidden()) {
   <app-forbidden-state detail="Votre compte n’a pas la permission audit.view." />
 } @else {
-  <div class="flex gap-3 mb-3 max-w-xl">
-    <input class="input" placeholder="Filtrer par action…" [value]="actionFilter()" (change)="onActionFilter($any($event.target).value)" />
-    <input class="input" placeholder="Filtrer par type de ressource…" [value]="resourceTypeFilter()" (change)="onResourceTypeFilter($any($event.target).value)" />
+  <div class="toolbar">
+    <div class="flex-1 min-w-52">
+      <input class="input" placeholder="Filtrer par action…" [value]="actionFilter()" (change)="onActionFilter($any($event.target).value)" />
+    </div>
+    <div class="flex-1 min-w-52">
+      <input class="input" placeholder="Filtrer par type de ressource…" [value]="resourceTypeFilter()" (change)="onResourceTypeFilter($any($event.target).value)" />
+    </div>
   </div>
 
-  <div class="card">
-    <app-data-table [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [rowClickable]="true" [trackBy]="trackById" (rowClick)="openDetail($event)" />
-  </div>
-  @if (nextCursor()) { <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loading()" (click)="fetch(nextCursor()!)">Charger plus</button> }
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <h2 class="card-title">Entrées journalisées</h2>
+        <p class="card-sub">Cliquez sur une ligne pour afficher le détail avant / après</p>
+      </div>
+    </div>
+    <div class="card-body-flush">
+      <app-data-table [columns]="columns" [rows]="rows()" [loading]="loading() && rows().length === 0" [rowClickable]="true" [trackBy]="trackById" (rowClick)="openDetail($event)" />
+    </div>
+    @if (nextCursor()) {
+      <div class="card-foot">
+        <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="loading()" (click)="fetch(nextCursor()!)">Charger plus</button>
+      </div>
+    }
+  </section>
 }
+
+</div>
 
 <app-modal [open]="!!detail()" title="Détail de l’entrée" [subtitle]="humanize(detail()?.action)" (closed)="detail.set(null)">
   @if (detail(); as d) {
-    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
-      <div><p class="text-xs" style="color: var(--text-muted)">Ressource</p><p>{{ humanize(d.ressource_type) }} #{{ d.ressource_id }}</p></div>
-      <div><p class="text-xs" style="color: var(--text-muted)">Acteur</p><p>{{ humanize(d.acteur_type) }} @if (d.acteur_utilisateur_id) { (#{{ d.acteur_utilisateur_id }}) }</p></div>
-      <div><p class="text-xs" style="color: var(--text-muted)">IP</p><p>{{ d.ip ?? '—' }}</p></div>
+    <div class="kv-grid kv-grid-2">
+      <div class="kv-item"><span class="kv-label">Ressource</span><span class="kv-value">{{ humanize(d.ressource_type) }} #{{ d.ressource_id }}</span></div>
+      <div class="kv-item"><span class="kv-label">Acteur</span><span class="kv-value">{{ humanize(d.acteur_type) }} @if (d.acteur_utilisateur_id) { (#{{ d.acteur_utilisateur_id }}) }</span></div>
+      <div class="kv-item"><span class="kv-label">IP</span><span class="kv-value kv-value-mono">{{ d.ip ?? '—' }}</span></div>
+      <div class="kv-item"><span class="kv-label">Code brut</span><span class="kv-value kv-value-mono">{{ d.action }}</span></div>
     </div>
-    <p class="text-[11px] mb-4" style="color: var(--text-muted)">Code brut : <span class="font-mono">{{ d.action }}</span></p>
-    <div class="grid grid-cols-2 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5 pt-4" style="border-top: 1px solid var(--border)">
       <div>
-        <p class="text-xs font-semibold mb-1.5" style="color: var(--text-muted)">AVANT</p>
-        <pre class="text-xs p-2.5 rounded-(--radius-sm) overflow-x-auto thin-scroll" style="background: var(--surface-2)">{{ d.valeur_avant | json }}</pre>
+        <p class="section-label mb-2">Avant</p>
+        <pre class="code-block">{{ d.valeur_avant | json }}</pre>
       </div>
       <div>
-        <p class="text-xs font-semibold mb-1.5" style="color: var(--text-muted)">APRÈS</p>
-        <pre class="text-xs p-2.5 rounded-(--radius-sm) overflow-x-auto thin-scroll" style="background: var(--surface-2)">{{ d.valeur_apres | json }}</pre>
+        <p class="section-label mb-2">Après</p>
+        <pre class="code-block">{{ d.valeur_apres | json }}</pre>
       </div>
     </div>
   }

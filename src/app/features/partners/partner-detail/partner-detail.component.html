@@ -1,14 +1,13 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Partenaires', link: '/partners' }, { label: partner()?.nom_commercial || uuid }]" />
-
-@if (loading()) {
-  <div class="skeleton h-40 mt-4"></div>
-} @else if (partner(); as p) {
-  <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
-    <div>
-      <h1 class="text-xl font-semibold">{{ p.nom_commercial }}</h1>
-      <p class="text-sm mt-0.5" style="color: var(--text-muted)">{{ p.ville }} · {{ p.telephone }}</p>
-    </div>
-    <div class="flex items-center gap-2 flex-wrap">
+<div class="page">
+  @if (loading()) {
+    <div class="skeleton h-40"></div>
+  } @else if (partner(); as p) {
+    <app-page-header [crumbs]="[{ label: 'Partenaires', link: '/partners' }, { label: partner()?.nom_commercial || uuid }]">
+      <span page-head-lead class="avatar-initials" aria-hidden="true">{{ p.nom_commercial.slice(0, 2) }}</span>
+      <div page-head-text>
+        <h1 class="page-title">{{ p.nom_commercial }}</h1>
+        <p class="page-sub">{{ p.ville }} · {{ p.telephone }}</p>
+      </div>
       <app-status-badge domain="partner" [status]="p.statut_partenaire" />
       <button type="button" class="btn btn-secondary btn-sm" (click)="openEdit()">Modifier</button>
       @if (p.statut_partenaire === 'EN_ATTENTE_VALIDATION') {
@@ -20,20 +19,23 @@
           [disabled]="changingStatus()" (click)="changeStatus(t)"
         >{{ t.label }}</button>
       }
-    </div>
-  </div>
+    </app-page-header>
 
-  <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
+    <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
-  <div class="mt-5">
     @if (activeTab() === 'profil') {
       @if (showReadiness()) {
-        <div class="card p-5 mb-4" [style.border-left]="'4px solid var(--status-' + (readiness().ready ? 'good' : 'warning') + ')'">
-          <p class="text-sm font-semibold mb-1">Prérequis de {{ p.statut_partenaire === 'VALIDE' ? 'l’activation' : 'la validation' }}</p>
-          <p class="text-xs mb-3" style="color: var(--text-muted)">
-            {{ readiness().ready ? 'Tout est en règle : vous pouvez ' + (p.statut_partenaire === 'VALIDE' ? 'activer' : 'valider') + ' ce partenaire.' : 'Le backend refusera la validation tant que ces éléments ne sont pas réunis (documents acceptés, identité fiscale et responsable renseignés).' }}
-          </p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+        <section class="card" [style.border-left]="'4px solid var(--status-' + (readiness().ready ? 'good' : 'warning') + ')'">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Prérequis de {{ p.statut_partenaire === 'VALIDE' ? 'l’activation' : 'la validation' }}</h2>
+              <p class="card-sub">
+                {{ readiness().ready ? 'Tout est en règle : vous pouvez ' + (p.statut_partenaire === 'VALIDE' ? 'activer' : 'valider') + ' ce partenaire.' : 'Le backend refusera la validation tant que ces éléments ne sont pas réunis (documents acceptés, identité fiscale et responsable renseignés).' }}
+              </p>
+            </div>
+          </div>
+          <div class="card-body">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
             @for (item of readiness().documents; track item.key) {
               <div class="flex items-start gap-2"><span class="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] text-white" [style.background]="item.ok ? 'var(--status-good)' : 'var(--status-warning)'">{{ item.ok ? '✓' : '!' }}</span><span>{{ item.label }}@if (!item.ok && item.detail) { <span class="text-xs" style="color: var(--text-muted)"> — {{ item.detail }}</span> }</span></div>
             }
@@ -41,43 +43,64 @@
               <div class="flex items-start gap-2"><span class="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] text-white" [style.background]="item.ok ? 'var(--status-good)' : 'var(--status-warning)'">{{ item.ok ? '✓' : '!' }}</span><span>{{ item.label }}@if (!item.ok) { <span class="text-xs" style="color: var(--text-muted)"> — non renseigné</span> }</span></div>
             }
           </div>
-        </div>
+          </div>
+        </section>
       }
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div class="card p-5">
-          <p class="text-sm font-semibold mb-3">Profil</p>
-          <div class="grid grid-cols-2 gap-3 text-sm">
-            <div><p class="text-xs" style="color: var(--text-muted)">Secteur d’activité</p><p>{{ p.secteur_activite || '—' }}</p></div>
-            <div><p class="text-xs" style="color: var(--text-muted)">Catégorie</p><p>{{ p.categorie?.nom || '—' }}</p></div>
-            <div><p class="text-xs" style="color: var(--text-muted)">Email</p><p>{{ p.email || '—' }}</p></div>
-            <div><p class="text-xs" style="color: var(--text-muted)">Site web</p><p>{{ p.site_web || '—' }}</p></div>
-            <div class="col-span-2"><p class="text-xs" style="color: var(--text-muted)">Adresse</p><p>{{ p.adresse_physique }}</p></div>
-            <div><p class="text-xs" style="color: var(--text-muted)">RCCM</p><p>{{ p.rccm || '—' }}</p></div>
-            <div><p class="text-xs" style="color: var(--text-muted)">Raison sociale</p><p>{{ p.raison_sociale || '—' }}</p></div>
-            <div><p class="text-xs" style="color: var(--text-muted)">N° contribuable</p><p>{{ p.numero_contribuable || '—' }}</p></div>
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Profil</h2>
+              <p class="card-sub">Raison sociale, RCCM et n° contribuable changent uniquement via une demande approuvée</p>
+            </div>
           </div>
-          <p class="text-xs mt-3" style="color: var(--text-muted)">Raison sociale, numéro contribuable, RCCM et nom du responsable ne se modifient que par demande de changement approuvée (onglet « Demandes de modification »).</p>
-        </div>
+          <div class="card-body">
+          <div class="kv-grid kv-grid-2">
+            <div class="kv-item"><span class="kv-label">Secteur d’activité</span><span class="kv-value">{{ p.secteur_activite || '—' }}</span></div>
+            <div class="kv-item"><span class="kv-label">Catégorie</span><span class="kv-value">{{ p.categorie?.nom || '—' }}</span></div>
+            <div class="kv-item"><span class="kv-label">Email</span><span class="kv-value">{{ p.email || '—' }}</span></div>
+            <div class="kv-item"><span class="kv-label">Site web</span><span class="kv-value">{{ p.site_web || '—' }}</span></div>
+            <div class="kv-item col-span-full"><span class="kv-label">Adresse</span><span class="kv-value">{{ p.adresse_physique }}</span></div>
+            <div class="kv-item"><span class="kv-label">RCCM</span><span class="kv-value">{{ p.rccm || '—' }}</span></div>
+            <div class="kv-item"><span class="kv-label">Raison sociale</span><span class="kv-value">{{ p.raison_sociale || '—' }}</span></div>
+            <div class="kv-item"><span class="kv-label">N° contribuable</span><span class="kv-value">{{ p.numero_contribuable || '—' }}</span></div>
+          </div>
+          </div>
+        </section>
 
-        <div class="card p-5">
-          <p class="text-sm font-semibold mb-3">Responsable & statut</p>
-          <div class="grid grid-cols-2 gap-3 text-sm">
-            <div><p class="text-xs" style="color: var(--text-muted)">Nom</p><p>{{ p.responsable_nom }}</p></div>
-            <div><p class="text-xs" style="color: var(--text-muted)">Téléphone</p><p>{{ p.responsable_telephone }}</p></div>
-            <div class="col-span-2"><p class="text-xs" style="color: var(--text-muted)">Email</p><p>{{ p.responsable_email || '—' }}</p></div>
-            <div><p class="text-xs" style="color: var(--text-muted)">Créé le</p><p>{{ date(p.cree_le) }}</p></div>
-            <div><p class="text-xs" style="color: var(--text-muted)">Validé le</p><p>{{ date(p.valide_le) }}</p></div>
-            @if (p.archive_le) {
-              <div><p class="text-xs" style="color: var(--text-muted)">Archivé le</p><p>{{ date(p.archive_le) }}</p></div>
-            }
-            <div><p class="text-xs" style="color: var(--text-muted)">Dernière modification</p><p>{{ dateTime(p.modifie_le) }}</p></div>
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <h2 class="card-title">Responsable & statut</h2>
+              <p class="card-sub">Interlocuteur principal du dossier partenaire</p>
+            </div>
           </div>
-        </div>
+          <div class="card-body">
+          <div class="kv-grid kv-grid-2">
+            <div class="kv-item"><span class="kv-label">Nom</span><span class="kv-value">{{ p.responsable_nom }}</span></div>
+            <div class="kv-item"><span class="kv-label">Téléphone</span><span class="kv-value">{{ p.responsable_telephone }}</span></div>
+            <div class="kv-item col-span-full"><span class="kv-label">Email</span><span class="kv-value">{{ p.responsable_email || '—' }}</span></div>
+            <div class="kv-item"><span class="kv-label">Créé le</span><span class="kv-value">{{ date(p.cree_le) }}</span></div>
+            <div class="kv-item"><span class="kv-label">Validé le</span><span class="kv-value">{{ date(p.valide_le) }}</span></div>
+            @if (p.archive_le) {
+              <div class="kv-item"><span class="kv-label">Archivé le</span><span class="kv-value">{{ date(p.archive_le) }}</span></div>
+            }
+            <div class="kv-item"><span class="kv-label">Dernière modification</span><span class="kv-value">{{ dateTime(p.modifie_le) }}</span></div>
+          </div>
+          </div>
+        </section>
       </div>
     }
 
     @if (activeTab() === 'documents') {
-      <div class="card">
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Justificatifs</h2>
+            <p class="card-sub">Validez ou rejetez chaque pièce déposée par le partenaire</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
         <app-data-table
           [columns]="documentColumns" [rows]="documents()" [loading]="loadingDocuments() && documents().length === 0"
           [trackBy]="trackByDocumentUuid" emptyTitle="Aucun document" emptyHint="Le partenaire n’a encore déposé aucun justificatif."
@@ -97,51 +120,76 @@
             </div>
           </ng-template>
         </app-data-table>
-      </div>
-      @if (documentsCursor()) {
-        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingDocuments()" (click)="fetchDocuments(documentsCursor()!)">Charger plus</button>
-      }
+        </div>
+        @if (documentsCursor()) {
+          <div class="card-foot">
+            <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="loadingDocuments()" (click)="fetchDocuments(documentsCursor()!)">Charger plus</button>
+          </div>
+        }
+      </section>
     }
 
     @if (activeTab() === 'changes') {
       @if (loadingChanges()) {
         <div class="flex flex-col gap-2"><div class="skeleton h-24"></div><div class="skeleton h-24"></div></div>
       } @else if (changeRequests().length === 0) {
-        <p class="text-sm text-center py-8" style="color: var(--text-muted)">Aucune demande de modification.</p>
+        <div class="card"><div class="inline-empty">Aucune demande de modification.</div></div>
       } @else {
         <div class="flex flex-col gap-3">
           @for (change of changeRequests(); track change.uuid) {
-            <div class="card p-4">
-              <div class="flex items-center justify-between mb-3">
-                <p class="text-xs" style="color: var(--text-muted)">Demandé le {{ date(change.cree_le) }}</p>
-                <app-status-badge domain="partnerChange" [status]="change.statut" />
+            <section class="card">
+              <div class="card-head">
+                <div>
+                  <h2 class="card-title">Demande du {{ date(change.cree_le) }}</h2>
+                  <p class="card-sub">{{ changedFields(change).length }} champ(s) concerné(s)</p>
+                </div>
+                <div class="card-actions"><app-status-badge domain="partnerChange" [status]="change.statut" /></div>
               </div>
-              <div class="flex flex-col gap-2">
+              <div class="card-body">
+              <div class="stack">
                 @for (f of changedFields(change); track f.label) {
                   <div class="text-sm">
-                    <p class="text-xs font-medium" style="color: var(--text-muted)">{{ f.label }}</p>
-                    <p><span style="color: var(--text-muted)">{{ f.before }}</span> → <span class="font-medium">{{ f.after }}</span></p>
+                    <p class="text-xs font-semibold uppercase tracking-wide" style="color: var(--text-muted)">{{ f.label }}</p>
+                    <p class="mt-0.5"><span style="color: var(--text-muted)">{{ f.before }}</span> → <span class="font-semibold">{{ f.after }}</span></p>
                   </div>
                 }
               </div>
               @if (change.decide_le) {
-                <p class="text-xs mt-3" style="color: var(--text-muted)">Décidé le {{ date(change.decide_le) }}</p>
+                <p class="text-xs mt-4" style="color: var(--text-muted)">Décidé le {{ date(change.decide_le) }}</p>
                 @if (change.motif) { <p class="text-xs" style="color: var(--text-muted)">Motif : {{ change.motif }}</p> }
               } @else {
-                <div class="flex gap-2 mt-3">
+                <div class="flex gap-2 mt-4 pt-4" style="border-top: 1px solid var(--border)">
                   <button type="button" class="btn btn-primary btn-sm" [disabled]="decidingChange() === change.uuid" (click)="decideChange(change, true)">Approuver</button>
                   <button type="button" class="btn btn-danger-ghost btn-sm" [disabled]="decidingChange() === change.uuid" (click)="decideChange(change, false)">Rejeter</button>
                 </div>
               }
-            </div>
+              </div>
+            </section>
           }
         </div>
       }
     }
 
     @if (activeTab() === 'team') {
-      <button type="button" class="btn btn-primary btn-sm mb-3" (click)="openInvite()">+ Inviter un membre</button>
-      <div class="card">
+      <div class="toolbar">
+        <div>
+          <p class="section-label">Équipe partenaire</p>
+          <p class="text-xs mt-1" style="color: var(--text-muted)">Un membre doit déjà posséder un compte LVB actif</p>
+        </div>
+        <span class="toolbar-spacer"></span>
+        @if (members().length) { <span class="count-chip">{{ members().length }} membre(s)</span> }
+        <div class="toolbar-divider"></div>
+        <button type="button" class="btn btn-primary btn-sm" (click)="openInvite()">+ Inviter un membre</button>
+      </div>
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Membres</h2>
+            <p class="card-sub">Rôles et accès au périmètre partenaire</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
         <app-data-table
           [columns]="memberColumns" [rows]="members()" [loading]="loadingMembers() && members().length === 0"
           [trackBy]="trackByMemberUuid" emptyTitle="Aucun membre" emptyHint="Invitez un utilisateur pour lui donner accès au périmètre partenaire."
@@ -166,23 +214,35 @@
             <button type="button" class="btn btn-danger-ghost btn-sm !py-1" [disabled]="revokingMember() === row.uuid" (click)="revokeMember(row)">Révoquer</button>
           </ng-template>
         </app-data-table>
-      </div>
+        </div>
+      </section>
     }
 
     @if (activeTab() === 'audit') {
-      <div class="card">
-        <app-data-table
-          [columns]="auditColumns" [rows]="auditEntries()" [loading]="loadingAudit() && auditEntries().length === 0"
-          [rowClickable]="true" [trackBy]="trackByAuditId" (rowClick)="openAuditDetail($event)"
-          emptyTitle="Aucune entrée" emptyHint="Aucune action sensible n’a encore été journalisée pour ce partenaire."
-        />
-      </div>
-      @if (auditCursor()) {
-        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingAudit()" (click)="fetchAudit(auditCursor()!)">Charger plus</button>
-      }
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Actions journalisées</h2>
+            <p class="card-sub">Cliquez sur une ligne pour voir la valeur avant / après</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
+          <app-data-table
+            [columns]="auditColumns" [rows]="auditEntries()" [loading]="loadingAudit() && auditEntries().length === 0"
+            [rowClickable]="true" [trackBy]="trackByAuditId" (rowClick)="openAuditDetail($event)"
+            emptyTitle="Aucune entrée" emptyHint="Aucune action sensible n’a encore été journalisée pour ce partenaire."
+          />
+        </div>
+        @if (auditCursor()) {
+          <div class="card-foot">
+            <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="loadingAudit()" (click)="fetchAudit(auditCursor()!)">Charger plus</button>
+          </div>
+        }
+      </section>
     }
-  </div>
-}
+  }
+</div>
 
 <app-modal [open]="editOpen()" title="Modifier le profil" size="lg" (closed)="editOpen.set(false)">
   <form [formGroup]="editForm" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -260,20 +320,20 @@
 
 <app-modal [open]="!!auditDetail()" title="Détail de l’entrée" [subtitle]="humanize(auditDetail()?.action)" (closed)="auditDetail.set(null)">
   @if (auditDetail(); as d) {
-    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
-      <div><p class="text-xs" style="color: var(--text-muted)">Ressource</p><p>{{ humanize(d.ressource_type) }} #{{ d.ressource_id }}</p></div>
-      <div><p class="text-xs" style="color: var(--text-muted)">Acteur</p><p>{{ humanize(d.acteur_type) }} @if (d.acteur_utilisateur_id) { (#{{ d.acteur_utilisateur_id }}) }</p></div>
-      <div><p class="text-xs" style="color: var(--text-muted)">IP</p><p>{{ d.ip ?? '—' }}</p></div>
+    <div class="kv-grid kv-grid-2">
+      <div class="kv-item"><span class="kv-label">Ressource</span><span class="kv-value">{{ humanize(d.ressource_type) }} #{{ d.ressource_id }}</span></div>
+      <div class="kv-item"><span class="kv-label">Acteur</span><span class="kv-value">{{ humanize(d.acteur_type) }} @if (d.acteur_utilisateur_id) { (#{{ d.acteur_utilisateur_id }}) }</span></div>
+      <div class="kv-item"><span class="kv-label">IP</span><span class="kv-value kv-value-mono">{{ d.ip ?? '—' }}</span></div>
+      <div class="kv-item col-span-full"><span class="kv-label">Code brut</span><span class="kv-value kv-value-mono">{{ d.action }}</span></div>
     </div>
-    <p class="text-[11px] mb-4" style="color: var(--text-muted)">Code brut : <span class="font-mono">{{ d.action }}</span></p>
-    <div class="grid grid-cols-2 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5 pt-4" style="border-top: 1px solid var(--border)">
       <div>
-        <p class="text-xs font-semibold mb-1.5" style="color: var(--text-muted)">AVANT</p>
-        <pre class="text-xs p-2.5 rounded-(--radius-sm) overflow-x-auto thin-scroll" style="background: var(--surface-2)">{{ d.valeur_avant | json }}</pre>
+        <p class="section-label mb-2">Avant</p>
+        <pre class="code-block">{{ d.valeur_avant | json }}</pre>
       </div>
       <div>
-        <p class="text-xs font-semibold mb-1.5" style="color: var(--text-muted)">APRÈS</p>
-        <pre class="text-xs p-2.5 rounded-(--radius-sm) overflow-x-auto thin-scroll" style="background: var(--surface-2)">{{ d.valeur_apres | json }}</pre>
+        <p class="section-label mb-2">Après</p>
+        <pre class="code-block">{{ d.valeur_apres | json }}</pre>
       </div>
     </div>
   }

@@ -3,6 +3,14 @@
  * LVB Horizon tokens (src/styles.css). Gives the partner-facing app its
  * own personality while staying on the same design system.
  * ------------------------------------------------------------------- */
+:root {
+  /* Content-area accent: green here, blue in the admin console. */
+  --app-accent: var(--accent-600);
+  --app-accent-ink: var(--accent-ink);
+  --app-accent-soft: var(--accent-50);
+  --app-accent-ring: color-mix(in srgb, var(--accent-600) 18%, transparent);
+}
+
 .btn-primary {
   background: linear-gradient(135deg, #9ada3d 0%, #6bb01c 60%, #57940f 100%);
   color: #10240a;

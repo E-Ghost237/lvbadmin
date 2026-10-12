@@ -1,74 +1,113 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Paramètres' }]" />
+<div class="page">
+  <app-page-header
+    [crumbs]="[{ label: 'Paramètres' }]"
+    title="Paramètres"
+    subtitle="Paramètres opérationnels modifiables sans redéploiement (UC-ADM-13)."
+  />
 
-<div class="mb-5">
-  <h1 class="text-xl font-semibold">Paramètres</h1>
-  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Paramètres opérationnels modifiables sans redéploiement (UC-ADM-13).</p>
-</div>
+  @if (forbidden()) {
+    <app-forbidden-state detail="Votre compte n’a pas la permission settings.manage." />
+  } @else {
+    <div class="grid grid-cols-1 lg:grid-cols-[1fr_minmax(300px,380px)] gap-4 items-start">
+      <div class="flex flex-col gap-4 min-w-0">
+        <div class="toolbar">
+          <div class="toolbar-grow !max-w-none">
+            <label class="field-label">Clé du paramètre</label>
+            <input class="input font-mono" [value]="key()" (input)="onKeyInput($any($event.target).value)" (keydown.enter)="lookup()" placeholder="ex. dispatch.rayon_vague_1_km" />
+          </div>
+          <button type="button" class="btn btn-primary" [disabled]="loading() || !key().trim()" (click)="lookup()">Charger</button>
+        </div>
 
-@if (forbidden()) {
-  <app-forbidden-state detail="Votre compte n’a pas la permission settings.manage." />
-} @else {
-<div class="grid grid-cols-1 lg:grid-cols-[1fr_minmax(300px,380px)] gap-4 items-start">
-  <div>
-    <div class="card p-4 flex items-end gap-3">
-      <div class="flex-1">
-        <label class="field-label">Clé du paramètre</label>
-        <input class="input" [value]="key()" (input)="onKeyInput($any($event.target).value)" (keydown.enter)="lookup()" placeholder="ex. dispatch.rayon_vague_1_km" />
-      </div>
-      <button type="button" class="btn btn-primary" [disabled]="loading() || !key().trim()" (click)="lookup()">Charger</button>
-    </div>
-
-    @if (loading()) {
-      <div class="skeleton h-40 mt-4"></div>
-    } @else if (notFound()) {
-      <div class="mt-4 flex flex-col gap-3">
-        <app-alert-banner kind="warning">Cette clé n’existe pas encore — vous pouvez la créer ci-dessous.</app-alert-banner>
-        <form [formGroup]="editForm" class="card p-5 flex flex-col gap-3">
-          <app-field label="Valeur" [control]="editForm.controls.valeur" required><input class="input" formControlName="valeur" /></app-field>
-          <app-field label="Type" [control]="editForm.controls.type" required>
-            <app-select [options]="parametreTypeOptions" [allowClear]="false" formControlName="type" />
-          </app-field>
-          <app-field label="Description" [control]="editForm.controls.description"><input class="input" formControlName="description" /></app-field>
-          <button type="button" class="btn btn-primary self-start" [disabled]="saving()" (click)="save()">Créer</button>
-        </form>
-      </div>
-    } @else if (current(); as p) {
-      <div class="mt-4">
-        <form [formGroup]="editForm" class="card p-5 flex flex-col gap-3">
-          <p class="text-sm font-medium font-mono">{{ p.cle }}</p>
-          <app-field label="Valeur" [control]="editForm.controls.valeur" required><input class="input" formControlName="valeur" /></app-field>
-          <app-field label="Type" [control]="editForm.controls.type" required>
-            <app-select [options]="parametreTypeOptions" [allowClear]="false" formControlName="type" />
-          </app-field>
-          <app-field label="Description" [control]="editForm.controls.description"><input class="input" formControlName="description" /></app-field>
-          <button type="button" class="btn btn-primary self-start" [disabled]="saving()" (click)="save()">Enregistrer</button>
-        </form>
-      </div>
-    }
-  </div>
-
-  <div class="card p-4">
-    <p class="text-sm font-medium mb-3">Paramètres existants</p>
-    @if (loadingList() && settingsList().length === 0) {
-      <div class="flex flex-col gap-2"><div class="skeleton h-11"></div><div class="skeleton h-11"></div><div class="skeleton h-11"></div></div>
-    } @else {
-      <div class="flex flex-col gap-1 max-h-150 overflow-y-auto thin-scroll">
-        @for (s of settingsList(); track s.key) {
-          <button
-            type="button" class="text-left rounded-(--radius-sm) px-2.5 py-2 hover:bg-(--surface-2) transition-colors"
-            [style.background]="key() === s.key ? 'var(--brand-50)' : 'transparent'" (click)="selectKey(s.key)"
-          >
-            <p class="text-sm font-mono">{{ s.key }}</p>
-            <p class="text-xs mt-0.5 truncate" style="color: var(--text-muted)">{{ s.value }} @if (s.updated_at) { · {{ dateTime(s.updated_at) }} }</p>
-          </button>
-        } @empty {
-          <p class="text-xs text-center py-6" style="color: var(--text-muted)">Aucun paramètre enregistré pour l’instant.</p>
+        @if (loading()) {
+          <div class="skeleton h-40"></div>
+        } @else if (notFound()) {
+          <div class="flex flex-col gap-3">
+            <app-alert-banner kind="warning">Cette clé n’existe pas encore — vous pouvez la créer ci-dessous.</app-alert-banner>
+            <form [formGroup]="editForm" class="card">
+              <div class="card-head">
+                <div>
+                  <h2 class="card-title">Créer le paramètre</h2>
+                  <p class="card-sub">Il sera utilisé immédiatement par les services concernés</p>
+                </div>
+              </div>
+              <div class="card-body flex flex-col gap-3">
+                <app-field label="Valeur" [control]="editForm.controls.valeur" required><input class="input" formControlName="valeur" /></app-field>
+                <app-field label="Type" [control]="editForm.controls.type" required>
+                  <app-select [options]="parametreTypeOptions" [allowClear]="false" formControlName="type" />
+                </app-field>
+                <app-field label="Description" [control]="editForm.controls.description"><input class="input" formControlName="description" /></app-field>
+                <button type="button" class="btn btn-primary self-start" [disabled]="saving()" (click)="save()">Créer</button>
+              </div>
+            </form>
+          </div>
+        } @else if (current(); as p) {
+          <form [formGroup]="editForm" class="card">
+            <div class="card-head">
+              <div class="min-w-0">
+                <h2 class="card-title font-mono break-all">{{ p.cle }}</h2>
+                <p class="card-sub">Modification appliquée sans redéploiement</p>
+              </div>
+            </div>
+            <div class="card-body flex flex-col gap-3">
+              <app-field label="Valeur" [control]="editForm.controls.valeur" required><input class="input" formControlName="valeur" /></app-field>
+              <app-field label="Type" [control]="editForm.controls.type" required>
+                <app-select [options]="parametreTypeOptions" [allowClear]="false" formControlName="type" />
+              </app-field>
+              <app-field label="Description" [control]="editForm.controls.description"><input class="input" formControlName="description" /></app-field>
+              <button type="button" class="btn btn-primary self-start" [disabled]="saving()" (click)="save()">Enregistrer</button>
+            </div>
+          </form>
+        } @else {
+          <div class="card">
+            <div class="state-block">
+              <div class="state-icon" style="background: var(--app-accent-soft); color: var(--app-accent-ink)">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H7a1.7 1.7 0 0 0 1-1.5V1a2 2 0 1 1 4 0v.1A1.7 1.7 0 0 0 15 2.6a1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V7a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></svg>
+              </div>
+              <p class="state-title">Choisissez un paramètre</p>
+              <p class="state-hint">Saisissez une clé ci-dessus ou sélectionnez-en une dans la liste pour l’afficher et le modifier.</p>
+            </div>
+          </div>
         }
       </div>
-      @if (listCursor()) {
-        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingList()" (click)="fetchList(listCursor()!)">Charger plus</button>
-      }
-    }
-  </div>
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Paramètres existants</h2>
+            <p class="card-sub">Sélectionnez une clé pour la modifier</p>
+          </div>
+          @if (settingsList().length) {
+            <span class="count-chip">{{ settingsList().length }}</span>
+          }
+        </div>
+        <div class="card-body-flush">
+          @if (loadingList() && settingsList().length === 0) {
+            <div class="flex flex-col gap-2 p-4">
+              <div class="skeleton h-12"></div><div class="skeleton h-12"></div><div class="skeleton h-12"></div>
+            </div>
+          } @else {
+            <div class="flex flex-col gap-1 p-2 max-h-150 overflow-y-auto thin-scroll">
+              @for (s of settingsList(); track s.key) {
+                <button
+                  type="button" class="text-left rounded-(--radius-sm) px-2.5 py-2 transition-colors hover:bg-(--surface-2) w-full"
+                  [style.background]="key() === s.key ? 'var(--app-accent-soft)' : 'transparent'" (click)="selectKey(s.key)"
+                >
+                  <p class="text-xs font-mono truncate" [style.fontWeight]="key() === s.key ? 700 : 500">{{ s.key }}</p>
+                  <p class="text-xs mt-0.5 truncate" style="color: var(--text-muted)">{{ s.value }} @if (s.updated_at) { · {{ dateTime(s.updated_at) }} }</p>
+                </button>
+              } @empty {
+                <div class="inline-empty">Aucun paramètre enregistré pour l’instant.</div>
+              }
+            </div>
+            @if (listCursor()) {
+              <div class="card-foot">
+                <span class="text-xs" style="color: var(--text-muted)">{{ settingsList().length }} chargé(s)</span>
+                <button type="button" class="btn btn-secondary btn-sm" [disabled]="loadingList()" (click)="fetchList(listCursor()!)">Charger plus</button>
+              </div>
+            }
+          }
+        </div>
+      </section>
+    </div>
+  }
 </div>
-}

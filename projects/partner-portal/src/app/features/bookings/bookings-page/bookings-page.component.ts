@@ -8,7 +8,7 @@ import { formatDateTime, formatXaf } from '@lvb/utils/formatters';
 import { LabelsService } from '../../../core/services/labels.service';
 import { PartnerContextService } from '../../../core/services/partner-context.service';
 import { I18nService } from '@lvb/i18n/i18n.service';
-import { BreadcrumbsComponent } from '@lvb/ui/breadcrumbs/breadcrumbs.component';
+import { PageHeaderComponent } from '@lvb/ui/page-header/page-header.component';
 import { ForbiddenStateComponent } from '@lvb/ui/forbidden-state/forbidden-state.component';
 import { StatusBadgeComponent } from '@lvb/ui/status-badge/status-badge.component';
 import { SelectComponent, SelectOption } from '@lvb/ui/select/select.component';
@@ -45,9 +45,14 @@ const REASON_LABEL: Partial<Record<BookingActionKind, string>> = {
 @Component({
   selector: 'app-bookings-page',
   imports: [
-    BreadcrumbsComponent, ForbiddenStateComponent, StatusBadgeComponent, SelectComponent, DataTableComponent,
-    TableCellDefDirective, ModalComponent,
-  ],
+  DataTableComponent,
+  ForbiddenStateComponent,
+  ModalComponent,
+  PageHeaderComponent,
+  SelectComponent,
+  StatusBadgeComponent,
+  TableCellDefDirective,
+],
   templateUrl: './bookings-page.component.html',
 })
 export class BookingsPageComponent {

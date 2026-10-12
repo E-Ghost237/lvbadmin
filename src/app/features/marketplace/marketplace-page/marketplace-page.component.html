@@ -1,42 +1,54 @@
-<app-breadcrumbs [crumbs]="[{ label: 'Marketplace' }]" />
+<div class="page">
+  <app-page-header
+    [crumbs]="[{ label: 'Marketplace' }]"
+    title="Marketplace"
+    subtitle="Catégories et modération des offres partenaires (LVB-CDC-MKT-RENT-2026-V1.0)."
+  />
 
-<div class="mb-5">
-  <h1 class="text-xl font-semibold">Marketplace</h1>
-  <p class="text-sm mt-0.5" style="color: var(--text-muted)">Catégories et modération des offres partenaires (LVB-CDC-MKT-RENT-2026-V1.0).</p>
-</div>
+  <app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
 
-<app-tabs [tabs]="tabs" [active]="activeTab()" (activeChange)="selectTab($event)" />
-
-<div class="mt-5">
   @if (activeTab() === 'offers') {
     @if (forbiddenOffers()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission marketplace.manage." />
     } @else {
-      <div class="mb-4 max-w-xs">
-        <app-select [options]="statusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="offerStatusFilter()" (valueChange)="onOfferStatusFilterChange($event)" />
+      <div class="toolbar">
+        <app-select class="w-auto min-w-52" [options]="statusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="offerStatusFilter()" (valueChange)="onOfferStatusFilterChange($event)" />
+        <span class="toolbar-spacer"></span>
+        @if (offers().length) { <span class="count-chip">{{ offers().length }} offre(s)</span> }
       </div>
 
-      <div class="card">
-        <app-data-table
-          [columns]="offerColumns" [rows]="offers()" [loading]="loadingOffers() && offers().length === 0"
-          [trackBy]="trackByOfferUuid" emptyTitle="Aucune offre" emptyHint="Aucune offre ne correspond à ce filtre."
-        >
-          <ng-template appCell="status" let-row><app-status-badge domain="marketplaceOffer" [status]="row.status" /></ng-template>
-          <ng-template appCell="actions" let-row>
-            <div class="flex gap-1.5 justify-end flex-wrap">
-              @for (action of actionsFor(row); track action.target) {
-                <button
-                  type="button" class="btn btn-sm !py-1" [class]="action.danger ? 'btn-danger-ghost' : 'btn-secondary'"
-                  [disabled]="transitioning() === row.uuid" (click)="applyTransition(row, action)"
-                >{{ action.label }}</button>
-              }
-            </div>
-          </ng-template>
-        </app-data-table>
-      </div>
-      @if (offersCursor()) {
-        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingOffers()" (click)="fetchOffers(offersCursor()!)">Charger plus</button>
-      }
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Offres partenaires</h2>
+            <p class="card-sub">Publication, suspension et archivage des offres soumises</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
+          <app-data-table
+            [columns]="offerColumns" [rows]="offers()" [loading]="loadingOffers() && offers().length === 0"
+            [trackBy]="trackByOfferUuid" emptyTitle="Aucune offre" emptyHint="Aucune offre ne correspond à ce filtre."
+          >
+            <ng-template appCell="status" let-row><app-status-badge domain="marketplaceOffer" [status]="row.status" /></ng-template>
+            <ng-template appCell="actions" let-row>
+              <div class="flex gap-1.5 justify-end flex-wrap">
+                @for (action of actionsFor(row); track action.target) {
+                  <button
+                    type="button" class="btn btn-sm !py-1" [class]="action.danger ? 'btn-danger-ghost' : 'btn-secondary'"
+                    [disabled]="transitioning() === row.uuid" (click)="applyTransition(row, action)"
+                  >{{ action.label }}</button>
+                }
+              </div>
+            </ng-template>
+          </app-data-table>
+        </div>
+        @if (offersCursor()) {
+          <div class="card-foot">
+            <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="loadingOffers()" (click)="fetchOffers(offersCursor()!)">Charger plus</button>
+          </div>
+        }
+      </section>
     }
   }
 
@@ -44,106 +56,159 @@
     @if (loadingCategories()) {
       <div class="skeleton h-32"></div>
     } @else {
-      <div class="card p-5 max-w-md">
-        <p class="text-sm font-medium mb-3">Catégories</p>
-        <div class="flex flex-col gap-2 max-h-96 overflow-y-auto thin-scroll">
-          @for (category of categories(); track category.uuid) {
-            <div class="flex items-center gap-2">
-              <input
-                class="input flex-1" [value]="category.name" [disabled]="savingCategory() === category.uuid"
-                (change)="renameCategory(category, $any($event.target).value)"
-              />
-              <app-toggle
-                [checked]="category.active" [disabled]="savingCategory() === category.uuid" [label]="'Catégorie active : ' + category.name"
-                (checkedChange)="toggleCategoryActive(category)"
-              />
-            </div>
-          } @empty {
-            <p class="text-xs text-center py-3" style="color: var(--text-muted)">Aucune catégorie.</p>
-          }
+      <section class="card max-w-md">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Catégories</h2>
+            <p class="card-sub">Nommez et activez les catégories d’offres partenaires</p>
+          </div>
         </div>
-        <div class="flex items-center gap-2 mt-3 pt-3" style="border-top: 1px solid var(--border)">
-          <input
-            class="input flex-1" placeholder="Nouvelle catégorie…" [value]="newCategoryName()"
-            (input)="onNewCategoryNameInput($any($event.target).value)"
-          />
-          <button type="button" class="btn btn-secondary btn-sm" [disabled]="!newCategoryName().trim()" (click)="createCategory()">Ajouter</button>
+        <div class="card-body-flush">
+          <div class="flex flex-col gap-2 p-4 max-h-96 overflow-y-auto thin-scroll">
+            @for (category of categories(); track category.uuid) {
+              <div class="flex items-center gap-2">
+                <input
+                  class="input flex-1" [value]="category.name" [disabled]="savingCategory() === category.uuid"
+                  (change)="renameCategory(category, $any($event.target).value)"
+                />
+                <app-toggle
+                  [checked]="category.active" [disabled]="savingCategory() === category.uuid" [label]="'Catégorie active : ' + category.name"
+                  (checkedChange)="toggleCategoryActive(category)"
+                />
+              </div>
+            } @empty {
+              <div class="inline-empty">Aucune catégorie.</div>
+            }
+          </div>
+          <div class="card-foot">
+            <input
+              class="input flex-1" placeholder="Nouvelle catégorie…" [value]="newCategoryName()"
+              (input)="onNewCategoryNameInput($any($event.target).value)"
+            />
+            <button type="button" class="btn btn-primary btn-sm shrink-0" [disabled]="!newCategoryName().trim()" (click)="createCategory()">Ajouter</button>
+          </div>
         </div>
-      </div>
+      </section>
     }
   }
 
   @if (activeTab() === 'vehicles') {
-    <div class="card p-4 mb-4 max-w-lg">
-      <label class="field-label">Identifiant partenaire (marketplace)</label>
-      <div class="flex items-center gap-2">
-        <input
-          type="number" min="1" class="input" placeholder="ex. 42" [value]="vehiclePartnerIdInput()"
-          (input)="onVehiclePartnerIdInput($any($event.target).value)" (keydown.enter)="lookupVehiclePartner()"
-        />
-        <button type="button" class="btn btn-primary btn-sm shrink-0" (click)="lookupVehiclePartner()">Charger</button>
+    <section class="card max-w-xl">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">Véhicules du partenaire</h2>
+          <p class="card-sub">Identifiant interne marketplace du partenaire</p>
+        </div>
       </div>
-      <p class="field-hint">Identifiant interne marketplace du partenaire (visible sur une ligne d’offre ou de réservation) — pas l’identifiant du dossier partenaire.</p>
-    </div>
+      <div class="card-body flex items-end gap-3">
+        <div class="flex-1">
+          <label class="field-label">Identifiant partenaire (marketplace)</label>
+          <input
+            type="number" min="1" class="input" placeholder="ex. 42" [value]="vehiclePartnerIdInput()"
+            (input)="onVehiclePartnerIdInput($any($event.target).value)" (keydown.enter)="lookupVehiclePartner()"
+          />
+        </div>
+        <button type="button" class="btn btn-primary shrink-0" (click)="lookupVehiclePartner()">Charger</button>
+      </div>
+      <div class="card-foot">
+        <p class="field-hint !mt-0">Identifiant interne marketplace du partenaire (visible sur une ligne d’offre ou de réservation) — pas l’identifiant du dossier partenaire.</p>
+      </div>
+    </section>
 
     @if (vehiclePartnerId() !== null) {
-      <div class="mb-4 max-w-xs">
-        <app-select [options]="vehicleStatusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="vehicleStatusFilter()" (valueChange)="onVehicleStatusFilterChange($event)" />
+      <div class="toolbar">
+        <app-select class="w-auto min-w-52" [options]="vehicleStatusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="vehicleStatusFilter()" (valueChange)="onVehicleStatusFilterChange($event)" />
+        <span class="toolbar-spacer"></span>
+        @if (vehicles().length) { <span class="count-chip">{{ vehicles().length }} véhicule(s)</span> }
       </div>
 
-      <div class="card">
-        <app-data-table
-          [columns]="vehicleColumns" [rows]="vehicles()" [loading]="loadingVehicles() && vehicles().length === 0"
-          [trackBy]="trackByVehicleUuid" emptyTitle="Aucun véhicule" emptyHint="Ce partenaire n’a aucun véhicule enregistré pour ce filtre."
-        >
-          <ng-template appCell="status" let-row>
-            <app-select
-              class="w-auto min-w-44" [options]="vehicleStatusOptions" [allowClear]="false" [value]="row.status"
-              [disabled]="updatingVehicle() === row.uuid" (valueChange)="changeVehicleStatus(row, $event)"
-            />
-          </ng-template>
-        </app-data-table>
-      </div>
-      @if (vehiclesCursor()) {
-        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingVehicles()" (click)="fetchVehicles(vehiclesCursor()!)">Charger plus</button>
-      }
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Véhicules</h2>
+            <p class="card-sub">Le statut se modifie directement dans la ligne</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
+          <app-data-table
+            [columns]="vehicleColumns" [rows]="vehicles()" [loading]="loadingVehicles() && vehicles().length === 0"
+            [trackBy]="trackByVehicleUuid" emptyTitle="Aucun véhicule" emptyHint="Ce partenaire n’a aucun véhicule enregistré pour ce filtre."
+          >
+            <ng-template appCell="status" let-row>
+              <app-select
+                class="w-auto min-w-44" [options]="vehicleStatusOptions" [allowClear]="false" [value]="row.status"
+                [disabled]="updatingVehicle() === row.uuid" (valueChange)="changeVehicleStatus(row, $event)"
+              />
+            </ng-template>
+          </app-data-table>
+        </div>
+        @if (vehiclesCursor()) {
+          <div class="card-foot">
+            <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="loadingVehicles()" (click)="fetchVehicles(vehiclesCursor()!)">Charger plus</button>
+          </div>
+        }
+      </section>
     }
   }
 
   @if (activeTab() === 'drivers') {
-    <div class="card p-4 mb-4 max-w-lg">
-      <label class="field-label">Identifiant partenaire (marketplace)</label>
-      <div class="flex items-center gap-2">
-        <input
-          type="number" min="1" class="input" placeholder="ex. 42" [value]="driverPartnerIdInput()"
-          (input)="onDriverPartnerIdInput($any($event.target).value)" (keydown.enter)="lookupDriverPartner()"
-        />
-        <button type="button" class="btn btn-primary btn-sm shrink-0" (click)="lookupDriverPartner()">Charger</button>
+    <section class="card max-w-xl">
+      <div class="card-head">
+        <div>
+          <h2 class="card-title">Chauffeurs du partenaire</h2>
+          <p class="card-sub">Identifiant interne marketplace du partenaire</p>
+        </div>
       </div>
-      <p class="field-hint">Identifiant interne marketplace du partenaire (visible sur une ligne d’offre ou de réservation) — pas l’identifiant du dossier partenaire.</p>
-    </div>
+      <div class="card-body flex items-end gap-3">
+        <div class="flex-1">
+          <label class="field-label">Identifiant partenaire (marketplace)</label>
+          <input
+            type="number" min="1" class="input" placeholder="ex. 42" [value]="driverPartnerIdInput()"
+            (input)="onDriverPartnerIdInput($any($event.target).value)" (keydown.enter)="lookupDriverPartner()"
+          />
+        </div>
+        <button type="button" class="btn btn-primary shrink-0" (click)="lookupDriverPartner()">Charger</button>
+      </div>
+      <div class="card-foot">
+        <p class="field-hint !mt-0">Identifiant interne marketplace du partenaire (visible sur une ligne d’offre ou de réservation) — pas l’identifiant du dossier partenaire.</p>
+      </div>
+    </section>
 
     @if (driverPartnerId() !== null) {
-      <div class="mb-4 max-w-xs">
-        <app-select [options]="driverStatusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="driverStatusFilter()" (valueChange)="onDriverStatusFilterChange($event)" />
+      <div class="toolbar">
+        <app-select class="w-auto min-w-52" [options]="driverStatusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="driverStatusFilter()" (valueChange)="onDriverStatusFilterChange($event)" />
+        <span class="toolbar-spacer"></span>
+        @if (drivers().length) { <span class="count-chip">{{ drivers().length }} chauffeur(s)</span> }
       </div>
 
-      <div class="card">
-        <app-data-table
-          [columns]="driverColumns" [rows]="drivers()" [loading]="loadingDrivers() && drivers().length === 0"
-          [trackBy]="trackByDriverUuid" emptyTitle="Aucun chauffeur" emptyHint="Ce partenaire n’a aucun chauffeur enregistré pour ce filtre."
-        >
-          <ng-template appCell="status" let-row>
-            <app-select
-              class="w-auto min-w-44" [options]="driverStatusOptions" [allowClear]="false" [value]="row.status"
-              [disabled]="updatingDriver() === row.uuid" (valueChange)="changeDriverStatus(row, $event)"
-            />
-          </ng-template>
-        </app-data-table>
-      </div>
-      @if (driversCursor()) {
-        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingDrivers()" (click)="fetchDrivers(driversCursor()!)">Charger plus</button>
-      }
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Chauffeurs</h2>
+            <p class="card-sub">Le statut se modifie directement dans la ligne</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
+          <app-data-table
+            [columns]="driverColumns" [rows]="drivers()" [loading]="loadingDrivers() && drivers().length === 0"
+            [trackBy]="trackByDriverUuid" emptyTitle="Aucun chauffeur" emptyHint="Ce partenaire n’a aucun chauffeur enregistré pour ce filtre."
+          >
+            <ng-template appCell="status" let-row>
+              <app-select
+                class="w-auto min-w-44" [options]="driverStatusOptions" [allowClear]="false" [value]="row.status"
+                [disabled]="updatingDriver() === row.uuid" (valueChange)="changeDriverStatus(row, $event)"
+              />
+            </ng-template>
+          </app-data-table>
+        </div>
+        @if (driversCursor()) {
+          <div class="card-foot">
+            <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="loadingDrivers()" (click)="fetchDrivers(driversCursor()!)">Charger plus</button>
+          </div>
+        }
+      </section>
     }
   }
 
@@ -151,37 +216,44 @@
     @if (loadingVehicleTypes()) {
       <div class="skeleton h-32"></div>
     } @else {
-      <div class="card p-5 max-w-lg">
-        <p class="text-sm font-medium mb-3">Types de véhicule</p>
-        <div class="flex flex-col gap-2 max-h-96 overflow-y-auto thin-scroll">
-          @for (type of vehicleTypes(); track type.code) {
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-mono w-28 shrink-0 truncate" [title]="type.code" style="color: var(--text-muted)">{{ type.code }}</span>
-              <input
-                class="input flex-1" [value]="type.label" [disabled]="savingVehicleType() === type.code"
-                (change)="renameVehicleType(type, $any($event.target).value)"
-              />
-              <app-toggle
-                [checked]="type.active" [disabled]="savingVehicleType() === type.code" [label]="'Type actif : ' + type.label"
-                (checkedChange)="toggleVehicleTypeActive(type)"
-              />
-            </div>
-          } @empty {
-            <p class="text-xs text-center py-3" style="color: var(--text-muted)">Aucun type de véhicule.</p>
-          }
+      <section class="card max-w-xl">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Types de véhicule</h2>
+            <p class="card-sub">Référentiel utilisé par les partenaires pour décrire leur flotte</p>
+          </div>
         </div>
-        <div class="flex items-center gap-2 mt-3 pt-3" style="border-top: 1px solid var(--border)">
-          <input
-            class="input w-32 font-mono uppercase" placeholder="CODE" [value]="newVehicleTypeCode()"
-            (input)="onNewVehicleTypeCodeInput($any($event.target).value)"
-          />
-          <input
-            class="input flex-1" placeholder="Libellé…" [value]="newVehicleTypeLabel()"
-            (input)="onNewVehicleTypeLabelInput($any($event.target).value)"
-          />
-          <button type="button" class="btn btn-secondary btn-sm shrink-0" [disabled]="!newVehicleTypeCode().trim() || !newVehicleTypeLabel().trim()" (click)="createVehicleType()">Ajouter</button>
+        <div class="card-body-flush">
+          <div class="flex flex-col gap-2 p-4 max-h-96 overflow-y-auto thin-scroll">
+            @for (type of vehicleTypes(); track type.code) {
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-mono w-28 shrink-0 truncate px-2 py-1 rounded-(--radius-xs)" [title]="type.code" style="color: var(--text-secondary); background: var(--surface-2)">{{ type.code }}</span>
+                <input
+                  class="input flex-1" [value]="type.label" [disabled]="savingVehicleType() === type.code"
+                  (change)="renameVehicleType(type, $any($event.target).value)"
+                />
+                <app-toggle
+                  [checked]="type.active" [disabled]="savingVehicleType() === type.code" [label]="'Type actif : ' + type.label"
+                  (checkedChange)="toggleVehicleTypeActive(type)"
+                />
+              </div>
+            } @empty {
+              <div class="inline-empty">Aucun type de véhicule.</div>
+            }
+          </div>
+          <div class="card-foot">
+            <input
+              class="input w-32 font-mono uppercase shrink-0" placeholder="CODE" [value]="newVehicleTypeCode()"
+              (input)="onNewVehicleTypeCodeInput($any($event.target).value)"
+            />
+            <input
+              class="input flex-1" placeholder="Libellé…" [value]="newVehicleTypeLabel()"
+              (input)="onNewVehicleTypeLabelInput($any($event.target).value)"
+            />
+            <button type="button" class="btn btn-primary btn-sm shrink-0" [disabled]="!newVehicleTypeCode().trim() || !newVehicleTypeLabel().trim()" (click)="createVehicleType()">Ajouter</button>
+          </div>
         </div>
-      </div>
+      </section>
     }
   }
 
@@ -189,31 +261,44 @@
     @if (forbiddenBookings()) {
       <app-forbidden-state detail="Votre compte n’a pas la permission booking.manage." />
     } @else {
-      <div class="mb-4 max-w-xs">
-        <app-select [options]="bookingStatusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="bookingStatusFilter()" (valueChange)="onBookingStatusFilterChange($event)" />
+      <div class="toolbar">
+        <app-select class="w-auto min-w-52" [options]="bookingStatusOptions" placeholder="Tous les statuts" ariaLabel="Filtrer par statut" [value]="bookingStatusFilter()" (valueChange)="onBookingStatusFilterChange($event)" />
+        <span class="toolbar-spacer"></span>
+        @if (bookings().length) { <span class="count-chip">{{ bookings().length }} réservation(s)</span> }
       </div>
 
-      <div class="card">
-        <app-data-table
-          [columns]="bookingColumns" [rows]="bookings()" [loading]="loadingBookings() && bookings().length === 0"
-          [trackBy]="trackByBookingUuid" emptyTitle="Aucune réservation" emptyHint="Aucune réservation ne correspond à ce filtre."
-        >
-          <ng-template appCell="status" let-row><app-status-badge domain="booking" [status]="row.status" /></ng-template>
-          <ng-template appCell="dispute_status" let-row>
-            @if (row.dispute_status) {
-              <app-status-badge domain="bookingDispute" [status]="row.dispute_status" />
-            } @else {
-              <span style="color: var(--text-muted)">—</span>
-            }
-          </ng-template>
-          <ng-template appCell="actions" let-row>
-            <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openBookingDetail(row.uuid)">Détails</button>
-          </ng-template>
-        </app-data-table>
-      </div>
-      @if (bookingsCursor()) {
-        <button type="button" class="btn btn-secondary btn-sm mt-3" [disabled]="loadingBookings()" (click)="fetchBookings(bookingsCursor()!)">Charger plus</button>
-      }
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2 class="card-title">Réservations marketplace</h2>
+            <p class="card-sub">Traitement et résolution des litiges (acompte, remboursements)</p>
+          </div>
+        </div>
+        <div class="card-body-flush">
+          <app-data-table
+            [columns]="bookingColumns" [rows]="bookings()" [loading]="loadingBookings() && bookings().length === 0"
+            [trackBy]="trackByBookingUuid" emptyTitle="Aucune réservation" emptyHint="Aucune réservation ne correspond à ce filtre."
+          >
+            <ng-template appCell="status" let-row><app-status-badge domain="booking" [status]="row.status" /></ng-template>
+            <ng-template appCell="dispute_status" let-row>
+              @if (row.dispute_status) {
+                <app-status-badge domain="bookingDispute" [status]="row.dispute_status" />
+              } @else {
+                <span style="color: var(--text-muted)">—</span>
+              }
+            </ng-template>
+            <ng-template appCell="actions" let-row>
+              <button type="button" class="btn btn-secondary btn-sm !py-1" (click)="openBookingDetail(row.uuid)">Détails</button>
+            </ng-template>
+          </app-data-table>
+        </div>
+        @if (bookingsCursor()) {
+          <div class="card-foot">
+            <span class="text-xs" style="color: var(--text-muted)">Pagination serveur par curseur</span>
+            <button type="button" class="btn btn-secondary btn-sm" [disabled]="loadingBookings()" (click)="fetchBookings(bookingsCursor()!)">Charger plus</button>
+          </div>
+        }
+      </section>
     }
   }
 </div>
@@ -222,26 +307,24 @@
   @if (loadingBookingDetail()) {
     <div class="skeleton h-40"></div>
   } @else if (bookingDetail(); as b) {
-    <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-      <div><span class="field-label">Statut</span><div class="mt-1"><app-status-badge domain="booking" [status]="b.status" /></div></div>
-      <div><span class="field-label">Paiement</span><div class="mt-1"><app-status-badge domain="bookingPayment" [status]="b.payment_status" /></div></div>
-      <div><span class="field-label">Début</span><p>{{ dateTime(b.starts_at) }}</p></div>
-      <div><span class="field-label">Fin</span><p>{{ dateTime(b.ends_at) }}</p></div>
-      <div><span class="field-label">Expiration de l’acompte</span><p>{{ dateTime(b.hold_expires_at) }}</p></div>
-      <div><span class="field-label">Terminée le</span><p>{{ b.completed_at ? dateTime(b.completed_at) : '—' }}</p></div>
-      <div><span class="field-label">Offre</span><p>{{ offerTitle(b.offer_uuid) }}</p></div>
-      <div><span class="field-label">Véhicule</span><p>{{ bookingVehicle(b) }}</p></div>
-      <div><span class="field-label">Chauffeur</span><p>{{ bookingDriver(b) }}</p></div>
-      <div>
-        <span class="field-label">Litige</span>
-        <div class="mt-1">
-          @if (b.dispute_status) { <app-status-badge domain="bookingDispute" [status]="b.dispute_status" /> } @else { <span style="color: var(--text-muted)">Aucun</span> }
-        </div>
+    <div class="kv-grid kv-grid-2">
+      <div class="kv-item"><span class="kv-label">Statut</span><app-status-badge domain="booking" [status]="b.status" /></div>
+      <div class="kv-item"><span class="kv-label">Paiement</span><app-status-badge domain="bookingPayment" [status]="b.payment_status" /></div>
+      <div class="kv-item"><span class="kv-label">Début</span><span class="kv-value">{{ dateTime(b.starts_at) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Fin</span><span class="kv-value">{{ dateTime(b.ends_at) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Expiration de l’acompte</span><span class="kv-value">{{ dateTime(b.hold_expires_at) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Terminée le</span><span class="kv-value">{{ b.completed_at ? dateTime(b.completed_at) : '—' }}</span></div>
+      <div class="kv-item"><span class="kv-label">Offre</span><span class="kv-value">{{ offerTitle(b.offer_uuid) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Véhicule</span><span class="kv-value">{{ bookingVehicle(b) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Chauffeur</span><span class="kv-value">{{ bookingDriver(b) }}</span></div>
+      <div class="kv-item">
+        <span class="kv-label">Litige</span>
+        @if (b.dispute_status) { <app-status-badge domain="bookingDispute" [status]="b.dispute_status" /> } @else { <span class="kv-value" style="color: var(--text-muted)">Aucun</span> }
       </div>
-      <div><span class="field-label">Montant total</span><p>{{ xaf(b.total_amount) }}</p></div>
-      <div><span class="field-label">Commission</span><p>{{ xaf(b.commission_amount) }}</p></div>
-      <div><span class="field-label">Remboursement prévu</span><p>{{ xaf(b.refund_amount) }}</p></div>
-      <div><span class="field-label">Remboursé</span><p>{{ xaf(b.refunded_amount) }}</p></div>
+      <div class="kv-item"><span class="kv-label">Montant total</span><span class="kv-value tabular-nums font-semibold">{{ xaf(b.total_amount) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Commission</span><span class="kv-value tabular-nums">{{ xaf(b.commission_amount) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Remboursement prévu</span><span class="kv-value tabular-nums">{{ xaf(b.refund_amount) }}</span></div>
+      <div class="kv-item"><span class="kv-label">Remboursé</span><span class="kv-value tabular-nums">{{ xaf(b.refunded_amount) }}</span></div>
     </div>
 
     <div class="flex gap-2 flex-wrap mt-5 pt-4" style="border-top: 1px solid var(--border)">
@@ -254,8 +337,8 @@
     </div>
 
     @if (showDisputeForm()) {
-      <div class="card p-4 mt-3" style="border: 1px solid var(--border)">
-        <p class="text-sm font-medium mb-3">Résoudre le litige</p>
+      <div class="card p-4 mt-4">
+        <p class="text-sm font-semibold mb-3">Résoudre le litige</p>
         <div class="flex flex-col gap-3">
           <div>
             <label class="field-label">Résolution</label>
@@ -275,12 +358,15 @@
 
     @if (b.history && b.history.length > 0) {
       <div class="mt-5 pt-4" style="border-top: 1px solid var(--border)">
-        <p class="text-sm font-medium mb-3">Historique</p>
-        <div class="flex flex-col gap-2 max-h-64 overflow-y-auto thin-scroll">
+        <p class="text-sm font-semibold mb-3">Historique</p>
+        <div class="timeline max-h-64 overflow-y-auto thin-scroll">
           @for (entry of b.history; track entry.uuid) {
-            <div class="text-xs flex items-start gap-2">
-              <span style="color: var(--text-muted)" class="shrink-0 w-32">{{ dateTime(entry.created_at) }}</span>
-              <span>{{ entry.from_status ?? '—' }} → {{ entry.to_status }}@if (entry.reason) { — {{ entry.reason }} }</span>
+            <div class="timeline-item">
+              <span class="timeline-dot"></span>
+              <div class="min-w-0">
+                <p class="timeline-time">{{ dateTime(entry.created_at) }}</p>
+                <p class="text-xs mt-0.5">{{ entry.from_status ?? '—' }} → {{ entry.to_status }}@if (entry.reason) { — {{ entry.reason }} }</p>
+              </div>
             </div>
           }
         </div>

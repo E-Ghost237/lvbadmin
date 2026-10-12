@@ -22,6 +22,7 @@ export * from './table/data-table.component';
 export * from './table/table-cell-def.directive';
 export * from './stat-tile/stat-tile.component';
 export * from './breadcrumbs/breadcrumbs.component';
+export * from './page-header/page-header.component';
 export * from './file-drop/file-drop.component';
 export * from './map-panel/map-panel.component';
 export * from './location-picker/location-picker.component';

@@ -7,24 +7,20 @@ export interface SegmentOption {
 
 /**
  * Replaces the ad hoc "pill row" (`Toutes villes / Douala / Yaoundé`-style)
- * that several pages built inline with duplicated `[style.background]`
- * ternaries — one shared, properly transitioned control instead.
+ * that several pages built inline with duplicated `[style.background]` ternaries
+ * — one shared, properly transitioned control instead.
  */
 @Component({
   selector: 'app-segmented-control',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div
-      class="rounded-(--radius-sm) overflow-hidden" [class]="fullWidth() ? 'flex' : 'inline-flex'"
-      style="border: 1px solid var(--border-strong)" role="tablist" [attr.aria-label]="ariaLabel() || null"
-    >
+    <div class="seg-group max-w-full overflow-x-auto thin-scroll" [class.flex]="fullWidth()" role="tablist" [attr.aria-label]="ariaLabel() || null">
       @for (opt of options(); track opt.value) {
         <button
           type="button" role="tab" [attr.aria-selected]="value() === opt.value" [disabled]="disabled()"
-          class="px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed hover:bg-(--surface-2)"
+          class="seg-item disabled:opacity-50 disabled:cursor-not-allowed"
+          [class.seg-item-active]="value() === opt.value"
           [class.flex-1]="fullWidth()"
-          [style.background]="value() === opt.value ? 'var(--brand)' : 'transparent'"
-          [style.color]="value() === opt.value ? 'white' : 'var(--text-secondary)'"
           (click)="valueChange.emit(opt.value)"
         >{{ opt.label }}</button>
       }
